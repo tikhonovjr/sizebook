@@ -62,6 +62,23 @@ function authenticateToken(req, res, next) {
   });
 }
 
+
+// ── ТЕСТОВЫЙ РЕЖИМ (без авторизации) ─────────────────────────────────────────
+async function getTestUserId() {
+  // Берём первого пользователя из БД, или создаём тестового
+  let r = await pool.query('SELECT id FROM users LIMIT 1');
+  if (r.rows.length) return r.rows[0].id;
+  // Создаём тестового юзера если никого нет
+  const hash = await require('bcryptjs').hash('test123', 10);
+  r = await pool.query(
+    "INSERT INTO users (username,email,password_hash) VALUES ('test','test@test.com',$1) ON CONFLICT DO NOTHING RETURNING id",
+    [hash]
+  );
+  if (r.rows.length) return r.rows[0].id;
+  r = await pool.query("SELECT id FROM users WHERE email='test@test.com'");
+  return r.rows[0]?.id || 1;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -121,31 +138,34 @@ app.post('/sizes', authenticateToken, async (req, res) => {
 });
 
 // ── WISHLIST ──────────────────────────────────────────────────────────────────
-app.get('/wishlist', authenticateToken, async (req, res) => {
+app.get('/wishlist', async (req, res) => { // auth отключён
   try {
+    const TEST_USER_ID = await getTestUserId();
     const r = await pool.query(
       'SELECT * FROM wishlist WHERE user_id=$1 ORDER BY added_at DESC',
-      [req.user.id]
+      [TEST_USER_ID]
     );
     res.json(r.rows);
   } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-app.post('/wishlist', authenticateToken, async (req, res) => {
+app.post('/wishlist', async (req, res) => { // auth отключён
   const { title, shop, url, price, size, image } = req.body;
   if (!title) return res.status(400).json({ error: 'Нужно название' });
   try {
+    const TEST_USER_ID = await getTestUserId();
     const r = await pool.query(
       'INSERT INTO wishlist (user_id,title,shop,url,price,size,image) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-      [req.user.id, title, shop||null, url||null, price||null, size||null, image||null]
+      [TEST_USER_ID, title, shop||null, url||null, price||null, size||null, image||null]
     );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
 
-app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
+app.delete('/wishlist/:id', async (req, res) => { // auth отключён
   try {
-    await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const TEST_USER_ID = await getTestUserId();
+    await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2', [req.params.id, TEST_USER_ID]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -171,39 +191,34 @@ const FETCH_HEADERS = {
   'Connection': 'keep-alive',
 };
 
-// Извлечь itemId из URL Farfetch: .../item-12345678.aspx
-function extractFarfetchId(url) {
-  const m = url.match(/item-(\d+)\.aspx/i);
-  return m ? m[1] : null;
+// Парсинг через iframely (бесплатный OG-парсер, не блокируется Farfetch)
+async function parseViaIframely(url) {
+  try {
+    const apiUrl = `https://open.iframe.ly/api/oembed?url=${encodeURIComponent(url)}&origin=embedly`;
+    const r = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return {
+      title: data.title || null,
+      image: data.thumbnail_url || null,
+      price: null, // iframely не даёт цену
+    };
+  } catch (_) { return null; }
 }
 
-// Запрос к Farfetch внутреннему API (обходит Cloudflare)
-async function fetchFarfetchApi(itemId) {
-  const regions = [
-    { countryCode: 'GB', currency: 'GBP' },
-    { countryCode: 'US', currency: 'USD' },
-    { countryCode: 'DE', currency: 'EUR' },
-  ];
-  for (const { countryCode, currency } of regions) {
-    try {
-      const apiUrl = `https://www.farfetch.com/api/product/itemdetails?itemId=${itemId}&countryCode=${countryCode}&currency=${currency}`;
-      const r = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': FETCH_HEADERS['User-Agent'],
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'x-requested-with': 'XMLHttpRequest',
-          'referer': 'https://www.farfetch.com/',
-          'origin': 'https://www.farfetch.com',
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!r.ok) continue;
-      const data = await r.json();
-      if (data && (data.name || data.shortDescription || data.brand)) return data;
-    } catch (_) {}
-  }
-  return null;
+// Парсинг через jsonlink (ещё один бесплатный OG-парсер)
+async function parseViaJsonlink(url) {
+  try {
+    const apiUrl = `https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`;
+    const r = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return {
+      title: data.title || null,
+      image: data.images?.[0] || null,
+      price: null,
+    };
+  } catch (_) { return null; }
 }
 
 function parseProductFromHtml(html, url) {
@@ -286,38 +301,21 @@ function parseProductFromHtml(html, url) {
   return { title, price, image };
 }
 
-app.post('/parse', authenticateToken, async (req, res) => {
+app.post('/parse', async (req, res) => { // auth отключён для теста
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
   const host = new URL(url).hostname;
 
-  // ── Farfetch: используем внутренний API который обходит Cloudflare ────────
-  if (host.includes('farfetch.com')) {
-    const itemId = extractFarfetchId(url);
-    if (itemId) {
-      try {
-        const data = await fetchFarfetchApi(itemId);
-        if (data) {
-          const title = (data.name || data.shortDescription || null)?.slice(0, 120) || null;
-          let image = null;
-          const imgs = data.images || data.colors?.[0]?.images;
-          if (imgs?.length) image = imgs[0].url || imgs[0].src || null;
-          if (!image && data.imageUrl) image = data.imageUrl;
-          let price = null;
-          const pi = data.priceInfo || data.price || data.pricing;
-          if (pi) {
-            const val = pi.finalPrice || pi.price || pi.value;
-            const cur = pi.currencyCode || pi.currency || '';
-            if (val) price = cur ? `${val} ${cur}` : String(val);
-          }
-          if (title || price || image) {
-            return res.json({ title, price, image });
-          }
-        }
-      } catch (_) {}
-    }
+  // ── Farfetch и другие сайты с Cloudflare: внешние OG-парсеры ────────────
+  if (host.includes('farfetch.com') || host.includes('net-a-porter') || host.includes('matchesfashion')) {
+    // Пробуем jsonlink
+    let result = await parseViaJsonlink(url);
+    if (result?.title) return res.json(result);
+    // Пробуем iframely
+    result = await parseViaIframely(url);
+    if (result?.title) return res.json(result);
   }
 
   // ── Универсальный HTML-парсер для всех остальных сайтов ──────────────────
