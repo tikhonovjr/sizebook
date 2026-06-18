@@ -188,7 +188,7 @@ app.post('/sizes', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/', (req, res) => res.json({ status: 'SizeBook API running' }));
+app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook.html'));
 
 initDB().then(() => {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
