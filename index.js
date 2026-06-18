@@ -163,7 +163,50 @@ app.get('/profile/:username', async (req, res) => {
 });
 
 // ── ПАРСЕР ────────────────────────────────────────────────────────────────────
-function parseProduct(html, url) {
+
+const FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
+  'Connection': 'keep-alive',
+};
+
+// Извлечь itemId из URL Farfetch: .../item-12345678.aspx
+function extractFarfetchId(url) {
+  const m = url.match(/item-(\d+)\.aspx/i);
+  return m ? m[1] : null;
+}
+
+// Запрос к Farfetch внутреннему API (обходит Cloudflare)
+async function fetchFarfetchApi(itemId) {
+  const regions = [
+    { countryCode: 'GB', currency: 'GBP' },
+    { countryCode: 'US', currency: 'USD' },
+    { countryCode: 'DE', currency: 'EUR' },
+  ];
+  for (const { countryCode, currency } of regions) {
+    try {
+      const apiUrl = `https://www.farfetch.com/api/product/itemdetails?itemId=${itemId}&countryCode=${countryCode}&currency=${currency}`;
+      const r = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': FETCH_HEADERS['User-Agent'],
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'x-requested-with': 'XMLHttpRequest',
+          'referer': 'https://www.farfetch.com/',
+          'origin': 'https://www.farfetch.com',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!r.ok) continue;
+      const data = await r.json();
+      if (data && (data.name || data.shortDescription || data.brand)) return data;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function parseProductFromHtml(html, url) {
   const $ = cheerio.load(html);
   let title = null, price = null, image = null;
 
@@ -197,15 +240,29 @@ function parseProduct(html, url) {
     if (p) price = c ? `${p} ${c}` : p;
   }
 
-  // 3. Сайтоспецифичные — __NEXT_DATA__ (Farfetch, Zara, Mytheresa)
+  // 3. __NEXT_DATA__ (Zara, Mytheresa и другие Next.js сайты)
   try {
     const nextRaw = $('#__NEXT_DATA__').html();
     if (nextRaw) {
       const nd = JSON.parse(nextRaw);
       const pp = nd?.props?.pageProps;
 
-      // Farfetch
-      const pd = pp?.productDetails || pp?.initialData?.productView || pp?.product;
+      // Zara
+      const zp = pp?.product || pp?.initialData?.product;
+      if (zp) {
+        title = title || zp.name || null;
+        const col = zp.detail?.colors?.[0] || zp.colors?.[0];
+        if (!image && col?.images?.length) image = col.images[0].url || null;
+        const zpr = zp.price || zp.detail?.price;
+        if (!price && zpr) {
+          const val = zpr.value || zpr.price;
+          const cur = zpr.currency || '';
+          if (val) price = cur ? `${val} ${cur}` : String(val);
+        }
+      }
+
+      // Другие Next.js магазины
+      const pd = pp?.productDetails || pp?.initialData?.productView;
       if (pd) {
         title = title || pd.name || pd.shortDescription || null;
         const imgs = pd.images || pd.colors?.[0]?.images;
@@ -217,20 +274,6 @@ function parseProduct(html, url) {
           if (val) price = cur ? `${val} ${cur}` : String(val);
         }
       }
-
-      // Zara
-      const zp = pp?.product || pp?.initialData?.product;
-      if (!title && zp) {
-        title = zp.name || null;
-        const col = zp.detail?.colors?.[0] || zp.colors?.[0];
-        if (!image && col?.images?.length) image = col.images[0].url || null;
-        const zpr = zp.price || zp.detail?.price;
-        if (!price && zpr) {
-          const val = zpr.value || zpr.price;
-          const cur = zpr.currency || '';
-          if (val) price = cur ? `${val} ${cur}` : String(val);
-        }
-      }
     }
   } catch (_) {}
 
@@ -239,9 +282,7 @@ function parseProduct(html, url) {
     title = $('title').text().trim().split('|')[0].split('-')[0].trim() || null;
   }
 
-  // Убираем длинные названия (обрезаем)
   if (title && title.length > 120) title = title.slice(0, 120).trim();
-
   return { title, price, image };
 }
 
@@ -250,19 +291,45 @@ app.post('/parse', authenticateToken, async (req, res) => {
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
+  const host = new URL(url).hostname;
+
+  // ── Farfetch: используем внутренний API который обходит Cloudflare ────────
+  if (host.includes('farfetch.com')) {
+    const itemId = extractFarfetchId(url);
+    if (itemId) {
+      try {
+        const data = await fetchFarfetchApi(itemId);
+        if (data) {
+          const title = (data.name || data.shortDescription || null)?.slice(0, 120) || null;
+          let image = null;
+          const imgs = data.images || data.colors?.[0]?.images;
+          if (imgs?.length) image = imgs[0].url || imgs[0].src || null;
+          if (!image && data.imageUrl) image = data.imageUrl;
+          let price = null;
+          const pi = data.priceInfo || data.price || data.pricing;
+          if (pi) {
+            const val = pi.finalPrice || pi.price || pi.value;
+            const cur = pi.currencyCode || pi.currency || '';
+            if (val) price = cur ? `${val} ${cur}` : String(val);
+          }
+          if (title || price || image) {
+            return res.json({ title, price, image });
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  // ── Универсальный HTML-парсер для всех остальных сайтов ──────────────────
   try {
     const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
-      },
+      headers: FETCH_HEADERS,
       redirect: 'follow',
       signal: AbortSignal.timeout(15000),
     });
     const html = await response.text();
-    const result = parseProduct(html, url);
-    res.json(result); // { title, price, image } — точно такой же формат как ожидает фронтенд
+    const result = parseProductFromHtml(html, url);
+    res.json(result);
   } catch (e) {
     if (e.name === 'TimeoutError') return res.status(504).json({ error: 'Сайт не ответил' });
     res.status(500).json({ error: 'Не удалось загрузить страницу' });
