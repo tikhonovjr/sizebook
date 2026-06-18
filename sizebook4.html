@@ -1160,6 +1160,1631 @@
     <div class="wl-url-row">
       <input class="wl-url-input" id="wl-url-input" type="url"
         placeholder="https://..."
+        oninput="onWlUrlInput()" onpaste="setTimeout(tryAutoFetch,50)" onblur="tryAutoFetch()" onkeydown="if(event.key==='Enter')tryAutoFetch()">
+      <div class="wl-fetch-spinner" id="wl-spinner" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
+    </div>
+
+    <div class="wl-field-label" style="margin-top:12px">Название <span style="color:var(--text3)">(обязательно)</span></div>
+    <input class="wl-url-input" id="wl-title-input" type="text"
+      placeholder="Например: Джинсы Mom Fit" oninput="onWlFieldInput()">
+
+    <div style="display:flex; gap:10px; margin-top:12px">
+      <div style="flex:1">
+        <div class="wl-field-label">Цена</div>
+        <input class="wl-url-input" id="wl-price-input" type="text" placeholder="5 990 ₽">
+      </div>
+      <div style="flex:1">
+        <div class="wl-field-label">Размер</div>
+        <input class="wl-url-input" id="wl-size-input" type="text" placeholder="M, 43...">
+      </div>
+    </div>
+
+    <div class="wl-autofill-note" id="wl-autofill-note"></div>
+
+    <div class="wl-modal-btns">
+      <button class="btn-ghost" onclick="closeWishlistModal(null)">Отмена</button>
+      <button class="btn-primary" id="wl-save-btn" onclick="saveWlItem()" disabled>Добавить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Добавить размер</h3>
+    <label>Категория</label>
+    <select>
+      <option>Одежда верх (футболка, рубашка...)</option>
+      <option>Брюки / джинсы</option>
+      <option>Обувь</option>
+      <option>Кольцо</option>
+      <option>Велосипед</option>
+      <option>Мерка (см)</option>
+      <option>Другое</option>
+    </select>
+    <label>Размер</label>
+    <input type="text" placeholder="Например: M, 43, 17.5мм">
+    <label>Бренд (необязательно)</label>
+    <input type="text" placeholder="Nike, Zara...">
+    <label>Заметка (необязательно)</label>
+    <input type="text" placeholder="Беговые, повседневные...">
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal(null)">Отмена</button>
+      <button class="btn-primary" onclick="closeModal(null)">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const pages = ['profile','daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc','wishlist','share','ideas'];
+  const idx = pages.indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+}
+
+function selectGender(el, gender) {
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+
+// ---- SILHOUETTE DATA ----
+const zoneData = {
+  hats: {
+    title: "Головные уборы",
+    items: [
+      { name: "Кепка", brand: "New Era", size: "L · 58 см", color: "#185FA5" },
+      { name: "Шапка", brand: "Uniqlo", size: "L", color: "#533AB7" }
+    ]
+  },
+  tops: {
+    title: "Верх",
+    items: [
+      { name: "Футболка", brand: "Uniqlo", size: "M", color: "#3B6D11" },
+      { name: "Рубашка", brand: "Massimo Dutti", size: "M · ворот 39", color: "#185FA5" },
+      { name: "Худи", brand: "H&M", size: "L", color: "#BA7517" }
+    ]
+  },
+  bottoms: {
+    title: "Низ",
+    items: [
+      { name: "Джинсы", brand: "Levis", size: "32/32", color: "#185FA5" },
+      { name: "Брюки", brand: "Zara", size: "32/32", color: "#533AB7" }
+    ]
+  },
+  shoes: {
+    title: "Обувь",
+    items: [
+      { name: "Беговые", brand: "Nike", size: "EU 43.5", color: "#3B6D11" },
+      { name: "Беговые", brand: "Adidas", size: "EU 43", color: "#185FA5" },
+      { name: "Повседневные", brand: "New Balance", size: "EU 42.5", color: "#BA7517" },
+      { name: "Лоферы", brand: "Zara", size: "EU 43", color: "#533AB7" }
+    ]
+  },
+  outer: {
+    title: "Верхняя одежда",
+    items: [
+      { name: "Куртка", brand: "The North Face", size: "L", color: "#BA7517" },
+      { name: "Пальто", brand: "Mango", size: "L", color: "#533AB7" }
+    ]
+  },
+  acc: {
+    title: "Аксессуары",
+    items: [
+      { name: "Кольцо", brand: "Все бренды", size: "17.5 мм", color: "#D4537E" },
+      { name: "Браслет/часы", brand: "Все бренды", size: "18 см", color: "#BA7517" }
+    ]
+  }
+};
+
+const itemListTitles = {
+  tops: "Верх",
+  bottoms: "Низ",
+  shoes: "Обувь",
+  outer: "Верхняя одежда",
+  acc: "Аксессуары",
+  hats: "Головные уборы"
+};
+
+function toggleSport(sport) {
+  const btn = document.querySelector('.sport-chip[data-sport="' + sport + '"]');
+  const section = document.getElementById('sport-' + sport);
+  const isActive = btn.classList.contains('active');
+  btn.classList.toggle('active', !isActive);
+  section.style.display = isActive ? 'none' : 'block';
+  // сохраняем выбор
+  const saved = JSON.parse(localStorage.getItem('activeSports') || '[]');
+  const updated = isActive ? saved.filter(s => s !== sport) : [...saved, sport];
+  localStorage.setItem('activeSports', JSON.stringify(updated));
+}
+
+// восстанавливаем выбор при загрузке
+(function() {
+  const saved = JSON.parse(localStorage.getItem('activeSports') || '[]');
+  saved.forEach(function(sport) {
+    const btn = document.querySelector('.sport-chip[data-sport="' + sport + '"]');
+    const section = document.getElementById('sport-' + sport);
+    if (btn && section) {
+      btn.classList.add('active');
+      section.style.display = 'block';
+    }
+  });
+})();
+
+function showZonePanel(zone) {
+  const panel = document.getElementById("zone-panel");
+  const data = zoneData[zone];
+  if (!data) return;
+  cancelHidePanel();
+
+  // подсветка зон через clipPath
+  ["hats","tops","bottoms","shoes"].forEach(z => {
+    const el = document.getElementById("hl-" + z);
+    if (el) el.style.opacity = "0";
+  });
+  const hlEl = document.getElementById("hl-" + zone);
+  if (hlEl) hlEl.style.opacity = "0.22";
+
+  document.getElementById("zone-panel-title").textContent = data.title;
+  document.getElementById("zone-panel-items").innerHTML = data.items.map(item =>
+    "<div style=\"display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);\">" +
+    "<div style=\"width:7px;height:7px;border-radius:50%;background:" + item.color + ";flex-shrink:0\"></div>" +
+    "<div style=\"flex:1;min-width:0;\">" +
+    "<div style=\"font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">" + item.name + "</div>" +
+    "<div style=\"font-size:11px;color:var(--text3);\">" + item.brand + "</div>" +
+    "</div>" +
+    "<span style=\"font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0\">" + item.size + "</span>" +
+    "</div>"
+  ).join("") + (data.items.length === 0 ? "<div style=\"font-size:12px;color:var(--text3);padding:8px 0;\">Нет вещей</div>" : "");
+
+  panel.style.display = "block";
+}
+
+let _hideTimer = null;
+function scheduleHidePanel() {
+  _hideTimer = setTimeout(function() {
+    document.getElementById("zone-panel").style.display = "none";
+    ["hats","tops","bottoms","shoes"].forEach(z => {
+      const el = document.getElementById("hl-" + z);
+      if (el) el.style.opacity = "0";
+    });
+  }, 200);
+}
+function cancelHidePanel() {
+  if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+}
+
+function hideZoneTooltip() { scheduleHidePanel(); }
+function showZoneTooltip(e, zone) { showZonePanel(zone); }
+
+function showItemList(zone) {
+  const data = zoneData[zone];
+  if (!data) return;
+
+  document.querySelector('.cards-grid').style.display = 'none';
+  document.querySelectorAll('.section-label').forEach(l => {
+    if (l.textContent === 'Одежда') l.style.display = 'none';
+  });
+
+  const panel = document.getElementById('item-list-panel');
+  panel.style.display = 'block';
+  document.getElementById('item-list-title').textContent = itemListTitles[zone] || zone;
+  document.getElementById('item-list-content').innerHTML = data.items.map(item =>
+    `<div class="item-entry">
+      <div class="item-brand-dot" style="background:${item.color}"></div>
+      <div>
+        <div class="item-name">${item.name}</div>
+        <div class="item-brand">${item.brand}</div>
+      </div>
+      <div class="item-size-pill">${item.size}</div>
+    </div>`
+  ).join('');
+}
+
+function hideItemList() {
+  document.getElementById('item-list-panel').style.display = 'none';
+  document.querySelector('.cards-grid').style.display = 'grid';
+  document.querySelectorAll('.section-label').forEach(l => {
+    if (l.textContent === 'Одежда') l.style.display = '';
+  });
+}
+
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e === null || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+// ---- API + AUTH ----
+
+const API = 'https://desirable-cat-production-6c28.up.railway.app';
+let authToken = localStorage.getItem('sb_token') || null;
+let currentUser = JSON.parse(localStorage.getItem('sb_user') || 'null');
+
+function apiHeaders() {
+  return { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}) };
+}
+
+// Show/hide auth screen
+function checkAuth() {
+  if (!authToken) {
+    document.getElementById('auth-screen').classList.add('visible');
+  } else {
+    document.getElementById('auth-screen').classList.remove('visible');
+    updateNavUser();
+    loadWishlist();
+    updateSharePage();
+  }
+}
+
+function updateNavUser() {
+  if (!currentUser) return;
+  document.getElementById('nav-username').textContent = currentUser.username;
+  document.getElementById('nav-user-badge').style.display = 'flex';
+  document.getElementById('nav-logout-btn').style.display = 'flex';
+}
+
+function updateSharePage() {
+  if (!currentUser) return;
+  const url = API.replace('https://', 'https://') + '/profile/' + currentUser.username;
+  const friendlyUrl = 'desirable-cat-production-6c28.up.railway.app/profile/' + currentUser.username;
+  document.getElementById('share-url-display').textContent = friendlyUrl;
+}
+
+function copyShareLink() {
+  if (!currentUser) return;
+  const url = API + '/profile/' + currentUser.username;
+  navigator.clipboard.writeText(url).then(() => {
+    const el = document.getElementById('share-url-display');
+    const orig = el.textContent;
+    el.textContent = '✓ Скопировано!';
+    setTimeout(() => el.textContent = orig, 2000);
+  });
+}
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.auth-tab[onclick="switchAuthTab('${tab}')"]`).classList.add('active');
+  document.getElementById('auth-login-form').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('auth-register-form').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return showAuthError('Заполни все поля');
+  try {
+    const r = await fetch(API + '/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
+    const data = await r.json();
+    if (!r.ok) return showAuthError(data.error || 'Ошибка входа');
+    authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('sb_token', authToken);
+    localStorage.setItem('sb_user', JSON.stringify(currentUser));
+    checkAuth();
+  } catch(e) { showAuthError('Нет соединения с сервером'); }
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  if (!username || !email || !password) return showAuthError('Заполни все поля');
+  try {
+    const r = await fetch(API + '/auth/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, email, password}) });
+    const data = await r.json();
+    if (!r.ok) return showAuthError(data.error || 'Ошибка регистрации');
+    authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('sb_token', authToken);
+    localStorage.setItem('sb_user', JSON.stringify(currentUser));
+    checkAuth();
+  } catch(e) { showAuthError('Нет соединения с сервером'); }
+}
+
+function doLogout() {
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem('sb_token');
+  localStorage.removeItem('sb_user');
+  wlItems = [];
+  renderWishlist();
+  document.getElementById('nav-user-badge').style.display = 'none';
+  document.getElementById('nav-logout-btn').style.display = 'none';
+  checkAuth();
+}
+
+// ---- WISHLIST ----
+
+let wlItems = [];
+let wlAutoImage = '';
+
+async function loadWishlist() {
+  if (!authToken) return;
+  try {
+    const r = await fetch(API + '/wishlist', { headers: apiHeaders() });
+    if (r.ok) { wlItems = await r.json(); renderWishlist(); }
+  } catch(e) {}
+}
+
+function renderWishlist() {
+  const container = document.getElementById('wishlist-items');
+  const empty = document.getElementById('wishlist-empty');
+  container.innerHTML = '';
+  if (wlItems.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  wlItems.forEach((item) => {
+    const el = document.createElement('div');
+    el.className = 'wishlist-item';
+    const imgHtml = item.image
+      ? `<img src="${item.image}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
+      : `<div class="wishlist-thumb" style="flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg></div>`;
+    el.innerHTML = `
+      ${imgHtml}
+      <div class="wishlist-info">
+        <div class="wishlist-name">${item.title}</div>
+        <div class="wishlist-brand">${item.shop || ''}${item.size ? ' · ' + item.size : ''}</div>
+        ${item.url ? `<a class="wishlist-link" href="${item.url}" target="_blank" onclick="event.stopPropagation()">${new URL(item.url).hostname.replace('www.','')}</a>` : ''}
+      </div>
+      ${item.price ? `<div class="wishlist-price">${item.price}</div>` : ''}
+      <button class="wishlist-delete" onclick="deleteWlItem(${item.id})" title="Удалить">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>`;
+    container.appendChild(el);
+  });
+}
+
+async function deleteWlItem(id) {
+  try {
+    await fetch(API + '/wishlist/' + id, { method: 'DELETE', headers: apiHeaders() });
+    await loadWishlist();
+  } catch(e) {}
+}
+
+function openWishlistModal() {
+  wlAutoImage = '';
+  document.getElementById('wl-url-input').value = '';
+  document.getElementById('wl-title-input').value = '';
+  document.getElementById('wl-price-input').value = '';
+  document.getElementById('wl-size-input').value = '';
+  document.getElementById('wl-autofill-note').textContent = '';
+  document.getElementById('wl-autofill-note').className = 'wl-autofill-note';
+  document.getElementById('wl-spinner').style.display = 'none';
+  document.getElementById('wl-save-btn').disabled = true;
+  document.getElementById('wl-modal').classList.add('open');
+  setTimeout(() => document.getElementById('wl-url-input').focus(), 80);
+}
+
+function closeWishlistModal(e) {
+  if (e === null || e.target === document.getElementById('wl-modal')) {
+    document.getElementById('wl-modal').classList.remove('open');
+  }
+}
+
+function onWlUrlInput() {
+  onWlFieldInput();
+  wlAutoImage = '';
+  document.getElementById('wl-autofill-note').textContent = '';
+}
+
+function onWlFieldInput() {
+  const title = document.getElementById('wl-title-input').value.trim();
+  document.getElementById('wl-save-btn').disabled = title.length === 0;
+}
+
+async function tryAutoFetch() {
+  const url = document.getElementById('wl-url-input').value.trim();
+  if (!url.startsWith('http')) return;
+  onWlFieldInput();
+
+  const spinner = document.getElementById('wl-spinner');
+  const note = document.getElementById('wl-autofill-note');
+  spinner.style.display = 'block';
+  note.textContent = '';
+
+  try {
+    const r = await fetch(API + '/parse', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ url })
+    });
+    spinner.style.display = 'none';
+    if (!r.ok) return;
+    const m = await r.json();
+    let autofilled = [];
+    if (m.title && !document.getElementById('wl-title-input').value) {
+      document.getElementById('wl-title-input').value = m.title;
+      autofilled.push('название');
+      onWlFieldInput();
+    }
+    if (m.price && !document.getElementById('wl-price-input').value) {
+      document.getElementById('wl-price-input').value = m.price;
+      autofilled.push('цена');
+    }
+    if (m.image) wlAutoImage = m.image;
+    if (autofilled.length) {
+      note.className = 'wl-autofill-note ok';
+      note.textContent = '✓ Автозаполнено: ' + autofilled.join(', ');
+    } else {
+      note.textContent = 'Заполни название вручную';
+    }
+  } catch(e) { spinner.style.display = 'none'; }
+}
+
+async function saveWlItem() {
+  const title = document.getElementById('wl-title-input').value.trim();
+  if (!title) return;
+  const url = document.getElementById('wl-url-input').value.trim();
+  let shop = '';
+  try { shop = new URL(url).hostname.replace('www.', ''); } catch(e) {}
+
+  try {
+    await fetch(API + '/wishlist', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({
+        title,
+        shop,
+        url,
+        price: document.getElementById('wl-price-input').value.trim(),
+        size: document.getElementById('wl-size-input').value.trim(),
+        image: wlAutoImage,
+      })
+    });
+    await loadWishlist();
+    closeWishlistModal(null);
+  } catch(e) {}
+}
+
+checkAuth();
+renderWishlist();
+</script>
+
+</body>
+</html>
+
+  /* NAV */
+  .topnav {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 1rem;
+  }
+  .logo {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .logo i { color: var(--text2); }
+  .top-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn-ghost {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    background: transparent; border: 0.5px solid var(--border2);
+    cursor: pointer; font-size: 13px; color: var(--text);
+    transition: background 0.15s;
+  }
+  .btn-ghost:hover { background: var(--surface2); }
+  .btn-primary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: var(--radius-sm);
+    background: var(--text); border: none;
+    cursor: pointer; font-size: 13px; color: var(--surface);
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* MAIN LAYOUT */
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 1.25rem 0.75rem;
+    border-right: 0.5px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0 0.75rem;
+    margin-bottom: 6px;
+    margin-top: 1.25rem;
+  }
+  .sidebar-label:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 14px; color: var(--text2);
+    transition: all 0.12s; background: none; border: none;
+    width: 100%; text-align: left;
+  }
+  .nav-item i { font-size: 17px; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+
+  /* CONTENT */
+  .main { flex: 1; padding: 2rem 2rem; max-width: 820px; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title {
+    font-size: 22px; font-weight: 600; margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .page-title i { color: var(--text2); font-size: 22px; }
+
+  /* SECTION */
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px; margin-top: 1.75rem;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 10px;
+  }
+  .size-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem;
+    cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .size-card:hover { border-color: var(--border2); box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
+  .size-card-icon { font-size: 20px; color: var(--text3); margin-bottom: 10px; }
+  .size-card-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .size-card-value { font-size: 22px; font-weight: 600; color: var(--text); }
+  .size-card-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .add-card {
+    background: var(--bg); border: 0.5px dashed var(--border2);
+    border-radius: var(--radius); padding: 1rem;
+    cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px;
+    min-height: 104px; color: var(--text3); font-size: 12px;
+    transition: all 0.15s;
+  }
+  .add-card:hover { border-color: var(--text3); color: var(--text2); background: var(--surface); }
+  .add-card i { font-size: 20px; }
+
+  /* SIZE SYSTEMS ROW */
+  .sys-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .sys-box {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 10px 8px; text-align: center;
+    border: 1.5px solid transparent; cursor: pointer; transition: all 0.15s;
+  }
+  .sys-box:hover { border-color: var(--border2); background: var(--surface); }
+  .sys-box.active { border-color: var(--text); background: var(--surface); }
+  .sys-box-label { font-size: 10px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+  .sys-box-value { font-size: 20px; font-weight: 600; color: var(--text); }
+
+  /* BRAND ROWS */
+  .brand-row {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 14px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 7px;
+  }
+  .brand-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .brand-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .brand-type { font-size: 12px; color: var(--text3); flex: 1; }
+  .size-pill {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: var(--text); color: var(--surface); font-weight: 500;
+  }
+  .diff { font-size: 11px; padding: 2px 7px; border-radius: 20px; }
+  .diff-plus { background: var(--green-bg); color: var(--green-text); }
+  .diff-minus { background: var(--red-bg); color: var(--red-text); }
+  .diff-same { background: var(--surface2); color: var(--text3); }
+
+  /* MEASURE ROWS */
+  .measure-row {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 7px;
+  }
+  .measure-row i { color: var(--text3); font-size: 17px; }
+  .measure-label { font-size: 13px; color: var(--text2); flex: 1; }
+  .measure-value { font-size: 16px; font-weight: 600; color: var(--text); }
+  .measure-unit { font-size: 12px; color: var(--text3); margin-left: 2px; }
+
+  /* ADD BUTTON */
+  .add-btn {
+    width: 100%; padding: 10px; background: transparent;
+    border: 0.5px dashed var(--border2); border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 13px; color: var(--text3);
+    display: flex; align-items: center; justify-content: center;
+    gap: 7px; margin-top: 8px; transition: all 0.15s;
+  }
+  .add-btn:hover { background: var(--surface); color: var(--text2); border-color: var(--text3); }
+
+  /* WISHLIST */
+  .wishlist-item {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .wishlist-item:hover { border-color: var(--border2); }
+  .wishlist-thumb {
+    width: 48px; height: 48px; border-radius: var(--radius-sm);
+    background: var(--surface2); display: flex; align-items: center;
+    justify-content: center; font-size: 22px; color: var(--text3); flex-shrink: 0;
+  }
+  .wishlist-info { flex: 1; min-width: 0; }
+  .wishlist-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .wishlist-brand { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .wishlist-size { font-size: 12px; color: var(--text2); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+  .wishlist-price { font-size: 15px; font-weight: 600; color: var(--text); flex-shrink: 0; }
+
+  /* WISHLIST MODAL */
+  .wl-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  .wl-modal-overlay.open { display: flex; }
+  .wl-modal {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 1.5rem; width: 90%; max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .wl-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+  .wl-field-label { font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+  .wl-url-row { position: relative; display: flex; align-items: center; }
+  .wl-url-input {
+    width: 100%; padding: 9px 12px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); font-size: 13px; color: var(--text);
+    background: var(--bg); outline: none; box-sizing: border-box;
+  }
+  .wl-url-input:focus { border-color: var(--text); }
+  .wl-fetch-spinner {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text3);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.8s linear infinite; }
+  .wl-autofill-note {
+    font-size: 11px; color: var(--text3); margin-top: 8px; min-height: 16px;
+  }
+  .wl-autofill-note.ok { color: #2a9d5c; }
+  .wl-modal-btns { display: flex; gap: 8px; margin-top: 1.25rem; }
+  .wl-modal-btns .btn-ghost { flex: 1; justify-content: center; }
+  .wl-modal-btns .btn-primary { flex: 1; justify-content: center; }
+
+  /* WISHLIST ITEM с фото */
+  .wishlist-thumb img {
+    width: 48px; height: 48px; object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+  .wishlist-item { cursor: default; }
+  .wishlist-item a.wishlist-link {
+    font-size: 11px; color: var(--text3); text-decoration: none; margin-top: 3px; display: block;
+  }
+  .wishlist-item a.wishlist-link:hover { color: var(--text2); }
+  .wishlist-delete {
+    background: none; border: none; cursor: pointer; padding: 4px;
+    color: var(--text3); opacity: 0; transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .wishlist-item:hover .wishlist-delete { opacity: 1; }
+
+  /* SHARE PAGE */
+  .share-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 2rem; text-align: center; margin-bottom: 1rem;
+  }
+  .avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--surface2); display: flex; align-items: center;
+    justify-content: center; margin: 0 auto 1rem; font-size: 26px; color: var(--text3);
+  }
+  .share-url {
+    font-size: 13px; background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    color: var(--text2); font-family: 'SF Mono', 'Fira Mono', monospace;
+    word-break: break-all; text-align: left; margin-top: 1rem;
+  }
+  .share-actions { display: flex; gap: 8px; margin-top: 1rem; }
+  .share-actions button { flex: 1; }
+
+  /* TAGS */
+  .tag {
+    font-size: 12px; padding: 4px 10px; border-radius: 20px;
+    border: 0.5px solid var(--border); color: var(--text2);
+    background: var(--surface2); display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tags-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+
+  /* IDEAS PAGE */
+  .idea-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    display: flex; gap: 12px; margin-bottom: 8px;
+    transition: border-color 0.15s;
+  }
+  .idea-card:hover { border-color: var(--border2); }
+  .status-dot-wrap { padding-top: 3px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-active { background: #639922; }
+  .dot-planned { background: #EF9F27; }
+  .dot-paused { background: #B4B2A9; }
+  .idea-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .idea-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
+  .idea-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .status-badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 500; }
+  .sb-active { background: var(--green-bg); color: var(--green-text); }
+  .sb-planned { background: var(--amber-bg); color: var(--amber-text); }
+  .sb-paused { background: var(--surface2); color: var(--text3); }
+  .itag { font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 0.5px solid var(--border); color: var(--text3); }
+
+  /* IDEAS STATS */
+  .ideas-stats { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .ideas-stat { font-size: 13px; padding: 5px 14px; border-radius: 20px; font-weight: 500; }
+  .is-green { background: var(--green-bg); color: var(--green-text); }
+  .is-amber { background: var(--amber-bg); color: var(--amber-text); }
+  .is-gray { background: var(--surface2); color: var(--text2); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius);
+    border: 0.5px solid var(--border); padding: 1.5rem;
+    width: 340px; max-width: calc(100vw - 2rem);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 1.25rem; }
+  .modal label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; margin-top: 14px; }
+  .modal label:first-of-type { margin-top: 0; }
+  .modal input, .modal select, .modal textarea {
+    width: 100%; padding: 9px 12px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); background: var(--bg);
+    font-size: 14px; color: var(--text); outline: none;
+    font-family: inherit; transition: border-color 0.15s;
+  }
+  .modal input:focus, .modal select:focus { border-color: var(--text); }
+  .modal-btns { display: flex; gap: 8px; margin-top: 1.25rem; }
+  .modal-btns .btn-ghost { flex: 1; justify-content: center; }
+  .modal-btns .btn-primary { flex: 1; justify-content: center; }
+
+  /* GENDER BUTTONS */
+  .gender-btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1.5px solid transparent;
+    cursor: pointer; font-size: 14px; color: var(--text2);
+    transition: all 0.15s; font-family: inherit;
+  }
+  .gender-btn:hover { border-color: var(--border2); color: var(--text); }
+  .gender-btn.active { border-color: var(--text); background: var(--surface); color: var(--text); font-weight: 500; }
+  .gender-btn i { font-size: 17px; }
+
+
+  /* SILHOUETTE ZONES */
+  .sil-zone { transition: fill 0.15s; }
+
+  .sport-chip {
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sport-chip:hover { border-color: var(--text3); }
+  .sport-chip.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+  .sport-section { margin-bottom: 4px; }
+  .sport-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 18px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  /* ITEM LIST */
+  .item-entry {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 7px;
+    transition: border-color 0.15s;
+  }
+  .item-entry:hover { border-color: var(--border2); }
+  .item-brand-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .item-name { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; }
+  .item-brand { font-size: 12px; color: var(--text3); }
+  .item-size-pill {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: var(--text); color: var(--surface); font-weight: 500; flex-shrink: 0;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+
+  /* AUTH SCREEN */
+  .auth-screen {
+    display: none; position: fixed; inset: 0;
+    background: var(--bg); z-index: 500;
+    align-items: center; justify-content: center;
+  }
+  .auth-screen.visible { display: flex; }
+  .auth-box {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 2rem;
+    width: 360px; max-width: calc(100vw - 2rem);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  }
+  .auth-logo { font-size: 20px; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px; }
+  .auth-tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 0.5px solid var(--border); }
+  .auth-tab {
+    padding: 8px 20px; font-size: 14px; cursor: pointer;
+    border: none; background: none; color: var(--text3);
+    border-bottom: 2px solid transparent; margin-bottom: -0.5px; transition: all 0.15s;
+  }
+  .auth-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+  .auth-field { margin-bottom: 12px; }
+  .auth-field label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; }
+  .auth-field input {
+    width: 100%; padding: 9px 12px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); background: var(--bg);
+    font-size: 14px; color: var(--text); outline: none; font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .auth-field input:focus { border-color: var(--text); }
+  .auth-error { font-size: 12px; color: #A32D2D; background: #FCEBEB; border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; display: none; }
+  .auth-footer { font-size: 12px; color: var(--text3); text-align: center; margin-top: 1rem; }
+
+  /* USER BADGE in topnav */
+  .user-badge {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 13px; color: var(--text2); padding: 6px 12px;
+    border-radius: var(--radius-sm); border: 0.5px solid var(--border2);
+    background: var(--surface2); cursor: default;
+  }
+  .user-badge b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7v2m0 4v2m4-6v2m0 4v2m4-6v2"/></svg>
+      SizeBook
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Войти</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Регистрация</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+
+    <div id="auth-login-form">
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>Пароль</label><input type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:4px;" onclick="doLogin()">Войти</button>
+    </div>
+
+    <div id="auth-register-form" style="display:none">
+      <div class="auth-field"><label>Имя пользователя</label><input type="text" id="reg-username" placeholder="alex_ivanov"></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="reg-email" placeholder="you@example.com"></div>
+      <div class="auth-field"><label>Пароль</label><input type="password" id="reg-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doRegister()"></div>
+      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:4px;" onclick="doRegister()">Создать аккаунт</button>
+    </div>
+
+    <div class="auth-footer">Твои размеры будут сохранены и доступны по ссылке</div>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <a class="logo" href="#"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7v2m0 4v2m4-6v2m0 4v2m4-6v2"/></svg></span> SizeBook</a>
+  <div class="top-actions">
+    <div id="nav-user-badge" class="user-badge" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><b id="nav-username"></b></div>
+    <button class="btn-ghost" onclick="showPage('share')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</button>
+    <button class="btn-ghost" onclick="showPage('wishlist')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</button>
+    <button class="btn-ghost" id="nav-logout-btn" style="display:none" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>
+    <button class="btn-primary" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить</button>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <button class="nav-item" onclick="showPage('profile')" style="margin-bottom:4px"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.168 18.849A4 4 0 0 1 10 16h4a4 4 0 0 1 3.834 2.855"/></svg></span> Мой профиль</button>
+    <div style="height:0.5px; background:var(--border); margin: 4px 0 8px;"></div>
+    <div class="sidebar-label">Одежда</div>
+    <button class="nav-item active" onclick="showPage('daily')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span> Повседневное</button>
+    <button class="nav-item" onclick="showPage('formal')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span> Официальное</button>
+    <button class="nav-item" onclick="showPage('outer')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></span> Верхняя одежда</button>
+    <button class="nav-item" onclick="showPage('sport')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1"/><path d="M7 21l3-6 2 2 2-4 2 4"/><path d="M15 9l-3 2-2.5-2.5"/><path d="M9 12l-2 4"/></svg></span> Спорт</button>
+    <button class="nav-item" onclick="showPage('beach')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="14" r="3"/><circle cx="17" cy="14" r="3"/><path d="M10 14h4"/><path d="M2 10h2m16 0h2"/><path d="M4 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/></svg></span> Пляж / лето</button>
+    <button class="nav-item" onclick="showPage('under')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H4a1 1 0 0 1-.5-1.87L12 13"/><path d="M12 13V7"/><circle cx="12" cy="5.5" r="1.5"/><path d="M10.5 7a1.5 1.5 0 0 1 3 0"/></svg></span> Нижнее бельё</button>
+    <button class="nav-item" onclick="showPage('hats')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></span> Головные уборы</button>
+    <button class="nav-item" onclick="showPage('gloves')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-6.5a1.5 1.5 0 0 1 3 0V12m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6H9a7 7 0 0 1-7-7V12a1.5 1.5 0 0 1 3 0"/></svg></span> Перчатки</button>
+    <div class="sidebar-label">Обувь</div>
+    <button class="nav-item" onclick="showPage('shoes')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l2-8h9l4 4h3a2 2 0 0 1 0 4H2z"/><path d="M6 16v2m4-2v2"/></svg></span> Обувь</button>
+    <div class="sidebar-label">Аксессуары</div>
+    <button class="nav-item" onclick="showPage('acc')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/><path d="M6 3l6 6m6-6l-6 6"/></svg></span> Украшения</button>
+    <div class="sidebar-label">Прочее</div>
+    <button class="nav-item" onclick="showPage('wishlist')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</button>
+    <button class="nav-item" onclick="showPage('share')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</button>
+    <button class="nav-item" onclick="showPage('ideas')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6m-5 2h4M12 2a7 7 0 0 1 5 11.9V15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1.1A7 7 0 0 1 12 2z"/></svg></span> Идеи</button>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ПОВСЕДНЕВНОЕ -->
+    <div class="page active" id="page-daily">
+      <div class="page-title">Мои размеры</div>
+      <div style="display:grid;grid-template-columns:1fr 420px;gap:2rem;align-items:start;">
+        <div id="left-panel">
+          <div class="section-label">Одежда</div>
+          <div class="cards-grid">
+            <div class="size-card" onclick="showItemList('tops')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></div><div class="size-card-label">Футболка / рубашка</div><div class="size-card-value">M</div><div class="size-card-sub">3 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('bottoms')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></div><div class="size-card-label">Джинсы / брюки</div><div class="size-card-value">32/32</div><div class="size-card-sub">2 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('shoes')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></div><div class="size-card-label">Обувь</div><div class="size-card-value">EU 43</div><div class="size-card-sub">4 бренда · нажми</div></div>
+            <div class="size-card" onclick="showItemList('outer')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></div><div class="size-card-label">Верхняя одежда</div><div class="size-card-value">L</div><div class="size-card-sub">2 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('acc')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="size-card-label">Аксессуары</div><div class="size-card-value">17.5мм</div><div class="size-card-sub">кольцо · нажми</div></div>
+            <div class="size-card" onclick="showItemList('hats')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Головные уборы</div><div class="size-card-value">L</div><div class="size-card-sub">58 см · нажми</div></div>
+            <div class="add-card" onclick="openModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Добавить</span></div>
+          </div>
+          <div id="item-list-panel" style="display:none;margin-top:1.5rem;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">
+              <button onclick="hideItemList()" style="background:none;border:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;gap:4px;font-size:13px;padding:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>назад</button>
+              <span id="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
+            </div>
+            <div id="item-list-content"></div>
+            <button class="add-btn" onclick="openModal()">+ Добавить вещь</button>
+          </div>
+        </div>
+        <div style="position:sticky;top:80px;">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;text-align:center;">Наведи на зону</div>
+          <div style="position:relative;display:flex;align-items:flex-start;gap:0;">
+            <svg id="sil-svg" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:200px;display:block;flex-shrink:0;">
+              <!-- тело — базовый слой -->
+              <ellipse cx="100" cy="40" rx="26" ry="30" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <rect x="88" y="66" width="24" height="14" rx="4" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M58 82 Q42 88 36 104 L30 152 Q28 162 36 164 L46 164 Q52 162 52 152 L54 108 Q58 96 64 90 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M142 82 Q158 88 164 104 L170 152 Q172 162 164 164 L154 164 Q148 162 148 152 L146 108 Q142 96 136 90 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <ellipse cx="33" cy="172" rx="9" ry="13" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <ellipse cx="167" cy="172" rx="9" ry="13" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M52 172 L52 192 Q52 200 62 202 L138 202 Q148 200 148 192 L148 172 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M62 200 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 200 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+              <path d="M138 200 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 200 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+              <ellipse cx="74" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
+              <ellipse cx="126" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
+
+              <!-- подсветка — точные дубликаты форм, opacity управляется JS -->
+              <g id="hl-hats" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+                <ellipse cx="100" cy="40" rx="26" ry="30" fill="#185FA5"/>
+                <rect x="88" y="66" width="24" height="14" rx="4" fill="#185FA5"/>
+              </g>
+              <g id="hl-tops" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+                <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#185FA5"/>
+                <path d="M58 82 Q42 88 36 104 L30 152 Q28 162 36 164 L46 164 Q52 162 52 152 L54 108 Q58 96 64 90 Z" fill="#185FA5"/>
+                <path d="M142 82 Q158 88 164 104 L170 152 Q172 162 164 164 L154 164 Q148 162 148 152 L146 108 Q142 96 136 90 Z" fill="#185FA5"/>
+                <ellipse cx="33" cy="172" rx="9" ry="13" fill="#185FA5"/>
+                <ellipse cx="167" cy="172" rx="9" ry="13" fill="#185FA5"/>
+              </g>
+              <g id="hl-bottoms" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+                <path d="M52 172 L52 192 Q52 200 62 202 L138 202 Q148 200 148 192 L148 172 Z" fill="#533AB7"/>
+                <path d="M62 200 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 200 Z" fill="#533AB7"/>
+                <path d="M138 200 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 200 Z" fill="#533AB7"/>
+              </g>
+              <g id="hl-shoes" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+                <ellipse cx="74" cy="324" rx="16" ry="9" fill="#3B6D11"/>
+                <ellipse cx="126" cy="324" rx="16" ry="9" fill="#3B6D11"/>
+              </g>
+
+              <!-- невидимые зоны-триггеры -->
+              <ellipse cx="100" cy="40" rx="30" ry="34" fill="transparent" class="sil-zone" data-zone="hats" onmouseenter="showZonePanel('hats')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M38 76 L162 76 L163 178 L37 178 Z" fill="transparent" class="sil-zone" data-zone="tops" onmouseenter="showZonePanel('tops')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M20 78 L58 78 L58 178 L20 178 Z" fill="transparent" class="sil-zone" data-zone="tops" onmouseenter="showZonePanel('tops')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M142 78 L180 78 L180 178 L142 178 Z" fill="transparent" class="sil-zone" data-zone="tops" onmouseenter="showZonePanel('tops')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M37 178 L163 178 L165 316 L35 316 Z" fill="transparent" class="sil-zone" data-zone="bottoms" onmouseenter="showZonePanel('bottoms')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M48 312 L102 312 L102 340 L48 340 Z" fill="transparent" class="sil-zone" data-zone="shoes" onmouseenter="showZonePanel('shoes')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+              <path d="M98 312 L152 312 L152 340 L98 340 Z" fill="transparent" class="sil-zone" data-zone="shoes" onmouseenter="showZonePanel('shoes')" onmouseleave="scheduleHidePanel()" style="cursor:pointer"/>
+            </svg>
+            <!-- боковая панель -->
+            <div id="zone-panel" onmouseenter="cancelHidePanel()" onmouseleave="scheduleHidePanel()" style="display:none;position:absolute;left:208px;top:0;width:200px;background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:50;overflow:hidden;">
+              <div style="padding:10px 12px 6px;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:var(--surface);">
+                <div id="zone-panel-title" style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;"></div>
+              </div>
+              <div id="zone-panel-items" style="padding:8px 12px;max-height:260px;overflow-y:auto;"></div>
+              <div style="padding:6px 12px 10px;border-top:0.5px solid var(--border);">
+                <button onclick="openModal()" style="width:100%;background:none;border:0.5px solid var(--border2);border-radius:6px;padding:5px 0;font-size:12px;color:var(--text3);cursor:pointer;">+ Добавить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ОФИЦИАЛЬНОЕ -->
+    <div class="page" id="page-formal">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span> Официальное</div>
+
+      <div class="section-label">Костюм</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span></div><div class="size-card-label">Пиджак</div><div class="size-card-value">48</div><div class="size-card-sub">EU / M</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></span></div><div class="size-card-label">Брюки</div><div class="size-card-value">32/32</div><div class="size-card-sub">пояс / длина</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span></div><div class="size-card-label">Рубашка</div><div class="size-card-value">39</div><div class="size-card-sub">размер ворота</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">Мерки для пошива</div>
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M3 12h18"/></svg></span><span class="measure-label">Ширина плеч</span><span class="measure-value">44</span><span class="measure-unit">см</span></div>
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4-4 4 4M8 17l4 4 4-4M12 3v18"/></svg></span><span class="measure-label">Длина рукава</span><span class="measure-value">64</span><span class="measure-unit">см</span></div>
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват груди</span><span class="measure-value">96</span><span class="measure-unit">см</span></div>
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват талии</span><span class="measure-value">82</span><span class="measure-unit">см</span></div>
+      <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить мерку</button>
+
+      <div class="section-label">Обувь для костюма</div>
+      <div class="sys-row">
+        <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
+        <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
+        <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
+        <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+      </div>
+    </div>
+
+    <!-- ВЕРХНЯЯ ОДЕЖДА -->
+    <div class="page" id="page-outer">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></span> Верхняя одежда</div>
+
+      <div class="section-label">Размеры</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></span></div><div class="size-card-label">Куртка / пальто</div><div class="size-card-value">L</div><div class="size-card-sub">EU 50 (+1 размер)</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18m-2.5-6.5L12 12m0 0l6.5 6.5M5.5 5.5L12 12m0 0l-6.5 6.5"/></svg></span></div><div class="size-card-label">Пуховик</div><div class="size-card-value">L</div><div class="size-card-sub">EU 50</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">По брендам</div>
+      <div class="brand-row"><div class="brand-dot" style="background:#533AB7"></div><div class="brand-name">Mango</div><div class="brand-type">пальто</div><div class="size-pill">L</div><div class="diff diff-plus">+1 от обычного</div></div>
+      <div class="brand-row"><div class="brand-dot" style="background:#BA7517"></div><div class="brand-name">The North Face</div><div class="brand-type">пуховик</div><div class="size-pill">M</div><div class="diff diff-same">= база</div></div>
+      <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить бренд</button>
+    </div>
+
+    <!-- СПОРТ -->
+    <div class="page" id="page-sport">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1"/><path d="M7 21l3-6 2 2 2-4 2 4"/><path d="M15 9l-3 2-2.5-2.5"/><path d="M9 12l-2 4"/></svg></span> Спорт</div>
+
+      <!-- базовая одежда -->
+      <div class="section-label">Базовая одежда</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/></svg></span></div><div class="size-card-label">Футболка / форма</div><div class="size-card-value">M</div><div class="size-card-sub"></div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v8a6 6 0 0 1-12 0V4z"/><path d="M6 12H3m18 0h-3"/></svg></span></div><div class="size-card-label">Шорты / тайтсы</div><div class="size-card-value">M</div><div class="size-card-sub">пояс 32</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <!-- выбор видов спорта -->
+      <div class="section-label" style="margin-top:20px;">Мои виды спорта</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Выбери — появится нужное снаряжение</div>
+      <div id="sport-picker" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px;">
+        <button class="sport-chip" data-sport="running" onclick="toggleSport('running')">🏃 Бег</button>
+        <button class="sport-chip" data-sport="cycling" onclick="toggleSport('cycling')">🚴 Велосипед</button>
+        <button class="sport-chip" data-sport="swim" onclick="toggleSport('swim')">🏊 Плавание</button>
+        <button class="sport-chip" data-sport="gym" onclick="toggleSport('gym')">🏋️ Зал / силовые</button>
+        <button class="sport-chip" data-sport="yoga" onclick="toggleSport('yoga')">🧘 Йога</button>
+        <button class="sport-chip" data-sport="ski" onclick="toggleSport('ski')">⛷️ Лыжи / сноуборд</button>
+        <button class="sport-chip" data-sport="tennis" onclick="toggleSport('tennis')">🎾 Теннис</button>
+        <button class="sport-chip" data-sport="football" onclick="toggleSport('football')">⚽ Футбол</button>
+        <button class="sport-chip" data-sport="basketball" onclick="toggleSport('basketball')">🏀 Баскетбол</button>
+        <button class="sport-chip" data-sport="martial" onclick="toggleSport('martial')">🥊 Единоборства</button>
+        <button class="sport-chip" data-sport="hiking" onclick="toggleSport('hiking')">🥾 Хайкинг</button>
+        <button class="sport-chip" data-sport="surf" onclick="toggleSport('surf')">🏄 Сёрфинг / SUP</button>
+        <button class="sport-chip" data-sport="diving" onclick="toggleSport('diving')">🤿 Дайвинг / снорклинг</button>
+      </div>
+
+      <!-- снаряжение по видам спорта (скрыто по умолчанию) -->
+
+      <div class="sport-section" id="sport-running" style="display:none">
+        <div class="sport-section-title">🏃 Бег</div>
+        <div class="section-label">Кроссовки — базовый размер</div>
+        <div class="sys-row">
+          <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
+          <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
+          <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
+          <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+        </div>
+        <div class="section-label">По брендам</div>
+        <div class="brand-row"><div class="brand-dot" style="background:#3B6D11"></div><div class="brand-name">Nike</div><div class="brand-type">беговые</div><div class="size-pill">EU 43.5</div><div class="diff diff-plus">+0.5</div></div>
+        <div class="brand-row"><div class="brand-dot" style="background:#185FA5"></div><div class="brand-name">Adidas</div><div class="brand-type">беговые</div><div class="size-pill">EU 43</div><div class="diff diff-same">= база</div></div>
+        <div class="brand-row"><div class="brand-dot" style="background:#BA7517"></div><div class="brand-name">New Balance</div><div class="brand-type">беговые</div><div class="size-pill">EU 42.5</div><div class="diff diff-minus">−0.5</div></div>
+        <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить бренд</button>
+        <div class="section-label">Снаряжение</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🧥</div><div class="size-card-label">Ветровка</div><div class="size-card-value">M</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🧢</div><div class="size-card-label">Кепка беговая</div><div class="size-card-value">58 см</div><div class="size-card-sub">обхват головы</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-cycling" style="display:none">
+        <div class="sport-section-title">🚴 Велосипед</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🚲</div><div class="size-card-label">Велосипед</div><div class="size-card-value">M</div><div class="size-card-sub">рама 54 см</div></div>
+          <div class="size-card"><div class="size-card-icon">⛑️</div><div class="size-card-label">Шлем</div><div class="size-card-value">L</div><div class="size-card-sub">58–61 см</div></div>
+          <div class="size-card"><div class="size-card-icon">🧤</div><div class="size-card-label">Перчатки вело</div><div class="size-card-value">M</div><div class="size-card-sub">обхват 20 см</div></div>
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Велотуфли</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-swim" style="display:none">
+        <div class="sport-section-title">🏊 Плавание</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🩱</div><div class="size-card-label">Гидрокостюм</div><div class="size-card-value">M</div><div class="size-card-sub">рост 175–180</div></div>
+          <div class="size-card"><div class="size-card-icon">🩲</div><div class="size-card-label">Плавки / купальник</div><div class="size-card-value">M</div><div class="size-card-sub">пояс 32</div></div>
+          <div class="size-card"><div class="size-card-icon">🥽</div><div class="size-card-label">Очки для плавания</div><div class="size-card-value">S/M</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🧢</div><div class="size-card-label">Шапочка</div><div class="size-card-value">58 см</div><div class="size-card-sub">обхват головы</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-gym" style="display:none">
+        <div class="sport-section-title">🏋️ Зал / силовые</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🧤</div><div class="size-card-label">Перчатки атлетические</div><div class="size-card-value">M</div><div class="size-card-sub">обхват 20 см</div></div>
+          <div class="size-card"><div class="size-card-icon">🩱</div><div class="size-card-label">Пояс тяжелоатлетический</div><div class="size-card-value">M</div><div class="size-card-sub">талия 80–87 см</div></div>
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Штангетки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-yoga" style="display:none">
+        <div class="sport-section-title">🧘 Йога</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🟦</div><div class="size-card-label">Коврик</div><div class="size-card-value">183×61</div><div class="size-card-sub">стандарт</div></div>
+          <div class="size-card"><div class="size-card-icon">🧦</div><div class="size-card-label">Носки для йоги</div><div class="size-card-value">43–46</div><div class="size-card-sub">EU</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-ski" style="display:none">
+        <div class="sport-section-title">⛷️ Лыжи / сноуборд</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🎿</div><div class="size-card-label">Лыжные ботинки</div><div class="size-card-value">27.5</div><div class="size-card-sub">Mondopoint</div></div>
+          <div class="size-card"><div class="size-card-icon">⛑️</div><div class="size-card-label">Шлем горнолыжный</div><div class="size-card-value">L</div><div class="size-card-sub">58–61 см</div></div>
+          <div class="size-card"><div class="size-card-icon">🥽</div><div class="size-card-label">Маска</div><div class="size-card-value">L</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🧤</div><div class="size-card-label">Перчатки горнолыжные</div><div class="size-card-value">M</div><div class="size-card-sub">обхват 20 см</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-tennis" style="display:none">
+        <div class="sport-section-title">🎾 Теннис</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🎾</div><div class="size-card-label">Ракетка</div><div class="size-card-value">4 3/8</div><div class="size-card-sub">grip size</div></div>
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Теннисные кроссовки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-football" style="display:none">
+        <div class="sport-section-title">⚽ Футбол</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Бутсы</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🦵</div><div class="size-card-label">Щитки</div><div class="size-card-value">L</div><div class="size-card-sub">рост 170–185</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-basketball" style="display:none">
+        <div class="sport-section-title">🏀 Баскетбол</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Баскетбольные кроссовки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🦺</div><div class="size-card-label">Наколенники</div><div class="size-card-value">M</div><div class="size-card-sub">обхват колена 38 см</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-martial" style="display:none">
+        <div class="sport-section-title">🥊 Единоборства</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🥊</div><div class="size-card-label">Перчатки боксёрские</div><div class="size-card-value">12 oz</div><div class="size-card-sub">вес 70–80 кг</div></div>
+          <div class="size-card"><div class="size-card-icon">👊</div><div class="size-card-label">Бинты</div><div class="size-card-value">4.5 м</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">👟</div><div class="size-card-label">Борцовки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-hiking" style="display:none">
+        <div class="sport-section-title">🥾 Хайкинг</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🥾</div><div class="size-card-label">Трекинговые ботинки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🎒</div><div class="size-card-label">Рюкзак</div><div class="size-card-value">35 л</div><div class="size-card-sub">спина 50 см</div></div>
+          <div class="size-card"><div class="size-card-icon">🧦</div><div class="size-card-label">Треккинговые носки</div><div class="size-card-value">43–46</div><div class="size-card-sub">EU</div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-surf" style="display:none">
+        <div class="sport-section-title">🏄 Сёрфинг / SUP</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🩱</div><div class="size-card-label">Гидрокостюм</div><div class="size-card-value">M</div><div class="size-card-sub">рост 175–180</div></div>
+          <div class="size-card"><div class="size-card-icon">🏄</div><div class="size-card-label">Доска</div><div class="size-card-value">8'0"</div><div class="size-card-sub">244 × 58 см</div></div>
+          <div class="size-card"><div class="size-card-icon">🦶</div><div class="size-card-label">Боты / носки</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+      <div class="sport-section" id="sport-diving" style="display:none">
+        <div class="sport-section-title">🤿 Дайвинг / снорклинг</div>
+        <div class="cards-grid">
+          <div class="size-card"><div class="size-card-icon">🤿</div><div class="size-card-label">Гидрокостюм</div><div class="size-card-value">M</div><div class="size-card-sub">рост 175–180</div></div>
+          <div class="size-card"><div class="size-card-icon">🦶</div><div class="size-card-label">Ласты</div><div class="size-card-value">EU 43–44</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🥽</div><div class="size-card-label">Маска</div><div class="size-card-value">S/M</div><div class="size-card-sub"></div></div>
+          <div class="size-card"><div class="size-card-icon">🧤</div><div class="size-card-label">Боты неопреновые</div><div class="size-card-value">EU 43</div><div class="size-card-sub"></div></div>
+          <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="page" id="page-beach">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="14" r="3"/><circle cx="17" cy="14" r="3"/><path d="M10 14h4"/><path d="M2 10h2m16 0h2"/><path d="M4 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/></svg></span> Пляж / лето</div>
+
+      <div class="section-label">Купальники</div>
+      <div class="cards-grid">
+        <div class="size-card">
+          <div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8 Q7 5 12 7 Q17 5 19 8"/><path d="M5 8 Q4 13 7 15 Q9 17 12 16 Q15 17 17 15 Q20 13 19 8"/><path d="M8 16 Q8 20 10 21"/><path d="M16 16 Q16 20 14 21"/><path d="M10 21 Q12 22 14 21"/></svg></span></div>
+          <div class="size-card-label">Слитный купальник</div>
+          <div class="size-card-value">S / 44</div>
+          <div class="size-card-sub">EU 36</div>
+        </div>
+        <div class="size-card">
+          <div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 Q7 4 12 6 Q17 4 19 7"/><path d="M5 7 Q4 11 7 12 Q9 13 12 12 Q15 13 17 12 Q20 11 19 7"/><path d="M8 17 Q8 20 10 21 Q12 22 14 21 Q16 20 16 17"/><path d="M7 17 Q12 15 17 17"/></svg></span></div>
+          <div class="size-card-label">Раздельный купальник</div>
+          <div class="size-card-value">S / 44</div>
+          <div class="size-card-sub">верх 75B · низ 44</div>
+        </div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">Одежда</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="14" r="3"/><circle cx="17" cy="14" r="3"/><path d="M10 14h4"/><path d="M2 10h2m16 0h2"/><path d="M4 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2"/></svg></span></div><div class="size-card-label">Плавки / шорты</div><div class="size-card-value">M</div><div class="size-card-sub">пояс 32</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+    </div>
+
+    <!-- НИЖНЕЕ БЕЛЬЁ -->
+    <div class="page" id="page-under">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H4a1 1 0 0 1-.5-1.87L12 13"/><path d="M12 13V7"/><circle cx="12" cy="5.5" r="1.5"/><path d="M10.5 7a1.5 1.5 0 0 1 3 0"/></svg></span> Нижнее бельё</div>
+
+      <div class="section-label">Размеры</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H4a1 1 0 0 1-.5-1.87L12 13"/><path d="M12 13V7"/><circle cx="12" cy="5.5" r="1.5"/><path d="M10.5 7a1.5 1.5 0 0 1 3 0"/></svg></span></div><div class="size-card-label">Трусы / боксеры</div><div class="size-card-value">M</div><div class="size-card-sub">пояс 32</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h4v10l5 5a3 3 0 0 1-4.24 4.24L7 16.24V3z"/><path d="M8 10h4"/></svg></span></div><div class="size-card-label">Носки</div><div class="size-card-value">43–46</div><div class="size-card-sub">EU</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">По брендам</div>
+      <div class="brand-row"><div class="brand-dot" style="background:#533AB7"></div><div class="brand-name">Calvin Klein</div><div class="brand-type">боксеры</div><div class="size-pill">M</div><div class="diff diff-same">= база</div></div>
+      <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить бренд</button>
+    </div>
+
+    <!-- АКСЕССУАРЫ -->
+    <div class="page" id="page-acc">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M2 9h20"/><path d="M6 3l6 6m6-6l-6 6"/></svg></span> Украшения и аксессуары</div>
+
+      <div class="section-label">Ювелирные украшения</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span></div><div class="size-card-label">Кольцо</div><div class="size-card-value">17.5</div><div class="size-card-sub">мм / размер 8</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span></div><div class="size-card-label">Браслет / часы</div><div class="size-card-value">18 см</div><div class="size-card-sub">запястье</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">Другое</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/></svg></span></div><div class="size-card-label">Ремень</div><div class="size-card-value">90 см</div><div class="size-card-sub">размер 36</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+    </div>
+
+    <!-- ГОЛОВНЫЕ УБОРЫ -->
+    <div class="page" id="page-hats">
+      <div class="page-title"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg> Головные уборы</div>
+
+      <div class="section-label">Размеры</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Кепка / шапка</div><div class="size-card-value">L</div><div class="size-card-sub">обхват 58 см</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18m-2.5-6.5L12 12m0 0l6.5 6.5M5.5 5.5L12 12m0 0l-6.5 6.5"/></svg></span></div><div class="size-card-label">Зимняя шапка</div><div class="size-card-value">L</div><div class="size-card-sub">универсальный</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват головы</span><span class="measure-value">58</span><span class="measure-unit">см</span></div>
+    </div>
+
+    <!-- ПЕРЧАТКИ -->
+    <div class="page" id="page-gloves">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-6.5a1.5 1.5 0 0 1 3 0V12m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6H9a7 7 0 0 1-7-7V12a1.5 1.5 0 0 1 3 0"/></svg></span> Перчатки</div>
+
+      <div class="section-label">Размеры</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-6.5a1.5 1.5 0 0 1 3 0V12m0-5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6H9a7 7 0 0 1-7-7V12a1.5 1.5 0 0 1 3 0"/></svg></span></div><div class="size-card-label">Перчатки</div><div class="size-card-value">M</div><div class="size-card-sub">обхват 20 см</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват кисти</span><span class="measure-value">20</span><span class="measure-unit">см</span></div>
+    </div>
+
+    <!-- ОБУВЬ -->
+    <div class="page" id="page-shoes">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l2-8h9l4 4h3a2 2 0 0 1 0 4H2z"/><path d="M6 16v2m4-2v2"/></svg></span> Обувь</div>
+
+      <div class="section-label">Базовый размер</div>
+      <div class="sys-row">
+        <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
+        <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
+        <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
+        <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+      </div>
+
+      <div class="section-label">По типу</div>
+      <div class="cards-grid">
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16l2-8h9l4 4h3a2 2 0 0 1 0 4H2z"/><path d="M6 16v2m4-2v2"/></svg></span></div><div class="size-card-label">Кроссовки</div><div class="size-card-value">EU 43</div><div class="size-card-sub">27.5 см</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l1-6h13l2 6H3z"/><path d="M7 17v2m4-2v2m4-2v2"/></svg></span></div><div class="size-card-label">Туфли / ботинки</div><div class="size-card-value">EU 43</div><div class="size-card-sub">27.5 см</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l2-7h11l3 5v2H3z"/><path d="M14 9V6a2 2 0 0 0-4 0v3"/></svg></span></div><div class="size-card-label">Сапоги</div><div class="size-card-value">EU 43</div><div class="size-card-sub">икра 38 см</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15h18a2 2 0 0 1 0 4H4a2 2 0 0 1-2-2v-2z"/><path d="M4 15V9l5-4h6"/></svg></span></div><div class="size-card-label">Сандалии / шлёпки</div><div class="size-card-value">EU 43</div><div class="size-card-sub">27.5 см</div></div>
+        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+      </div>
+
+      <div class="section-label">По брендам</div>
+      <div class="brand-row"><div class="brand-dot" style="background:#3B6D11"></div><div class="brand-name">Nike</div><div class="brand-type">кроссовки</div><div class="size-pill">EU 43.5</div><div class="diff diff-plus">+0.5</div></div>
+      <div class="brand-row"><div class="brand-dot" style="background:#185FA5"></div><div class="brand-name">Adidas</div><div class="brand-type">кроссовки</div><div class="size-pill">EU 43</div><div class="diff diff-same">= база</div></div>
+      <div class="brand-row"><div class="brand-dot" style="background:#BA7517"></div><div class="brand-name">New Balance</div><div class="brand-type">кроссовки</div><div class="size-pill">EU 42.5</div><div class="diff diff-minus">−0.5</div></div>
+      <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить бренд</button>
+
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/></svg></span><span class="measure-label">Длина стопы</span><span class="measure-value">27.5</span><span class="measure-unit">см</span></div>
+      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват стопы</span><span class="measure-value">24</span><span class="measure-unit">см</span></div>
+    </div>
+
+    <!-- ВИШЛИСТ -->
+    <div class="page" id="page-wishlist">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</div>
+
+      <div class="section-label">Хочу получить в подарок</div>
+
+      <div id="wishlist-items"></div>
+
+      <div id="wishlist-empty" style="text-align:center; padding: 2rem 0; color: var(--text3); font-size:13px; display:none;">
+        Пока пусто — добавь первую вещь по ссылке
+      </div>
+
+      <button class="add-btn" onclick="openWishlistModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Добавить по ссылке
+      </button>
+    </div>
+
+    <!-- ПОДЕЛИТЬСЯ -->
+    <div class="page" id="page-share">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</div>
+
+      <div class="share-card">
+        <div class="avatar"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span></div>
+        <div style="font-size:18px; font-weight:600; margin-bottom:6px">Мои размеры</div>
+        <div style="font-size:14px; color:var(--text2)">Поделись ссылкой — и друзья смогут легко выбрать подарок нужного размера</div>
+        <div class="share-actions">
+          <button class="btn-ghost" onclick="copyShareLink()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span> Скопировать ссылку</button>
+        </div>
+        <div class="share-url" id="share-url-display">Войди в аккаунт чтобы получить ссылку</div>
+      </div>
+
+      <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.25rem;">
+        <div style="font-size:13px; font-weight:500; color:var(--text2); margin-bottom:10px;">Что видят другие</div>
+        <div class="tags-row">
+          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span> Футболка M</span>
+          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></span> Обувь EU 43</span>
+          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span> Кольцо 17.5мм</span>
+          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="15" r="3"/><circle cx="19" cy="15" r="3"/><path d="M5 15l4-8h6l2 4H9"/><path d="M15 7l2 4"/></svg></span> Велосипед M</span>
+          <span class="tag"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg> Шапка L</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ИДЕИ -->
+    <div class="page" id="page-ideas">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6m-5 2h4M12 2a7 7 0 0 1 5 11.9V15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1.1A7 7 0 0 1 12 2z"/></svg></span> Список идей</div>
+
+      <div class="ideas-stats">
+        <span class="ideas-stat is-green">6 в работе</span>
+        <span class="ideas-stat is-amber">6 запланировано</span>
+        <span class="ideas-stat is-gray">3 отложено</span>
+      </div>
+
+      <div class="section-label">В работе</div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Профиль с размерами по категориям</div><div class="idea-desc">Вкладки: повседневное, официальное, верхняя одежда, спорт, пляж/лето, аксессуары, нижнее бельё, головные уборы.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">профиль</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Конвертация систем размеров</div><div class="idea-desc">Базовый размер вводится в одной системе (EU/US/UK/CM), остальные считаются автоматически.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">размеры</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Размеры по брендам с отличием от базы</div><div class="idea-desc">У каждого бренда свой размер (+0.5 / −0.5 / = база). Особенно актуально для кроссовок разных брендов.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">размеры</span><span class="itag">бренды</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Вишлист с добавлением по ссылке</div><div class="idea-desc">Добавляешь ссылку на вещь — приложение подтягивает название, бренд, цену и нужный размер.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">вишлист</span></div></div></div>
+
+      <div class="section-label">Запланировано</div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Поделиться размерами по ссылке</div><div class="idea-desc">Генерируется уникальная ссылка. Человек видит размеры и вишлист — может выбрать подарок.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">шеринг</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Добавление вещей по штрихкоду</div><div class="idea-desc">Сканируешь штрихкод на одежде — приложение определяет бренд, модель и размер.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">штрихкод</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Мерки для пошива</div><div class="idea-desc">В разделе "Официальное" — ширина плеч, длина рукава, обхват груди и т.д.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">мерки</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Мобильное приложение</div><div class="idea-desc">После финализации веб-версии — перенос на iOS / Android.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">платформа</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Регистрация и бэкенд</div><div class="idea-desc">Сейчас данные хранятся в браузере. Нужна база данных и авторизация для синхронизации между устройствами.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">инфраструктура</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Страница гостя</div><div class="idea-desc">Отдельный вид для человека, который получил ссылку — видит размеры и вишлист, может отметить что купит.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">шеринг</span></div></div></div>
+
+      
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Силуэт человека с зонами наведения</div><div class="idea-desc">В центре страницы SVG-силуэт (мужской или женский — по полу из профиля). При наведении на зону тела (голова, торс, ноги, ступни) — всплывает список одежды с брендами для этой зоны.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">интерфейс</span><span class="itag">силуэт</span></div></div></div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Карточки одежды с брендами при клике</div><div class="idea-desc">При нажатии на категорию (например "Футболка") — выпадает список конкретных вещей с указанием бренда, размера и заметок.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">интерфейс</span><span class="itag">категории</span></div></div></div>
+      <div class="section-label">Отложено</div>
+
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Зимний спорт</div><div class="idea-desc">Горные лыжи, сноуборд, лыжные ботинки. Отдельная категория с размерами flex, ширины колодки и т.д.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">спорт</span></div></div></div>
+
+      
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Интеграция с умными весами</div><div class="idea-desc">Получать данные автоматически с умных весов (Xiaomi, Withings, Garmin и др.) — вес, процент жира, мышечная масса. Синхронизация через API или Bluetooth.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">интеграции</span><span class="itag">профиль</span></div></div></div>
+      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Медицинские размеры</div><div class="idea-desc">Размер перчаток, компрессионные чулки и т.д. Полезно для подарков типа массажёра или медоборудования.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">аксессуары</span></div></div></div>
+    </div>
+
+    <!-- ПРОФИЛЬ -->
+    <div class="page" id="page-profile">
+      <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.168 18.849A4 4 0 0 1 10 16h4a4 4 0 0 1 3.834 2.855"/></svg></span> Мой профиль</div>
+
+      <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin-bottom:1rem;">
+        <div style="display:flex; align-items:center; gap:1.25rem; margin-bottom:1.5rem;">
+          <div style="width:64px; height:64px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--text3); flex-shrink:0;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span></div>
+          <div>
+            <div style="font-size:18px; font-weight:600; color:var(--text);">Александр</div>
+            <div style="font-size:13px; color:var(--text3); margin-top:2px;">sizebook.app/u/alex_ivanov</div>
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:0;">Основное</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
+          <div>
+            <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Имя</label>
+            <input type="text" value="Александр" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+          </div>
+          <div>
+            <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Фамилия (необязательно)</label>
+            <input type="text" placeholder="Иванов" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+          </div>
+        </div>
+
+        <div class="section-label">Пол</div>
+        <div style="display:flex; gap:10px; margin-bottom:1rem;" id="gender-selector">
+          <button class="gender-btn active" onclick="selectGender(this, 'male')">
+            <span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="5"/><path d="M19 5l-5.4 5.4M19 5h-5m5 0v5"/></svg></span> Мужской
+          </button>
+          <button class="gender-btn" onclick="selectGender(this, 'female')">
+            <span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M12 14v7m-3-3h6"/></svg></span> Женский
+          </button>
+          <button class="gender-btn" onclick="selectGender(this, 'other')">
+            <span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="14" r="4"/><circle cx="16" cy="6" r="3"/><path d="M19 3l-3 3m3-3h-3m3 0v3"/><path d="M9 18v4m-2-2h4"/></svg></span> Другой
+          </button>
+        </div>
+        <div style="font-size:12px; color:var(--text3); margin-bottom:1.5rem;">Пол влияет на таблицы размеров — у мужской и женской одежды разные сетки</div>
+
+        <div class="section-label">Рост и вес <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--text3)">— помогают подобрать размер при добавлении вещей</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1.5rem;">
+          <div>
+            <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Рост</label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" value="178" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+              <span style="font-size:12px; color:var(--text3); white-space:nowrap;">см</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Вес</label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" value="75" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+              <span style="font-size:12px; color:var(--text3); white-space:nowrap;">кг</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Возраст</label>
+            <input type="number" value="28" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+          </div>
+        </div>
+
+        <button class="btn-primary" style="width:100%; justify-content:center;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span> Сохранить профиль</button>
+      </div>
+
+      <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.25rem;">
+        <div style="font-size:13px; font-weight:500; color:var(--text); margin-bottom:4px;">Приватность</div>
+        <div style="font-size:13px; color:var(--text2); margin-bottom:1rem;">Что показывать людям по ссылке</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--text);">
+            <input type="checkbox" checked style="width:16px; height:16px; accent-color:var(--text);"> Размеры одежды
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--text);">
+            <input type="checkbox" checked style="width:16px; height:16px; accent-color:var(--text);"> Вишлист
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:var(--text);">
+            <input type="checkbox" style="width:16px; height:16px; accent-color:var(--text);"> Рост и вес
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<!-- WISHLIST MODAL -->
+<div class="wl-modal-overlay" id="wl-modal" onclick="closeWishlistModal(event)">
+  <div class="wl-modal" onclick="event.stopPropagation()">
+    <h3>Добавить вещь</h3>
+
+    <div class="wl-field-label">Ссылка на товар</div>
+    <div class="wl-url-row">
+      <input class="wl-url-input" id="wl-url-input" type="url"
+        placeholder="https://..."
         oninput="onWlUrlInput()" onpaste="setTimeout(tryAutoFetch,50)">
       <div class="wl-fetch-spinner" id="wl-spinner" style="display:none">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
