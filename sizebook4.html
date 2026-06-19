@@ -1194,7 +1194,7 @@
   <div class="modal" onclick="event.stopPropagation()">
     <h3>Добавить размер</h3>
     <label>Категория</label>
-    <select>
+    <select id="modal-category-select" onchange="onModalCategoryChange()">
       <option>Одежда верх (футболка, рубашка...)</option>
       <option>Брюки / джинсы</option>
       <option>Обувь</option>
@@ -1204,11 +1204,11 @@
       <option>Другое</option>
     </select>
     <label>Размер</label>
-    <input type="text" placeholder="Например: M, 43, 17.5мм">
+    <input type="text" id="modal-size-input" placeholder="Например: M, 43, 17.5мм">
     <label>Бренд (необязательно)</label>
     <input type="text" placeholder="Nike, Zara...">
     <label>Заметка (необязательно)</label>
-    <input type="text" placeholder="Беговые, повседневные...">
+    <input type="text" id="modal-note-input" placeholder="Беговые, повседневные...">
     <div class="modal-btns">
       <button class="btn-ghost" onclick="closeModal(null)">Отмена</button>
       <button class="btn-primary" onclick="closeModal(null)">Сохранить</button>
@@ -1217,6 +1217,8 @@
 </div>
 
 <script>
+let currentSection = 'daily';
+
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1224,7 +1226,47 @@ function showPage(name) {
   const pages = ['profile','daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc','wishlist','share','ideas'];
   const idx = pages.indexOf(name);
   if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  currentSection = name;
 }
+
+// ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
+// Для каждого раздела сайдбара — свой набор категорий в модалке "Добавить размер",
+// чтобы в "Перчатках" не предлагалось "Кольцо" или "Велосипед" и т.п.
+const sectionCategoryOptions = {
+  daily:  ["Футболка / рубашка", "Брюки / джинсы", "Обувь", "Верхняя одежда", "Головной убор", "Аксессуар", "Мерка (см)", "Другое"],
+  formal: ["Пиджак / костюм", "Брюки", "Рубашка", "Обувь", "Мерка (см)", "Другое"],
+  outer:  ["Куртка / пальто", "Пуховик", "Мерка (см)", "Другое"],
+  sport:  ["Футболка / форма", "Шорты / тайтсы", "Обувь спортивная", "Снаряжение", "Мерка (см)", "Другое"],
+  beach:  ["Купальник слитный", "Купальник раздельный", "Плавки / шорты", "Другое"],
+  under:  ["Трусы / боксеры", "Носки", "Мерка (см)", "Другое"],
+  hats:   ["Кепка / шапка", "Зимняя шапка", "Обхват головы (мерка)", "Другое"],
+  gloves: ["Перчатки", "Обхват кисти (мерка)", "Другое"],
+  shoes:  ["Кроссовки", "Туфли / ботинки", "Сапоги", "Сандалии / шлёпки", "Мерка (см)", "Другое"],
+  acc:    ["Кольцо", "Браслет / часы", "Ремень", "Другое"],
+};
+// Подсказки в поле "Размер" для конкретных категорий
+const categorySizePlaceholders = {
+  "Перчатки": "M, L, обхват 20 см",
+  "Обхват кисти (мерка)": "20 см",
+  "Обхват головы (мерка)": "58 см",
+  "Кепка / шапка": "L, 58 см",
+  "Зимняя шапка": "L, универсальный",
+  "Кольцо": "17.5 мм, размер 8",
+  "Браслет / часы": "18 см",
+  "Ремень": "90 см, размер 36",
+  "Обувь": "EU 43",
+  "Обувь спортивная": "EU 43",
+  "Кроссовки": "EU 43",
+  "Туфли / ботинки": "EU 43",
+  "Сапоги": "EU 43",
+  "Сандалии / шлёпки": "EU 43",
+  "Носки": "43–46 EU",
+  "Трусы / боксеры": "M, пояс 32",
+  "Мерка (см)": "96",
+  "Купальник слитный": "S / 44, EU 36",
+  "Купальник раздельный": "S / 44, верх 75B",
+  "Плавки / шорты": "M, пояс 32",
+};
 
 function selectGender(el, gender) {
   document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
@@ -1394,7 +1436,21 @@ function hideItemList() {
 }
 
 function openModal() {
+  const select = document.getElementById('modal-category-select');
+  const options = sectionCategoryOptions[currentSection] || [
+    "Одежда верх (футболка, рубашка...)", "Брюки / джинсы", "Обувь",
+    "Кольцо", "Велосипед", "Мерка (см)", "Другое"
+  ];
+  select.innerHTML = options.map(o => `<option>${o}</option>`).join('');
+  onModalCategoryChange();
   document.getElementById('modal').classList.add('open');
+}
+
+function onModalCategoryChange() {
+  const select = document.getElementById('modal-category-select');
+  const sizeInput = document.getElementById('modal-size-input');
+  const category = select.value;
+  sizeInput.placeholder = categorySizePlaceholders[category] || 'Например: M, 43, 17.5мм';
 }
 
 function closeModal(e) {
