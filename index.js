@@ -40,6 +40,15 @@ async function initDB() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
   `);
+  // Миграция: добавляем недостающие колонки, если таблица wishlist создавалась раньше без них
+  await pool.query(`
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS added_at TIMESTAMP DEFAULT NOW();
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS shop TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS url TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS price TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS size TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS image TEXT;
+  `);
   console.log('DB ready');
 }
 
@@ -132,7 +141,7 @@ app.post('/sizes', authenticateToken, async (req, res) => {
 app.get('/wishlist', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query(
-      'SELECT * FROM wishlist WHERE user_id=$1 ORDER BY added_at DESC',
+      'SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC',
       [req.user.id]
     );
     res.json(r.rows);
@@ -164,7 +173,7 @@ app.get('/profile/:username', async (req, res) => {
     const ur = await pool.query('SELECT id,username FROM users WHERE username=$1', [req.params.username.toLowerCase()]);
     if (!ur.rows.length) return res.status(404).json({ error: 'Не найден' });
     const u = ur.rows[0];
-    const wr = await pool.query('SELECT * FROM wishlist WHERE user_id=$1 ORDER BY added_at DESC', [u.id]);
+    const wr = await pool.query('SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC', [u.id]);
     const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [u.id]);
     res.json({ username: u.username, wishlist: wr.rows, sizes: sr.rows[0]?.data || {} });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
@@ -278,6 +287,12 @@ function parseProductFromHtml(html, url) {
   // 4. Fallback — title страницы
   if (!title) title = $('title').text().trim().split('|')[0].split('-')[0].trim() || null;
   if (title?.length > 120) title = title.slice(0, 120).trim();
+
+  // Детект страниц-блокировок антибота — не отдаём их как валидный результат
+  const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3})/i;
+  if (title && blockPatterns.test(title.trim())) {
+    return { title: null, price: null, image: null };
+  }
 
   return { title, price, image };
 }
