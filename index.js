@@ -114,7 +114,7 @@ app.get('/sizes', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [req.user.id]);
     res.json(r.rows[0]?.data || {});
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 app.post('/sizes', authenticateToken, async (req, res) => {
@@ -125,7 +125,7 @@ app.post('/sizes', authenticateToken, async (req, res) => {
       [req.user.id, JSON.stringify(req.body)]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 // ── WISHLIST ──────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ app.get('/wishlist', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     res.json(r.rows);
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 app.post('/wishlist', authenticateToken, async (req, res) => {
@@ -148,14 +148,14 @@ app.post('/wishlist', authenticateToken, async (req, res) => {
       [req.user.id, title, shop||null, url||null, price||null, size||null, image||null]
     );
     res.json(r.rows[0]);
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
   try {
     await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 // ── ПУБЛИЧНЫЙ ПРОФИЛЬ ─────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ app.get('/profile/:username', async (req, res) => {
     const wr = await pool.query('SELECT * FROM wishlist WHERE user_id=$1 ORDER BY added_at DESC', [u.id]);
     const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [u.id]);
     res.json({ username: u.username, wishlist: wr.rows, sizes: sr.rows[0]?.data || {} });
-  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 // ── ПАРСЕР ────────────────────────────────────────────────────────────────────
