@@ -1285,6 +1285,7 @@ const IDEAS_SEED = [
   {id:'seed-26', title:'Зимний спорт', desc:'Горные лыжи, сноуборд, лыжные ботинки. Отдельная категория с размерами flex, ширины колодки и т.д.', status:'paused', tags:['спорт']},
   {id:'seed-27', title:'Интеграция с умными весами', desc:'Получать данные автоматически с умных весов (Xiaomi, Withings, Garmin и др.) — вес, процент жира, мышечная масса. Синхронизация через API или Bluetooth.', status:'paused', tags:['интеграции','профиль']},
   {id:'seed-28', title:'Медицинские размеры', desc:'Размер перчаток, компрессионные чулки и т.д. Полезно для подарков типа массажёра или медоборудования.', status:'paused', tags:['аксессуары']},
+  {id:'seed-29', title:'Цены с Farfetch (и аналогичных сайтов)', desc:'Farfetch защищён Akamai — блокирует все запросы с серверных IP на уровне TLS-отпечатка, даже Playwright/headless Chrome. Title и картинка работают через iframely. Цена — только через: 1) партнёрский фид AWIN (бесплатно, но нужна заявка), 2) residential proxy (BrightData/Oxylabs, $3–15/ГБ), 3) ручной ввод пользователем. Цена в HTML есть — в __NEXT_DATA__ → props.pageProps.productDetails.priceInfo.finalPrice — но добраться до неё без домашнего IP нельзя.', status:'paused', tags:['парсинг','farfetch']},
 ];
 
 const STATUS_LABEL = {active:'в работе', planned:'запланировано', done:'сделано', paused:'отложено'};
