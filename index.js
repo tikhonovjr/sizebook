@@ -353,17 +353,10 @@ app.post('/parse', authenticateToken, async (req, res) => {
     return res.json(result || { title: null, price: null, image: null });
   }
 
-  // Сайты с Cloudflare — используем внешние парсеры
-  if (host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch')) {
-    let result = await parseViaJsonlink(url);
-    if (result?.title) return res.json(result);
-    result = await parseViaIframely(url);
-    if (result?.title) return res.json(result);
-    // Если оба не сработали — возвращаем пустой результат (пользователь заполнит вручную)
-    return res.json({ title: null, price: null, image: null });
-  }
+  const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch');
 
-  // Универсальный HTML-парсер для всех остальных сайтов
+  // Сначала всегда пробуем прямой HTML-парсер — если Akamai/Cloudflare пропустит,
+  // получим полные данные включая цену из og:price:amount
   try {
     const response = await fetch(url, {
       headers: FETCH_HEADERS,
@@ -371,11 +364,23 @@ app.post('/parse', authenticateToken, async (req, res) => {
       signal: AbortSignal.timeout(15000),
     });
     const html = await response.text();
-    res.json(parseProductFromHtml(html, url));
+    const result = parseProductFromHtml(html, url);
+    // Если получили хоть что-то — отдаём сразу
+    if (result.title || result.price || result.image) return res.json(result);
   } catch (e) {
-    if (e.name === 'TimeoutError') return res.status(504).json({ error: 'Сайт не ответил' });
-    res.status(500).json({ error: 'Не удалось загрузить страницу' });
+    if (e.name === 'TimeoutError' && !BOT_PROTECTED)
+      return res.status(504).json({ error: 'Сайт не ответил' });
   }
+
+  // Прямой парсер ничего не вернул — для известных bot-protected сайтов пробуем внешние парсеры
+  if (BOT_PROTECTED) {
+    let result = await parseViaJsonlink(url);
+    if (result?.title) return res.json(result);
+    result = await parseViaIframely(url);
+    if (result?.title) return res.json(result);
+  }
+
+  res.json({ title: null, price: null, image: null });
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
