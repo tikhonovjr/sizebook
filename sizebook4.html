@@ -325,6 +325,7 @@
   .dot-active { background: #639922; }
   .dot-planned { background: #EF9F27; }
   .dot-paused { background: #B4B2A9; }
+  .dot-done { background: #185FA5; }
   .idea-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
   .idea-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
   .idea-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
@@ -332,7 +333,17 @@
   .sb-active { background: var(--green-bg); color: var(--green-text); }
   .sb-planned { background: var(--amber-bg); color: var(--amber-text); }
   .sb-paused { background: var(--surface2); color: var(--text3); }
+  .sb-done { background: var(--blue-bg); color: var(--blue-text); }
   .itag { font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 0.5px solid var(--border); color: var(--text3); }
+  .idea-card { position: relative; }
+  .idea-del-btn {
+    position: absolute; top: 8px; right: 10px; width: 20px; height: 20px;
+    border-radius: 50%; border: none; background: transparent; color: var(--text3);
+    font-size: 14px; cursor: pointer; display: none; align-items: center; justify-content: center;
+  }
+  .idea-card:hover .idea-del-btn { display: flex; }
+  .idea-del-btn:hover { background: var(--red-bg); color: var(--red-text); }
+  .idea-manual-tag { font-size: 10px; padding: 1px 7px; border-radius: 20px; background: var(--purple-bg); color: var(--purple-text); }
 
   /* IDEAS STATS */
   .ideas-stats { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
@@ -340,6 +351,31 @@
   .is-green { background: var(--green-bg); color: var(--green-text); }
   .is-amber { background: var(--amber-bg); color: var(--amber-text); }
   .is-gray { background: var(--surface2); color: var(--text2); }
+  .is-blue { background: var(--blue-bg); color: var(--blue-text); }
+
+  /* ADD IDEA FORM */
+  .add-idea-bar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+  .btn-add-idea {
+    font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-add-idea:hover { background: var(--surface2); }
+  .add-idea-form {
+    background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius);
+    padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: none;
+  }
+  .add-idea-form.open { display: block; }
+  .add-idea-form label { font-size: 12px; color: var(--text2); display: block; margin: 10px 0 5px; }
+  .add-idea-form label:first-of-type { margin-top: 0; }
+  .add-idea-form input, .add-idea-form select, .add-idea-form textarea {
+    width: 100%; padding: 9px 12px; border-radius: var(--radius-sm); border: 0.5px solid var(--border2);
+    background: var(--bg); font-size: 14px; color: var(--text); font-family: inherit;
+  }
+  .add-idea-form textarea { resize: vertical; min-height: 50px; }
+  .add-idea-form-row { display: flex; gap: 10px; }
+  .add-idea-form-row > div { flex: 1; }
+  .add-idea-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
   /* MODAL */
   .modal-overlay {
@@ -1022,47 +1058,42 @@
     <div class="page" id="page-ideas">
       <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6m-5 2h4M12 2a7 7 0 0 1 5 11.9V15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1.1A7 7 0 0 1 12 2z"/></svg></span> Список идей</div>
 
-      <div class="ideas-stats">
-        <span class="ideas-stat is-green">6 в работе</span>
-        <span class="ideas-stat is-amber">6 запланировано</span>
-        <span class="ideas-stat is-gray">3 отложено</span>
+      <div class="ideas-stats" id="ideas-stats"></div>
+
+      <div class="add-idea-bar">
+        <button class="btn-add-idea" onclick="toggleAddIdeaForm()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить идею
+        </button>
       </div>
 
-      <div class="section-label">В работе</div>
+      <div class="add-idea-form" id="add-idea-form">
+        <label>Название</label>
+        <input type="text" id="idea-title-input" placeholder="Например: Тёмная тема">
+        <label>Описание</label>
+        <textarea id="idea-desc-input" placeholder="Кратко, что нужно сделать..."></textarea>
+        <div class="add-idea-form-row">
+          <div>
+            <label>Статус</label>
+            <select id="idea-status-input">
+              <option value="planned">Запланировано</option>
+              <option value="active">В работе</option>
+              <option value="done">Сделано</option>
+              <option value="paused">Отложено</option>
+            </select>
+          </div>
+          <div>
+            <label>Теги (через запятую)</label>
+            <input type="text" id="idea-tags-input" placeholder="интерфейс, профиль">
+          </div>
+        </div>
+        <div class="add-idea-btns">
+          <button class="btn-ghost" onclick="toggleAddIdeaForm()">Отмена</button>
+          <button class="btn-primary" onclick="saveNewIdea()">Сохранить</button>
+        </div>
+      </div>
 
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Профиль с размерами по категориям</div><div class="idea-desc">Вкладки: повседневное, официальное, верхняя одежда, спорт, пляж/лето, аксессуары, нижнее бельё, головные уборы.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">профиль</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Конвертация систем размеров</div><div class="idea-desc">Базовый размер вводится в одной системе (EU/US/UK/CM), остальные считаются автоматически.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">размеры</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Размеры по брендам с отличием от базы</div><div class="idea-desc">У каждого бренда свой размер (+0.5 / −0.5 / = база). Особенно актуально для кроссовок разных брендов.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">размеры</span><span class="itag">бренды</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Вишлист с добавлением по ссылке</div><div class="idea-desc">Добавляешь ссылку на вещь — приложение подтягивает название, бренд, цену и нужный размер.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">вишлист</span></div></div></div>
-
-      <div class="section-label">Запланировано</div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Поделиться размерами по ссылке</div><div class="idea-desc">Генерируется уникальная ссылка. Человек видит размеры и вишлист — может выбрать подарок.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">шеринг</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Добавление вещей по штрихкоду</div><div class="idea-desc">Сканируешь штрихкод на одежде — приложение определяет бренд, модель и размер.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">штрихкод</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Мерки для пошива</div><div class="idea-desc">В разделе "Официальное" — ширина плеч, длина рукава, обхват груди и т.д.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">мерки</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Мобильное приложение</div><div class="idea-desc">После финализации веб-версии — перенос на iOS / Android.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">платформа</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Регистрация и бэкенд</div><div class="idea-desc">Сейчас данные хранятся в браузере. Нужна база данных и авторизация для синхронизации между устройствами.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">инфраструктура</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-planned"></div></div><div><div class="idea-title">Страница гостя</div><div class="idea-desc">Отдельный вид для человека, который получил ссылку — видит размеры и вишлист, может отметить что купит.</div><div class="idea-meta"><span class="status-badge sb-planned">запланировано</span><span class="itag">шеринг</span></div></div></div>
-
-      
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Силуэт человека с зонами наведения</div><div class="idea-desc">В центре страницы SVG-силуэт (мужской или женский — по полу из профиля). При наведении на зону тела (голова, торс, ноги, ступни) — всплывает список одежды с брендами для этой зоны.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">интерфейс</span><span class="itag">силуэт</span></div></div></div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-active"></div></div><div><div class="idea-title">Карточки одежды с брендами при клике</div><div class="idea-desc">При нажатии на категорию (например "Футболка") — выпадает список конкретных вещей с указанием бренда, размера и заметок.</div><div class="idea-meta"><span class="status-badge sb-active">в работе</span><span class="itag">интерфейс</span><span class="itag">категории</span></div></div></div>
-      <div class="section-label">Отложено</div>
-
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Зимний спорт</div><div class="idea-desc">Горные лыжи, сноуборд, лыжные ботинки. Отдельная категория с размерами flex, ширины колодки и т.д.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">спорт</span></div></div></div>
-
-      
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Интеграция с умными весами</div><div class="idea-desc">Получать данные автоматически с умных весов (Xiaomi, Withings, Garmin и др.) — вес, процент жира, мышечная масса. Синхронизация через API или Bluetooth.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">интеграции</span><span class="itag">профиль</span></div></div></div>
-      <div class="idea-card"><div class="status-dot-wrap"><div class="status-dot dot-paused"></div></div><div><div class="idea-title">Медицинские размеры</div><div class="idea-desc">Размер перчаток, компрессионные чулки и т.д. Полезно для подарков типа массажёра или медоборудования.</div><div class="idea-meta"><span class="status-badge sb-paused">отложено</span><span class="itag">аксессуары</span></div></div></div>
+      <div id="ideas-list"></div>
     </div>
 
     <!-- ПРОФИЛЬ -->
@@ -1218,6 +1249,140 @@
 
 <script>
 let currentSection = 'daily';
+
+// ===== IDEAS =====
+const IDEAS_SEED = [
+  // в работе
+  {id:'seed-1', title:'Профиль с размерами по категориям', desc:'Вкладки: повседневное, официальное, верхняя одежда, спорт, пляж/лето, аксессуары, нижнее бельё, головные уборы.', status:'active', tags:['профиль']},
+  {id:'seed-2', title:'Конвертация систем размеров', desc:'Базовый размер вводится в одной системе (EU/US/UK/CM), остальные считаются автоматически.', status:'active', tags:['размеры']},
+  {id:'seed-3', title:'Размеры по брендам с отличием от базы', desc:'У каждого бренда свой размер (+0.5 / −0.5 / = база). Особенно актуально для кроссовок разных брендов.', status:'active', tags:['размеры','бренды']},
+  {id:'seed-4', title:'Вишлист с добавлением по ссылке', desc:'Добавляешь ссылку на вещь — приложение подтягивает название, бренд, цену и нужный размер.', status:'active', tags:['вишлист']},
+  {id:'seed-5', title:'Силуэт человека с зонами наведения', desc:'В центре страницы SVG-силуэт (мужской или женский — по полу из профиля). При наведении на зону тела (голова, торс, ноги, ступни) — всплывает список одежды с брендами для этой зоны.', status:'active', tags:['интерфейс','силуэт']},
+  {id:'seed-6', title:'Карточки одежды с брендами при клике', desc:'При нажатии на категорию (например "Футболка") — выпадает список конкретных вещей с указанием бренда, размера и заметок.', status:'active', tags:['интерфейс','категории']},
+  // сделано (внедрено в код)
+  {id:'seed-7', title:'Контекстная модалка "Добавить размер"', desc:'Категории и подсказка в поле "Размер" меняются в зависимости от раздела сайдбара, в котором открыта модалка.', status:'done', tags:['интерфейс','размеры']},
+  {id:'seed-8', title:'Изменён порядок левого столбца', desc:'Порядок пунктов сайдбара пересобран для более логичной навигации.', status:'done', tags:['интерфейс']},
+  {id:'seed-9', title:'Исправлены тени на силуэте', desc:'Тени на SVG-силуэте выглядели неровно — поправлено.', status:'done', tags:['силуэт']},
+  {id:'seed-10', title:'Перчатки выделены из аксессуаров', desc:'Раньше перчатки были незаметны внутри категории "Аксессуары" — теперь отдельная видимая категория.', status:'done', tags:['категории']},
+  {id:'seed-11', title:'Вишлист появляется справа', desc:'Список вишлиста раньше всплывал поверх силуэта тела — теперь справа, не перекрывает силуэт.', status:'done', tags:['интерфейс','вишлист']},
+  {id:'seed-12', title:'Разделение спорта на "беговое"', desc:'В спортивном разделе выделена отдельная категория для беговых видов.', status:'done', tags:['спорт']},
+  {id:'seed-13', title:'Гидрокостюм в спорт + подкатегории видов спорта', desc:'Гидрокостюм перенесён из пляжного раздела в спорт. В спорте теперь подкатегории по видам — пользователь сам выбирает, какие виды спорта у него отображаются, и видит только вещи, присущие выбранному виду.', status:'done', tags:['спорт']},
+  // запланировано (старое)
+  {id:'seed-14', title:'Поделиться размерами по ссылке', desc:'Генерируется уникальная ссылка. Человек видит размеры и вишлист — может выбрать подарок.', status:'planned', tags:['шеринг']},
+  {id:'seed-15', title:'Добавление вещей по штрихкоду', desc:'Сканируешь штрихкод на одежде — приложение определяет бренд, модель и размер.', status:'planned', tags:['штрихкод']},
+  {id:'seed-16', title:'Мерки для пошива', desc:'В разделе "Официальное" — ширина плеч, длина рукава, обхват груди и т.д.', status:'planned', tags:['мерки']},
+  {id:'seed-17', title:'Мобильное приложение', desc:'После финализации веб-версии — перенос на iOS / Android.', status:'planned', tags:['платформа']},
+  {id:'seed-18', title:'Регистрация и бэкенд', desc:'Сейчас данные хранятся в браузере. Нужна база данных и авторизация для синхронизации между устройствами.', status:'planned', tags:['инфраструктура']},
+  {id:'seed-19', title:'Страница гостя', desc:'Отдельный вид для человека, который получил ссылку — видит размеры и вишлист, может отметить что купит.', status:'planned', tags:['шеринг']},
+  // запланировано (новое, заметки 21 июня)
+  {id:'seed-20', title:'Замеры тела в профиле', desc:'Добавить вкладку с размерами — замерами тела прямо в профиль пользователя.', status:'planned', tags:['профиль','замеры']},
+  {id:'seed-21', title:'Друзья (логика соцсети)', desc:'Добавить друзей, а не просто делиться ссылкой — полноценная соцсеть-логика внутри SizeBook.', status:'planned', tags:['соцсети']},
+  {id:'seed-22', title:'Summary размеров с уровнями доступа', desc:'Алгоритм, который собирает summary всех размеров для отправки. Несколько уровней информации, которой делимся: семья — друзья — все остальные.', status:'planned', tags:['шеринг','размеры']},
+  {id:'seed-23', title:'Распознаватель вещей по фото', desc:'Распознавание вещи по бирке и по фото вещи на вешалке — автозаполнение категории/размера/бренда.', status:'planned', tags:['распознавание']},
+  {id:'seed-24', title:'Корреляция размеров вишлиста и профиля', desc:'Показывать, подойдёт ли вещь из вишлиста по размерам, которые уже сохранены в профиле пользователя.', status:'planned', tags:['вишлист','размеры']},
+  {id:'seed-25', title:'Докрутить остальные магазины', desc:'Net-a-porter, matchesfashion и другие парсеры — проверить и докрутить парсинг.', status:'planned', tags:['парсинг']},
+  // отложено
+  {id:'seed-26', title:'Зимний спорт', desc:'Горные лыжи, сноуборд, лыжные ботинки. Отдельная категория с размерами flex, ширины колодки и т.д.', status:'paused', tags:['спорт']},
+  {id:'seed-27', title:'Интеграция с умными весами', desc:'Получать данные автоматически с умных весов (Xiaomi, Withings, Garmin и др.) — вес, процент жира, мышечная масса. Синхронизация через API или Bluetooth.', status:'paused', tags:['интеграции','профиль']},
+  {id:'seed-28', title:'Медицинские размеры', desc:'Размер перчаток, компрессионные чулки и т.д. Полезно для подарков типа массажёра или медоборудования.', status:'paused', tags:['аксессуары']},
+];
+
+const STATUS_LABEL = {active:'в работе', planned:'запланировано', done:'сделано', paused:'отложено'};
+const STATUS_ORDER = ['active','done','planned','paused'];
+const STATUS_SECTION_TITLE = {active:'В работе', done:'Сделано', planned:'Запланировано', paused:'Отложено'};
+
+function loadIdeas() {
+  try {
+    const raw = localStorage.getItem('sizebook_ideas');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return IDEAS_SEED.slice();
+}
+
+function persistIdeas(ideas) {
+  try { localStorage.setItem('sizebook_ideas', JSON.stringify(ideas)); } catch (e) {}
+}
+
+let ideasData = loadIdeas();
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderIdeas() {
+  const counts = {active:0, planned:0, done:0, paused:0};
+  ideasData.forEach(i => { if (counts[i.status] !== undefined) counts[i.status]++; });
+
+  const statsEl = document.getElementById('ideas-stats');
+  statsEl.innerHTML = `
+    <span class="ideas-stat is-green">${counts.active} в работе</span>
+    <span class="ideas-stat is-blue">${counts.done} сделано</span>
+    <span class="ideas-stat is-amber">${counts.planned} запланировано</span>
+    <span class="ideas-stat is-gray">${counts.paused} отложено</span>
+  `;
+
+  const listEl = document.getElementById('ideas-list');
+  let html = '';
+  STATUS_ORDER.forEach(status => {
+    const items = ideasData.filter(i => i.status === status);
+    if (!items.length) return;
+    html += `<div class="section-label">${STATUS_SECTION_TITLE[status]}</div>`;
+    items.forEach(idea => {
+      const tags = (idea.tags || []).map(t => `<span class="itag">${escapeHtml(t)}</span>`).join('');
+      const manualTag = idea.manual ? '<span class="idea-manual-tag">вручную</span>' : '';
+      html += `
+        <div class="idea-card">
+          <button class="idea-del-btn" onclick="deleteIdea('${idea.id}')" title="Удалить">✕</button>
+          <div class="status-dot-wrap"><div class="status-dot dot-${status}"></div></div>
+          <div>
+            <div class="idea-title">${escapeHtml(idea.title)}</div>
+            <div class="idea-desc">${escapeHtml(idea.desc || '')}</div>
+            <div class="idea-meta"><span class="status-badge sb-${status}">${STATUS_LABEL[status]}</span>${tags}${manualTag}</div>
+          </div>
+        </div>`;
+    });
+  });
+  listEl.innerHTML = html;
+}
+
+function toggleAddIdeaForm() {
+  const form = document.getElementById('add-idea-form');
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) {
+    document.getElementById('idea-title-input').value = '';
+    document.getElementById('idea-desc-input').value = '';
+    document.getElementById('idea-status-input').value = 'planned';
+    document.getElementById('idea-tags-input').value = '';
+    document.getElementById('idea-title-input').focus();
+  }
+}
+
+function saveNewIdea() {
+  const title = document.getElementById('idea-title-input').value.trim();
+  if (!title) { document.getElementById('idea-title-input').focus(); return; }
+  const desc = document.getElementById('idea-desc-input').value.trim();
+  const status = document.getElementById('idea-status-input').value;
+  const tags = document.getElementById('idea-tags-input').value
+    .split(',').map(t => t.trim()).filter(Boolean);
+
+  ideasData.unshift({
+    id: 'manual-' + Date.now(),
+    title, desc, status, tags,
+    manual: true
+  });
+  persistIdeas(ideasData);
+  renderIdeas();
+  toggleAddIdeaForm();
+}
+
+function deleteIdea(id) {
+  ideasData = ideasData.filter(i => i.id !== id);
+  persistIdeas(ideasData);
+  renderIdeas();
+}
+
+renderIdeas();
+// ===== /IDEAS =====
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
