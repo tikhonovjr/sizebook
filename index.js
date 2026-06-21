@@ -305,7 +305,7 @@ app.post('/parse', authenticateToken, async (req, res) => {
   const host = new URL(url).hostname;
 
   // Сайты с Cloudflare — используем внешние парсеры
-  if (host.includes('net-a-porter') || host.includes('matchesfashion')) {
+  if (host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch')) {
     let result = await parseViaJsonlink(url);
     if (result?.title) return res.json(result);
     result = await parseViaIframely(url);
