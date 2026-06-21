@@ -187,6 +187,49 @@ const FETCH_HEADERS = {
   'Connection': 'keep-alive',
 };
 
+// Wildberries — публичный CDN, не требует антибота
+async function parseWildberries(url) {
+  try {
+    const nm = url.match(/\/catalog\/(\d+)\//)?.[1];
+    if (!nm) return null;
+    const id = Number(nm);
+    const vol = Math.floor(id / 100000);
+    const part = Math.floor(id / 1000);
+
+    const basket = (() => {
+      const t = [143,287,431,719,1007,1061,1115,1169,1313,1601,1655,1919,2045,2189,2405,
+                 2621,2837,3053,3269,3485,3701,3917,4133,4349,4565,4781,4997,5213,5429,
+                 5645,5861,6077,6293,6509,6725,6941,7157,7373,7589,7805];
+      const i = t.findIndex(v => vol <= v);
+      return String(i === -1 ? t.length + 1 : i + 1).padStart(2, '0');
+    })();
+
+    const base = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
+    const headers = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+
+    const [cardRes, priceRes] = await Promise.all([
+      fetch(`${base}/info/ru/card.json`, { headers, signal: AbortSignal.timeout(8000) }),
+      fetch(`${base}/info/price-history.json`, { headers, signal: AbortSignal.timeout(8000) }),
+    ]);
+
+    if (!cardRes.ok) return null;
+    const card = await cardRes.json();
+    const title = card.imt_name || null;
+    const image = `${base}/images/big/1.webp`;
+
+    let price = null;
+    if (priceRes.ok) {
+      const history = await priceRes.json();
+      if (history?.length) {
+        const kopecks = history[history.length - 1]?.price?.RUB;
+        if (kopecks) price = `${Math.round(kopecks / 100)} ₽`;
+      }
+    }
+
+    return { title, price, image };
+  } catch (_) { return null; }
+}
+
 // Для сайтов с Cloudflare (Farfetch и др.) — внешние OG-парсеры
 async function parseViaJsonlink(url) {
   try {
@@ -303,6 +346,12 @@ app.post('/parse', authenticateToken, async (req, res) => {
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
   const host = new URL(url).hostname;
+
+  // Wildberries — CDN API, работает без антибота
+  if (host.includes('wildberries')) {
+    const result = await parseWildberries(url);
+    return res.json(result || { title: null, price: null, image: null });
+  }
 
   // Сайты с Cloudflare — используем внешние парсеры
   if (host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch')) {
