@@ -13,6 +13,7 @@
     "node-fetch": "^2.7.0",
     "cheerio": "^1.0.0-rc.12",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "playwright-core": "^1.44.0"
   }
 }

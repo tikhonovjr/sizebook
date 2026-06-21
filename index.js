@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cheerio = require('cheerio');
+const { chromium } = require('playwright-core');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -187,6 +188,73 @@ const FETCH_HEADERS = {
   'Connection': 'keep-alive',
 };
 
+// Headless browser — синглтон, переиспользуется между запросами
+let _browser = null;
+async function getHeadlessBrowser() {
+  if (_browser && _browser.isConnected()) return _browser;
+  _browser = await chromium.launch({
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || 'chromium',
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+  });
+  _browser.on('disconnected', () => { _browser = null; });
+  return _browser;
+}
+
+// Для сайтов с JS-челленджем (Servicepipe и др.)
+async function parseViaPlaywright(url, locale = 'ru-RU') {
+  try {
+    const browser = await getHeadlessBrowser();
+    const ctx = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      viewport: { width: 1440, height: 900 },
+      locale,
+      extraHTTPHeaders: { 'Accept-Language': `${locale},en;q=0.8` },
+    });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    } catch (_) {}
+    await page.waitForTimeout(2000);
+
+    const result = await page.evaluate(() => {
+      let title = null, price = null, image = null;
+      for (const el of document.querySelectorAll('script[type="application/ld+json"]')) {
+        try {
+          const data = JSON.parse(el.textContent);
+          for (const obj of (data['@graph'] || (Array.isArray(data) ? data : [data]))) {
+            if (obj['@type'] !== 'Product') continue;
+            title = title || obj.name || null;
+            const imgs = obj.image;
+            if (!image) image = Array.isArray(imgs) ? (imgs[0]?.contentUrl || imgs[0] || null) : (imgs?.contentUrl || imgs || null);
+            const offer = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
+            if (offer?.price && !price) {
+              const cur = offer.priceCurrency || '';
+              price = cur ? `${offer.price} ${cur}` : String(offer.price);
+            }
+          }
+        } catch (_) {}
+      }
+      const og = k => document.querySelector(`meta[property="${k}"]`)?.content;
+      title = title || og('og:title') || null;
+      image = image || og('og:image') || null;
+      if (!price) {
+        const p = og('og:price:amount') || og('product:price:amount');
+        const c = og('og:price:currency') || og('product:price:currency');
+        if (p) price = c ? `${p} ${c}` : p;
+      }
+      return { title, price, image };
+    });
+
+    await ctx.close();
+    return result;
+  } catch (e) {
+    console.error('Playwright parse error:', e.message);
+    return null;
+  }
+}
+
 // Wildberries — публичный CDN, не требует антибота
 async function parseWildberries(url) {
   try {
@@ -346,6 +414,12 @@ app.post('/parse', authenticateToken, async (req, res) => {
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
   const host = new URL(url).hostname;
+
+  // Сайты с JS-челленджем — нужен headless browser
+  if (host.includes('12storeez')) {
+    const result = await parseViaPlaywright(url);
+    return res.json(result || { title: null, price: null, image: null });
+  }
 
   // Wildberries — CDN API, работает без антибота
   if (host.includes('wildberries')) {
