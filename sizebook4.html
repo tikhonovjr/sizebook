@@ -1068,10 +1068,10 @@
           <div class="size-card-sub">EU 36</div>
         </div>
         <div class="size-card">
-          <div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 Q7 4 12 6 Q17 4 19 7"/><path d="M5 7 Q4 11 7 12 Q9 13 12 12 Q15 13 17 12 Q20 11 19 7"/><path d="M8 17 Q8 20 10 21 Q12 22 14 21 Q16 20 16 17"/><path d="M7 17 Q12 15 17 17"/></svg></span></div>
+          <div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 Q7 5 11 8 Q12 10 12 13 Q10 15 7 14 Q4 13 4 8Z"/><path d="M20 8 Q17 5 13 8 Q12 10 12 13 Q14 15 17 14 Q20 13 20 8Z"/><path d="M4 8 L2 6M20 8 L22 6M11 8h2"/></svg></span></div>
           <div class="size-card-label">Раздельный купальник</div>
-          <div class="size-card-value" data-size-key="beach_two">S / 44</div>
-          <div class="size-card-sub">верх 75B · низ 44</div>
+          <div class="size-card-value" data-size-key="beach_two">75B</div>
+          <div class="size-card-sub">верх как бюстгальтер</div>
         </div>
         <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
       </div>
@@ -1090,6 +1090,7 @@
       <div class="section-label">Размеры</div>
       <div class="cards-grid">
         <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H4a1 1 0 0 1-.5-1.87L12 13"/><path d="M12 13V7"/><circle cx="12" cy="5.5" r="1.5"/><path d="M10.5 7a1.5 1.5 0 0 1 3 0"/></svg></span></div><div class="size-card-label">Трусы / боксеры</div><div class="size-card-value" data-size-key="under_bottom">M</div><div class="size-card-sub">пояс 32</div></div>
+        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 Q7 5 11 8 Q12 10 12 13 Q10 15 7 14 Q4 13 4 8Z"/><path d="M20 8 Q17 5 13 8 Q12 10 12 13 Q14 15 17 14 Q20 13 20 8Z"/><path d="M4 8 L2 6M20 8 L22 6M11 8h2"/></svg></span></div><div class="size-card-label">Лифчик / бюстгальтер</div><div class="size-card-value" data-size-key="under_bra">75B</div><div class="size-card-sub">обхват + чашка</div></div>
         <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10l-2 9 3 7H6l3-7z"/><path d="M9 13h6"/></svg></span></div><div class="size-card-label">Боди</div><div class="size-card-value" data-size-key="under_body">M</div><div class="size-card-sub">нажми</div></div>
         <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8"/><path d="M9 3l-2 18h4l1-12 1 12h4L15 3"/></svg></span></div><div class="size-card-label">Чулки</div><div class="size-card-value" data-size-key="under_stockings">M / 2</div><div class="size-card-sub">нажми</div></div>
         <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10l-2 17h-4l1-11-1 11H7z"/><path d="M8 8h8"/></svg></span></div><div class="size-card-label">Колготки</div><div class="size-card-value" data-size-key="under_tights">M / 2</div><div class="size-card-sub">нажми</div></div>
@@ -1626,8 +1627,10 @@ const SIL_OVERLAY_BEACH_MALE = `
     <path d="M170 10 L170 4 M185 14 L189 10 M191 28 L197 28 M185 42 L189 46 M170 52 L170 58 M155 42 L151 46 M149 28 L143 28 M155 14 L151 10" stroke="#FFC200" stroke-width="1.5" fill="none" opacity="0.38"/>`;
 
 const SIL_OVERLAY_BEACH_FEMALE = `
-    <path d="M78 86 Q90 96 100 96 Q110 96 122 86 L118 113 Q108 120 100 121 Q92 120 82 113 Z" fill="#0277BD" opacity="0.82"/>
-    <path d="M78 114 Q88 122 100 123 Q112 122 122 114 L128 170 L72 170 Z" fill="#0277BD" opacity="0.74"/>
+    <path d="M78 86 Q86 92 94 98 Q98 107 95 116 Q84 118 76 108 Q72 98 78 86 Z" fill="#0277BD" opacity="0.82"/>
+    <path d="M122 86 Q114 92 106 98 Q102 107 105 116 Q116 118 124 108 Q128 98 122 86 Z" fill="#0277BD" opacity="0.82"/>
+    <path d="M94 100 Q100 96 106 100" stroke="#015C92" stroke-width="1.5" fill="none" opacity="0.75"/>
+    <path d="M78 86 L66 76 M122 86 L134 76" stroke="#0277BD" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
     <path d="M55 172 L55 196 Q55 203 66 205 L134 205 Q145 203 145 196 L145 172 Z" fill="#0277BD" opacity="0.78"/>
     <path d="M66 203 L64 232 Q66 240 78 240 L100 236 L100 203 Z" fill="#0277BD" opacity="0.72"/>
     <path d="M134 203 L136 232 Q134 240 122 240 L100 236 L100 203 Z" fill="#0277BD" opacity="0.72"/>
@@ -2027,7 +2030,7 @@ const sectionCategoryOptions = {
   outer:  ["Куртка / пальто", "Пуховик", "Мерка (см)", "Другое"],
   sport:  ["Футболка / форма", "Шорты / тайтсы", "Обувь спортивная", "Снаряжение", "Мерка (см)", "Другое"],
   beach:  ["Купальник слитный", "Купальник раздельный", "Плавки / шорты", "Другое"],
-  under:  ["Трусы / боксеры", "Боди", "Чулки", "Колготки", "Носки", "Мерка (см)", "Другое"],
+  under:  ["Трусы / боксеры", "Лифчик / бюстгальтер", "Боди", "Чулки", "Колготки", "Носки", "Мерка (см)", "Другое"],
   hats:   ["Кепка / шапка", "Зимняя шапка", "Обхват головы (мерка)", "Другое"],
   gloves: ["Перчатки", "Обхват кисти (мерка)", "Другое"],
   shoes:  ["Кроссовки", "Туфли / ботинки", "Сапоги", "Сандалии / шлёпки", "Мерка (см)", "Другое"],
@@ -2051,17 +2054,19 @@ const categorySizePlaceholders = {
   "Сандалии / шлёпки": "EU 43",
   "Носки": "43–46 EU",
   "Трусы / боксеры": "M, пояс 32",
+  "Лифчик / бюстгальтер": "75B",
   "Боди": "M, 44",
   "Чулки": "M / 2",
   "Колготки": "M / 2",
   "Мерка (см)": "96",
   "Купальник слитный": "S / 44, EU 36",
-  "Купальник раздельный": "S / 44, верх 75B",
+  "Купальник раздельный": "75B",
   "Плавки / шорты": "M, пояс 32",
 };
 
 // ---- ВАРИАНТЫ РАЗМЕРОВ ПО КАТЕГОРИИ ----
 const SHOES_EU = ['EU 36','EU 36.5','EU 37','EU 37.5','EU 38','EU 38.5','EU 39','EU 39.5','EU 40','EU 40.5','EU 41','EU 41.5','EU 42','EU 42.5','EU 43','EU 43.5','EU 44','EU 44.5','EU 45','EU 45.5','EU 46','EU 47','EU 48'];
+const BRA_SIZES = ['65A','65B','65C','65D','70A','70B','70C','70D','70E','75A','75B','75C','75D','75E','80A','80B','80C','80D','80E','85A','85B','85C','85D','90B','90C','90D','95B','95C','100B','100C'];
 const categorySelectOptions = {
   "Футболка / рубашка":    ["XS","S","M","L","XL","XXL","XXXL"],
   "Футболка / форма":      ["XS","S","M","L","XL","XXL","XXXL"],
@@ -2088,12 +2093,13 @@ const categorySelectOptions = {
   "Зимняя шапка":          ["XS/S","M/L","XL/XXL","универсальный"],
   "Перчатки":              ["XS","S","M","L","XL","XXL"],
   "Трусы / боксеры":       ["XS","S","M","L","XL","XXL","XXXL"],
+  "Лифчик / бюстгальтер":  BRA_SIZES,
   "Боди":                  ["XS","S","M","L","XL","XXL"],
   "Чулки":                 ["XS / 1","S / 2","M / 3","L / 4","XL / 5"],
   "Колготки":              ["XS / 1","S / 2","M / 3","L / 4","XL / 5"],
   "Носки":                 ["35–38","39–41","42–44","43–46","45–48"],
   "Купальник слитный":     ["XS / 40","S / 42","M / 44","L / 46","XL / 48","XXL / 50"],
-  "Купальник раздельный":  ["XS / 40","S / 42","M / 44","L / 46","XL / 48","XXL / 50"],
+  "Купальник раздельный":  BRA_SIZES,
   "Плавки / шорты":        ["XS","S","M","L","XL","XXL"],
   "Велосипед":             ["XS (< 47 см)","S (47–50 см)","M (51–54 см)","L (55–58 см)","XL (> 58 см)"],
   "Снаряжение":            ["XS","S","M","L","XL","XXL"],
@@ -2158,6 +2164,7 @@ const CATEGORY_KEY_MAP = {
   "Купальник раздельный":     "beach_two",
   "Плавки / шорты":           "beach_swim",
   "Трусы / боксеры":          "under_bottom",
+  "Лифчик / бюстгальтер":     "under_bra",
   "Боди":                     "under_body",
   "Чулки":                    "under_stockings",
   "Колготки":                 "under_tights",
@@ -2190,7 +2197,7 @@ function selectGender(el, gender) {
 
 function updateGenderScopedCards() {
   const showFemaleBeach = currentGender === 'female';
-  const femaleOnlyKeys = ['beach_one','beach_two','under_body','under_stockings','under_tights'];
+  const femaleOnlyKeys = ['beach_one','beach_two','under_bra','under_body','under_stockings','under_tights'];
   femaleOnlyKeys.forEach(key => {
     const el = document.querySelector('[data-size-key="' + key + '"]');
     const card = el?.closest('.size-card');
