@@ -613,7 +613,20 @@
               <span id="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
             </div>
             <div id="item-list-content"></div>
-            <button class="add-btn" onclick="openModal()">+ Добавить вещь</button>
+            <div id="item-add-form" style="margin-top:1rem;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);display:none;">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Добавить вещь</div>
+              <input type="text" id="item-form-name" placeholder="Название (обязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select id="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" id="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <input type="text" id="item-form-size" placeholder="Размер (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <input type="text" id="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
+              <div id="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="hideItemAddForm()" style="flex:1;padding:8px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text2);cursor:pointer;">Отмена</button>
+                <button onclick="submitItemForm()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;background:var(--text);color:var(--surface);cursor:pointer;font-weight:500;">Сохранить</button>
+              </div>
+            </div>
+            <button class="add-btn" id="item-add-btn" onclick="showItemAddForm()">+ Добавить вещь</button>
           </div>
         </div>
         <div style="position:sticky;top:80px;">
@@ -1716,9 +1729,22 @@ function cancelHidePanel() {
 function hideZoneTooltip() { scheduleHidePanel(); }
 function showZoneTooltip(e, zone) { showZonePanel(zone); }
 
-function showItemList(zone) {
-  const data = zoneData[zone];
-  if (!data) return;
+let _currentItemZone = null;
+
+function renderItemRow(item) {
+  const meta = [item.brand, item.size].filter(Boolean).join(' · ');
+  return `<div class="item-entry" id="item-row-${item.id}">
+    <div>
+      <div class="item-name">${item.name}</div>
+      ${meta ? `<div class="item-brand">${meta}</div>` : ''}
+      ${item.note ? `<div class="item-brand" style="color:var(--text3)">${item.note}</div>` : ''}
+    </div>
+    <button onclick="deleteItem(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0;line-height:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>`;
+}
+
+async function showItemList(zone) {
+  _currentItemZone = zone;
 
   document.querySelector('.cards-grid').style.display = 'none';
   document.querySelectorAll('.section-label').forEach(l => {
@@ -1728,16 +1754,28 @@ function showItemList(zone) {
   const panel = document.getElementById('item-list-panel');
   panel.style.display = 'block';
   document.getElementById('item-list-title').textContent = itemListTitles[zone] || zone;
-  document.getElementById('item-list-content').innerHTML = data.items.map(item =>
-    `<div class="item-entry">
-      <div class="item-brand-dot" style="background:${item.color}"></div>
-      <div>
-        <div class="item-name">${item.name}</div>
-        <div class="item-brand">${item.brand}</div>
-      </div>
-      <div class="item-size-pill">${item.size}</div>
-    </div>`
-  ).join('');
+  document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Загрузка...</div>';
+  hideItemAddForm();
+
+  // populate brand select for the add form
+  const group = sectionBrandGroup[zone] || 'clothing';
+  const brands = brandOptions[group] || brandOptions.clothing;
+  const brandSel = document.getElementById('item-form-brand');
+  brandSel.innerHTML = '<option value="">— бренд не указан —</option>' +
+    brands.map(b => `<option value="${b}">${b}</option>`).join('') +
+    '<option value="__other__">Другое...</option>';
+  document.getElementById('item-form-brand-input').style.display = 'none';
+
+  try {
+    const r = await fetch(API + '/items?zone=' + encodeURIComponent(zone), { headers: apiHeaders() });
+    if (!r.ok) { document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка загрузки</div>'; return; }
+    const items = await r.json();
+    document.getElementById('item-list-content').innerHTML = items.length
+      ? items.map(renderItemRow).join('')
+      : '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
+  } catch (e) {
+    document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка сети</div>';
+  }
 }
 
 function hideItemList() {
@@ -1746,6 +1784,89 @@ function hideItemList() {
   document.querySelectorAll('.section-label').forEach(l => {
     if (l.textContent === 'Одежда') l.style.display = '';
   });
+  _currentItemZone = null;
+}
+
+function showItemAddForm() {
+  document.getElementById('item-add-form').style.display = 'block';
+  document.getElementById('item-add-btn').style.display = 'none';
+  document.getElementById('item-form-name').value = '';
+  document.getElementById('item-form-size').value = '';
+  document.getElementById('item-form-note').value = '';
+  document.getElementById('item-form-brand').value = '';
+  document.getElementById('item-form-brand-input').style.display = 'none';
+  document.getElementById('item-form-brand-input').value = '';
+  document.getElementById('item-form-error').style.display = 'none';
+  document.getElementById('item-form-name').focus();
+}
+
+function hideItemAddForm() {
+  document.getElementById('item-add-form').style.display = 'none';
+  document.getElementById('item-add-btn').style.display = '';
+}
+
+function onItemBrandChange() {
+  const sel = document.getElementById('item-form-brand');
+  const inp = document.getElementById('item-form-brand-input');
+  if (sel.value === '__other__') {
+    inp.style.display = 'block';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+  }
+}
+
+async function submitItemForm() {
+  const name = document.getElementById('item-form-name').value.trim();
+  const brandSel = document.getElementById('item-form-brand');
+  const brandInp = document.getElementById('item-form-brand-input');
+  const brand = brandSel.value === '__other__' ? brandInp.value.trim() : brandSel.value;
+  const size = document.getElementById('item-form-size').value.trim();
+  const note = document.getElementById('item-form-note').value.trim();
+  const errEl = document.getElementById('item-form-error');
+
+  if (!name) {
+    errEl.textContent = 'Введите название';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  try {
+    const r = await fetch(API + '/items', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ zone: _currentItemZone, name, brand, size, note })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      errEl.textContent = 'Ошибка: ' + (err.error || r.status);
+      errEl.style.display = '';
+      return;
+    }
+    const item = await r.json();
+    hideItemAddForm();
+    const content = document.getElementById('item-list-content');
+    const empty = content.querySelector('div[style*="Нет вещей"]') || content.querySelector('div[style*="Загрузка"]');
+    if (empty) content.innerHTML = '';
+    content.insertAdjacentHTML('beforeend', renderItemRow(item));
+  } catch (e) {
+    errEl.textContent = 'Ошибка сети';
+    errEl.style.display = '';
+  }
+}
+
+async function deleteItem(id) {
+  try {
+    const r = await fetch(API + '/items/' + id, { method: 'DELETE', headers: apiHeaders() });
+    if (!r.ok) return;
+    const row = document.getElementById('item-row-' + id);
+    if (row) row.remove();
+    const content = document.getElementById('item-list-content');
+    if (!content.querySelector('.item-entry')) {
+      content.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
+    }
+  } catch (e) { /* silent */ }
 }
 
 function openModal() {

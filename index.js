@@ -74,6 +74,19 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links(token);
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS items (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      zone       TEXT NOT NULL,
+      name       TEXT NOT NULL,
+      brand      TEXT,
+      size       TEXT,
+      note       TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_items_user_zone ON items(user_id, zone);
+  `);
   console.log('DB ready');
 }
 
@@ -281,6 +294,38 @@ app.get('/share/:token', async (req, res) => {
     }
 
     res.json(result);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+// ── ITEMS ─────────────────────────────────────────────────────────────────────
+app.get('/items', authenticateToken, async (req, res) => {
+  try {
+    const zone = req.query.zone;
+    if (!zone) return res.status(400).json({ error: 'zone required' });
+    const r = await pool.query(
+      'SELECT * FROM items WHERE user_id=$1 AND zone=$2 ORDER BY id ASC',
+      [req.user.id, zone]
+    );
+    res.json(r.rows);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.post('/items', authenticateToken, async (req, res) => {
+  try {
+    const { zone, name, brand, size, note } = req.body;
+    if (!zone || !name) return res.status(400).json({ error: 'zone и name обязательны' });
+    const r = await pool.query(
+      'INSERT INTO items (user_id, zone, name, brand, size, note) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [req.user.id, zone, name, brand || null, size || null, note || null]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.delete('/items/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
