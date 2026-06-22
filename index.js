@@ -51,6 +51,17 @@ async function initDB() {
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS size TEXT;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS image TEXT;
   `);
+  // Миграция: уникальный индекс на sizes.user_id (нужен для ON CONFLICT в POST /sizes)
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'sizes_user_id_unique'
+      ) THEN
+        ALTER TABLE sizes ADD CONSTRAINT sizes_user_id_unique UNIQUE (user_id);
+      END IF;
+    END $$;
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS share_links (
       id         SERIAL PRIMARY KEY,
