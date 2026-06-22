@@ -256,15 +256,14 @@ async function parseViaPlaywright(url, locale = 'ru-RU') {
 }
 
 // Wildberries — публичный CDN, не требует антибота
-async function parseWildberries(url, dbg) {
+async function parseWildberries(url) {
   try {
+    // Поддерживаем URL с /detail.aspx и без trailing slash
     const nm = url.match(/\/catalog\/(\d+)/)?.[1];
-    dbg.push(`nm from url: ${nm}`);
     if (!nm) return null;
     const id = Number(nm);
     const vol = Math.floor(id / 100000);
     const part = Math.floor(id / 1000);
-    dbg.push(`vol=${vol} part=${part}`);
 
     const basket = (() => {
       const t = [143,287,431,719,1007,1061,1115,1169,1313,1601,1655,1919,2045,2189,2405,
@@ -273,71 +272,42 @@ async function parseWildberries(url, dbg) {
       const i = t.findIndex(v => vol <= v);
       return String(i === -1 ? t.length + 1 : i + 1).padStart(2, '0');
     })();
-    dbg.push(`basket=${basket}`);
 
     const base = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
-    dbg.push(`base=${base}`);
     const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
 
-    const cardUrl = `${base}/info/ru/card.json`;
-    dbg.push(`fetching ${cardUrl}`);
-    const cardRes = await fetch(cardUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(8000) });
-    dbg.push(`cardRes: ${cardRes.status} ok=${cardRes.ok}`);
-    if (!cardRes.ok) {
-      const body = await cardRes.text().catch(() => '');
-      dbg.push(`cardRes body (first 200): ${body.slice(0, 200)}`);
-      return null;
-    }
+    const cardRes = await fetch(`${base}/info/ru/card.json`, { headers: cdnHeaders, signal: AbortSignal.timeout(8000) });
+    if (!cardRes.ok) return null;
     const card = await cardRes.json();
     const title = card.imt_name || null;
-    dbg.push(`title="${title}"`);
     const image = `${base}/images/big/1.webp`;
 
-    // Пробуем несколько WB price-эндпоинтов
+    // WB заблокировал price-history.json и search/catalog API с датацентровых IP.
+    // Пробуем search.wb.ru — возвращает цену когда не rate-limited.
     let price = null;
-    const wbPriceHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      'Accept': 'application/json',
-      'Referer': 'https://www.wildberries.ru/',
-      'Origin': 'https://www.wildberries.ru',
-    };
-    const subjectId = card?.data?.subject_id;
-    const priceEndpoints = [
-      // Catalog API с subject_id из card.json
-      subjectId ? `https://catalog.wb.ru/catalog/${subjectId}/catalog?appType=1&curr=rub&dest=-1257786&sort=popular&limit=1&nm=${nm}` : null,
-      // Catalog API без subject (широкий запрос)
-      `https://catalog.wb.ru/catalog/v2/filters?appType=1&curr=rub&dest=-1257786&nm=${nm}`,
-      // Search API (может работать с Railway IP при других заголовках)
-      `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
-    ].filter(Boolean);
-
-    for (const ep of priceEndpoints) {
-      if (price) break;
-      dbg.push(`trying price endpoint: ${ep}`);
-      try {
-        const r = await fetch(ep, { headers: wbPriceHeaders, signal: AbortSignal.timeout(5000) });
-        dbg.push(`  → ${r.status} ok=${r.ok}`);
-        if (!r.ok) {
-          const body = await r.text().catch(() => '');
-          dbg.push(`  → body: ${body.slice(0, 120)}`);
-          continue;
+    try {
+      const searchRes = await fetch(
+        `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://www.wildberries.ru/',
+            'Origin': 'https://www.wildberries.ru',
+          },
+          signal: AbortSignal.timeout(5000),
         }
-        const sd = await r.json();
+      );
+      if (searchRes.ok) {
+        const sd = await searchRes.json();
         const prod = sd?.data?.products?.find(p => String(p.id) === nm);
-        dbg.push(`  → prod found: ${!!prod} salePriceU=${prod?.salePriceU} priceU=${prod?.priceU}`);
-        const priceKopecks = prod?.salePriceU ?? prod?.priceU;
-        if (priceKopecks) price = `${Math.round(priceKopecks / 100)} ₽`;
-      } catch (e) {
-        dbg.push(`  → error: ${e.message}`);
+        const kopecks = prod?.salePriceU ?? prod?.priceU;
+        if (kopecks) price = `${Math.round(kopecks / 100)} ₽`;
       }
-    }
+    } catch (_) {}
 
-    dbg.push(`result: title="${title}" price="${price}" image="${image}"`);
     return { title, price, image };
-  } catch (e) {
-    dbg.push(`parseWildberries threw: ${e.message}`);
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 // Для сайтов с Cloudflare (Farfetch и др.) — внешние OG-парсеры
@@ -462,31 +432,24 @@ function mergeParseResults(a, b) {
 }
 
 app.post('/parse', authenticateToken, async (req, res) => {
-  const { url, _diag } = req.body;
+  const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
   const host = new URL(url).hostname;
-  const dbg = [];
-  dbg.push(`url=${url}`);
-  dbg.push(`host=${host}`);
 
   // 12storeez — JS-челлендж, сразу Playwright
   if (host.includes('12storeez')) {
-    dbg.push('branch=12storeez');
     const result = await parseViaPlaywright(url);
     console.log(`[parse] 12storeez playwright:`, result);
-    const out = result || { title: null, price: null, image: null };
-    return res.json(_diag ? { ...out, _debug: dbg } : out);
+    return res.json(result || { title: null, price: null, image: null });
   }
 
   // Wildberries — CDN API, без антибота
   if (host.includes('wildberries')) {
-    dbg.push('branch=wildberries');
-    const result = await parseWildberries(url, dbg);
-    console.log(`[parse] wildberries cdn:`, result, dbg);
-    const out = result || { title: null, price: null, image: null };
-    return res.json(_diag ? { ...out, _debug: dbg } : out);
+    const result = await parseWildberries(url);
+    console.log(`[parse] wildberries cdn:`, result);
+    return res.json(result || { title: null, price: null, image: null });
   }
 
   const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch');
