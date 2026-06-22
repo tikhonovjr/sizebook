@@ -237,6 +237,7 @@
   .size-card {
     background: var(--surface); border: 0.5px solid var(--border);
     border-radius: var(--radius); padding: 1rem;
+    min-height: 104px;
     cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
   }
   .size-card:hover { border-color: var(--border2); box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
@@ -701,28 +702,28 @@
             <div class="add-card" onclick="openModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Добавить</span></div>
           </div>
           <div id="daily-save-msg" class="daily-save-msg"></div>
-          <div id="item-list-panel" style="display:none;margin-top:1.5rem;">
+          <div id="item-list-panel" class="item-list-panel" style="display:none;margin-top:1.5rem;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">
               <button onclick="hideItemList()" style="background:none;border:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;gap:4px;font-size:13px;padding:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>назад</button>
-              <span id="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
+              <span id="item-list-title" class="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
             </div>
-            <div id="item-list-content"></div>
-            <div id="item-add-form" style="margin-top:1rem;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);display:none;">
+            <div id="item-list-content" class="item-list-content"></div>
+            <div id="item-add-form" class="item-add-form" style="margin-top:1rem;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);display:none;">
               <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Добавить вещь</div>
-              <select id="item-form-name-select" onchange="onItemNameChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
-              <input type="text" id="item-form-name-input" placeholder="Введите название" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
-              <select id="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
-              <input type="text" id="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
-              <select id="item-form-size-select" onchange="onItemSizeChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
-              <input type="text" id="item-form-size-input" placeholder="Введите размер" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
-              <input type="text" id="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
-              <div id="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
+              <select id="item-form-name-select" class="item-form-name-select" onchange="onItemNameChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" id="item-form-name-input" class="item-form-name-input" placeholder="Введите название" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select id="item-form-brand" class="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" id="item-form-brand-input" class="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select id="item-form-size-select" class="item-form-size-select" onchange="onItemSizeChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" id="item-form-size-input" class="item-form-size-input" placeholder="Введите размер" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <input type="text" id="item-form-note" class="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
+              <div id="item-form-error" class="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
               <div style="display:flex;gap:8px;">
                 <button onclick="hideItemAddForm()" style="flex:1;padding:8px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text2);cursor:pointer;">Отмена</button>
                 <button onclick="submitItemForm()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;background:var(--text);color:var(--surface);cursor:pointer;font-weight:500;">Сохранить</button>
               </div>
             </div>
-            <button class="add-btn" id="item-add-btn" onclick="showItemAddForm()">+ Добавить вещь</button>
+            <button class="add-btn item-add-btn" id="item-add-btn" onclick="showItemAddForm()">+ Добавить вещь</button>
           </div>
         </div>
         <div style="position:sticky;top:80px;">
@@ -797,25 +798,51 @@
         <div class="size-page-main-panel">
           <div class="section-label">Костюм</div>
           <div class="cards-grid">
-            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span></div><div class="size-card-label">Пиджак</div><div class="size-card-value" data-size-key="formal_jacket">48</div><div class="size-card-sub">EU / M</div></div>
-            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></span></div><div class="size-card-label">Брюки</div><div class="size-card-value" data-size-key="formal_pants">32/32</div><div class="size-card-sub">пояс / длина</div></div>
-            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span></div><div class="size-card-label">Рубашка</div><div class="size-card-value" data-size-key="formal_shirt">39</div><div class="size-card-sub">размер ворота</div></div>
+            <div class="size-card" onclick="showItemList('formal_jacket')"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span></div><div class="size-card-label">Пиджак</div><input data-size-key="formal_jacket" class="size-card-value" type="text" placeholder="—" oninput="debounceSizeSave(this)" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="formal_jacket">нажми</div></div>
+            <div class="size-card" onclick="showItemList('formal_pants')"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></span></div><div class="size-card-label">Брюки</div><input data-size-key="formal_pants" class="size-card-value" type="text" placeholder="—" oninput="debounceSizeSave(this)" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="formal_pants">нажми</div></div>
+            <div class="size-card" onclick="showItemList('formal_shirt')"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span></div><div class="size-card-label">Рубашка</div><input data-size-key="formal_shirt" class="size-card-value" type="text" placeholder="—" oninput="debounceSizeSave(this)" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="formal_shirt">нажми</div></div>
             <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
           </div>
+          <div class="daily-save-msg"></div>
+          <div class="item-list-panel" style="display:none;margin-top:1.5rem;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">
+              <button onclick="hideItemList()" style="background:none;border:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;gap:4px;font-size:13px;padding:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>назад</button>
+              <span class="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
+            </div>
+            <div class="item-list-content"></div>
+            <div class="item-add-form" style="margin-top:1rem;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);display:none;">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Добавить вещь</div>
+              <select class="item-form-name-select" onchange="onItemNameChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" class="item-form-name-input" placeholder="Введите название" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select class="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" class="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select class="item-form-size-select" onchange="onItemSizeChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" class="item-form-size-input" placeholder="Введите размер" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <input type="text" class="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
+              <div class="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="hideItemAddForm()" style="flex:1;padding:8px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text2);cursor:pointer;">Отмена</button>
+                <button onclick="submitItemForm()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;background:var(--text);color:var(--surface);cursor:pointer;font-weight:500;">Сохранить</button>
+              </div>
+            </div>
+            <button class="add-btn item-add-btn" onclick="showItemAddForm()">+ Добавить вещь</button>
+          </div>
 
-          <div class="section-label">Мерки для пошива</div>
-          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M3 12h18"/></svg></span><span class="measure-label">Ширина плеч</span><span class="measure-value">44</span><span class="measure-unit">см</span></div>
-          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4-4 4 4M8 17l4 4 4-4M12 3v18"/></svg></span><span class="measure-label">Длина рукава</span><span class="measure-value">64</span><span class="measure-unit">см</span></div>
-          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват груди</span><span class="measure-value">96</span><span class="measure-unit">см</span></div>
-          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват талии</span><span class="measure-value">82</span><span class="measure-unit">см</span></div>
-          <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить мерку</button>
+          <div class="item-secondary-content">
+            <div class="section-label">Мерки для пошива</div>
+            <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M3 12h18"/></svg></span><span class="measure-label">Ширина плеч</span><span class="measure-value">44</span><span class="measure-unit">см</span></div>
+            <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4-4 4 4M8 17l4 4 4-4M12 3v18"/></svg></span><span class="measure-label">Длина рукава</span><span class="measure-value">64</span><span class="measure-unit">см</span></div>
+            <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват груди</span><span class="measure-value">96</span><span class="measure-unit">см</span></div>
+            <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват талии</span><span class="measure-value">82</span><span class="measure-unit">см</span></div>
+            <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить мерку</button>
 
-          <div class="section-label">Обувь для костюма</div>
-          <div class="sys-row">
-            <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
-            <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
-            <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
-            <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+            <div class="section-label">Обувь для костюма</div>
+            <div class="sys-row">
+              <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
+              <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
+              <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
+              <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+            </div>
           </div>
         </div>
         <div class="size-page-silhouette">
@@ -1688,7 +1715,8 @@ const _inlineSilHideTimers = {};
 
 function getInlineSizeValue(section, key) {
   const el = document.querySelector('#page-' + section + ' [data-size-key="' + key + '"]');
-  return el ? el.textContent.trim() : '';
+  if (!el) return '';
+  return el.tagName === 'INPUT' ? el.value.trim() : el.textContent.trim();
 }
 
 function getInlineSilItems(section, zone) {
@@ -1832,7 +1860,7 @@ function showPage(name) {
   if (name === 'share') updateSharePage();
   const SIZE_PAGES = ['daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc'];
   if (SIZE_PAGES.includes(name)) loadAllSizes();
-  if (name === 'daily') loadItemCounts();
+  if (name === 'daily' || name === 'formal') loadItemCounts();
   updateSilPanel(name);
 }
 
@@ -1923,6 +1951,7 @@ const brandOptions = {
 const sectionBrandGroup = {
   daily:'clothing', formal:'clothing', outer:'clothing', under:'clothing', beach:'clothing',
   sport:'sport', shoes:'shoes', hats:'hats', gloves:'gloves', acc:'acc',
+  formal_jacket:'clothing', formal_pants:'clothing', formal_shirt:'clothing',
 };
 const zoneItemNames = {
   tops:    ['Футболка','Рубашка','Поло','Лонгслив','Свитер','Худи','Кардиган','Джемпер','Водолазка','Майка','Топ','Боди'],
@@ -1931,6 +1960,9 @@ const zoneItemNames = {
   outer:   ['Куртка','Пальто','Пуховик','Тренч','Дублёнка','Бомбер','Ветровка','Плащ','Анорак','Парка','Жилет'],
   acc:     ['Ремень','Кольцо','Браслет','Часы','Цепочка','Серьги','Сумка','Рюкзак','Шарф','Перчатки','Кошелёк','Очки','Галстук'],
   hats:    ['Бейсболка','Шапка','Кепка','Панама','Берет','Федора','Ушанка','Шляпа','Снуд','Балаклава'],
+  formal_jacket: ['Пиджак','Костюм','Жилет','Смокинг'],
+  formal_pants:  ['Брюки','Костюмные брюки','Чиносы'],
+  formal_shirt:  ['Рубашка','Сорочка','Поло'],
 };
 const zoneSizeOptions = {
   tops:    ['XS','S','M','L','XL','XXL','XXXL','4XL'],
@@ -1939,6 +1971,9 @@ const zoneSizeOptions = {
   outer:   ['XS','S','M','L','XL','XXL','XXXL','4XL'],
   acc:     ['One Size','XS','S','M','L','XL'],
   hats:    ['54','55','56','57','58','59','60','61','S/M','L/XL','One Size'],
+  formal_jacket: ['44','46','48','50','52','54','56','S','M','L','XL'],
+  formal_pants:  ['28','30','32','34','36','38','40','XS','S','M','L','XL'],
+  formal_shirt:  ['37','38','39','40','41','42','43','44','XS','S','M','L','XL'],
 };
 
 // ---- JSONB КЛЮЧИ ПО КАТЕГОРИИ ----
@@ -2043,7 +2078,10 @@ const itemListTitles = {
   shoes: "Обувь",
   outer: "Верхняя одежда",
   acc: "Аксессуары",
-  hats: "Головные уборы"
+  hats: "Головные уборы",
+  formal_jacket: "Пиджак",
+  formal_pants: "Брюки",
+  formal_shirt: "Рубашка"
 };
 
 function toggleSport(sport) {
@@ -2095,24 +2133,54 @@ function renderZonePanelItems(items) {
     : "<div style=\"font-size:12px;color:var(--text3);padding:4px 0;\">Нет вещей</div>";
 }
 
+const ITEM_COUNT_ZONES = ['tops','bottoms','shoes','outer','acc','hats','formal_jacket','formal_pants','formal_shirt'];
+
+function getActivePage() {
+  return document.querySelector('.page.active');
+}
+
+function getActiveItemEls() {
+  const page = getActivePage() || document;
+  return {
+    page,
+    grid: page.querySelector('.cards-grid'),
+    labels: page.querySelectorAll('.section-label'),
+    panel: page.querySelector('.item-list-panel'),
+    title: page.querySelector('.item-list-title'),
+    content: page.querySelector('.item-list-content'),
+    addForm: page.querySelector('.item-add-form'),
+    nameSelect: page.querySelector('.item-form-name-select'),
+    nameInput: page.querySelector('.item-form-name-input'),
+    brandSelect: page.querySelector('.item-form-brand'),
+    brandInput: page.querySelector('.item-form-brand-input'),
+    sizeSelect: page.querySelector('.item-form-size-select'),
+    sizeInput: page.querySelector('.item-form-size-input'),
+    noteInput: page.querySelector('.item-form-note'),
+    error: page.querySelector('.item-form-error'),
+    addBtn: page.querySelector('.item-add-btn'),
+    secondary: page.querySelector('.item-secondary-content'),
+  };
+}
+
 function updateCardCount(zone) {
-  const count = document.querySelectorAll('#item-list-content .item-entry').length;
-  const el = document.querySelector('.size-card-sub[data-item-zone="' + zone + '"]');
+  const els = getActiveItemEls();
+  const count = els.content ? els.content.querySelectorAll('.item-entry').length : 0;
+  const el = els.page.querySelector('.size-card-sub[data-item-zone="' + zone + '"]');
   if (el) el.textContent = count > 0 ? count + ' ' + pluralVeshchi(count) + ' · нажми' : 'нажми';
   delete _zonePanelCache[zone];
 }
 
 async function loadItemCounts() {
-  const zones = ['tops','bottoms','shoes','outer','acc','hats'];
+  const zones = ITEM_COUNT_ZONES;
   try {
     const results = await Promise.all(zones.map(z =>
       fetch(API + '/items?zone=' + z, { headers: apiHeaders() }).then(r => r.ok ? r.json() : []).catch(() => [])
     ));
     zones.forEach((z, i) => {
-      const el = document.querySelector('.size-card-sub[data-item-zone="' + z + '"]');
-      if (!el) return;
       const count = results[i].length;
-      el.textContent = count > 0 ? count + ' ' + pluralVeshchi(count) + ' · нажми' : 'нажми';
+      document.querySelectorAll('.size-card-sub[data-item-zone="' + z + '"]').forEach(el => {
+        el.textContent = count > 0 ? count + ' ' + pluralVeshchi(count) + ' · нажми' : 'нажми';
+      });
     });
   } catch(e) { /* silent */ }
 }
@@ -2183,91 +2251,112 @@ function renderItemRow(item) {
 
 async function showItemList(zone) {
   _currentItemZone = zone;
+  const els = getActiveItemEls();
+  if (!els.panel || !els.content) return;
 
-  document.querySelector('.cards-grid').style.display = 'none';
-  document.querySelectorAll('.section-label').forEach(l => {
-    if (l.textContent === 'Одежда') l.style.display = 'none';
+  if (els.grid) els.grid.style.display = 'none';
+  if (els.secondary) els.secondary.style.display = 'none';
+  els.labels.forEach(l => {
+    if (l.textContent === 'Одежда' || l.textContent === 'Костюм') l.style.display = 'none';
   });
 
-  const panel = document.getElementById('item-list-panel');
-  panel.style.display = 'block';
-  document.getElementById('item-list-title').textContent = itemListTitles[zone] || zone;
-  document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Загрузка...</div>';
+  els.panel.style.display = 'block';
+  if (els.title) els.title.textContent = itemListTitles[zone] || zone;
+  els.content.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Загрузка...</div>';
   hideItemAddForm();
 
   // populate name select for the add form
   const names = zoneItemNames[zone] || [];
-  const nameSel = document.getElementById('item-form-name-select');
-  nameSel.innerHTML = '<option value="">— выберите название —</option>' +
-    names.map(n => `<option value="${n}">${n}</option>`).join('') +
-    '<option value="__other__">Другое...</option>';
-  document.getElementById('item-form-name-input').style.display = 'none';
-  document.getElementById('item-form-name-input').value = '';
+  if (els.nameSelect) {
+    els.nameSelect.innerHTML = '<option value="">— выберите название —</option>' +
+      names.map(n => `<option value="${n}">${n}</option>`).join('') +
+      '<option value="__other__">Другое...</option>';
+  }
+  if (els.nameInput) {
+    els.nameInput.style.display = 'none';
+    els.nameInput.value = '';
+  }
 
   // populate size select for the add form
   const sizes = zoneSizeOptions[zone] || [];
-  const sizeSel = document.getElementById('item-form-size-select');
-  sizeSel.innerHTML = '<option value="">— размер не указан —</option>' +
-    sizes.map(s => `<option value="${s}">${s}</option>`).join('') +
-    '<option value="__other__">Другое...</option>';
-  document.getElementById('item-form-size-input').style.display = 'none';
-  document.getElementById('item-form-size-input').value = '';
+  if (els.sizeSelect) {
+    els.sizeSelect.innerHTML = '<option value="">— размер не указан —</option>' +
+      sizes.map(s => `<option value="${s}">${s}</option>`).join('') +
+      '<option value="__other__">Другое...</option>';
+  }
+  if (els.sizeInput) {
+    els.sizeInput.style.display = 'none';
+    els.sizeInput.value = '';
+  }
 
   // populate brand select for the add form (alphabetically sorted)
   const group = sectionBrandGroup[zone] || 'clothing';
   const brands = [...(brandOptions[group] || brandOptions.clothing)].sort((a, b) => a.localeCompare(b, 'ru'));
-  const brandSel = document.getElementById('item-form-brand');
-  brandSel.innerHTML = '<option value="">— бренд не указан —</option>' +
-    brands.map(b => `<option value="${b}">${b}</option>`).join('') +
-    '<option value="__other__">Другое...</option>';
-  document.getElementById('item-form-brand-input').style.display = 'none';
+  if (els.brandSelect) {
+    els.brandSelect.innerHTML = '<option value="">— бренд не указан —</option>' +
+      brands.map(b => `<option value="${b}">${b}</option>`).join('') +
+      '<option value="__other__">Другое...</option>';
+  }
+  if (els.brandInput) els.brandInput.style.display = 'none';
 
   try {
     const r = await fetch(API + '/items?zone=' + encodeURIComponent(zone), { headers: apiHeaders() });
-    if (!r.ok) { document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка загрузки</div>'; return; }
+    if (!r.ok) { els.content.innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка загрузки</div>'; return; }
     const items = await r.json();
-    document.getElementById('item-list-content').innerHTML = items.length
+    els.content.innerHTML = items.length
       ? items.map(renderItemRow).join('')
       : '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
   } catch (e) {
-    document.getElementById('item-list-content').innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка сети</div>';
+    els.content.innerHTML = '<div style="font-size:12px;color:#c0392b;padding:8px 0;">Ошибка сети</div>';
   }
 }
 
 function hideItemList() {
-  document.getElementById('item-list-panel').style.display = 'none';
-  document.querySelector('.cards-grid').style.display = 'grid';
-  document.querySelectorAll('.section-label').forEach(l => {
-    if (l.textContent === 'Одежда') l.style.display = '';
+  const els = getActiveItemEls();
+  if (els.panel) els.panel.style.display = 'none';
+  if (els.grid) els.grid.style.display = 'grid';
+  if (els.secondary) els.secondary.style.display = '';
+  els.labels.forEach(l => {
+    if (l.textContent === 'Одежда' || l.textContent === 'Костюм') l.style.display = '';
   });
   _currentItemZone = null;
 }
 
 function showItemAddForm() {
-  document.getElementById('item-add-form').style.display = 'block';
-  document.getElementById('item-add-btn').style.display = 'none';
-  document.getElementById('item-form-name-select').value = '';
-  document.getElementById('item-form-name-input').style.display = 'none';
-  document.getElementById('item-form-name-input').value = '';
-  document.getElementById('item-form-size-select').value = '';
-  document.getElementById('item-form-size-input').style.display = 'none';
-  document.getElementById('item-form-size-input').value = '';
-  document.getElementById('item-form-note').value = '';
-  document.getElementById('item-form-brand').value = '';
-  document.getElementById('item-form-brand-input').style.display = 'none';
-  document.getElementById('item-form-brand-input').value = '';
-  document.getElementById('item-form-error').style.display = 'none';
-  document.getElementById('item-form-name-select').focus();
+  const els = getActiveItemEls();
+  if (els.addForm) els.addForm.style.display = 'block';
+  if (els.addBtn) els.addBtn.style.display = 'none';
+  if (els.nameSelect) els.nameSelect.value = '';
+  if (els.nameInput) {
+    els.nameInput.style.display = 'none';
+    els.nameInput.value = '';
+  }
+  if (els.sizeSelect) els.sizeSelect.value = '';
+  if (els.sizeInput) {
+    els.sizeInput.style.display = 'none';
+    els.sizeInput.value = '';
+  }
+  if (els.noteInput) els.noteInput.value = '';
+  if (els.brandSelect) els.brandSelect.value = '';
+  if (els.brandInput) {
+    els.brandInput.style.display = 'none';
+    els.brandInput.value = '';
+  }
+  if (els.error) els.error.style.display = 'none';
+  if (els.nameSelect) els.nameSelect.focus();
 }
 
 function hideItemAddForm() {
-  document.getElementById('item-add-form').style.display = 'none';
-  document.getElementById('item-add-btn').style.display = '';
+  const els = getActiveItemEls();
+  if (els.addForm) els.addForm.style.display = 'none';
+  if (els.addBtn) els.addBtn.style.display = '';
 }
 
 function onItemNameChange() {
-  const sel = document.getElementById('item-form-name-select');
-  const inp = document.getElementById('item-form-name-input');
+  const els = getActiveItemEls();
+  const sel = els.nameSelect;
+  const inp = els.nameInput;
+  if (!sel || !inp) return;
   if (sel.value === '__other__') {
     inp.style.display = 'block';
     inp.focus();
@@ -2278,8 +2367,10 @@ function onItemNameChange() {
 }
 
 function onItemSizeChange() {
-  const sel = document.getElementById('item-form-size-select');
-  const inp = document.getElementById('item-form-size-input');
+  const els = getActiveItemEls();
+  const sel = els.sizeSelect;
+  const inp = els.sizeInput;
+  if (!sel || !inp) return;
   if (sel.value === '__other__') {
     inp.style.display = 'block';
     inp.focus();
@@ -2290,8 +2381,10 @@ function onItemSizeChange() {
 }
 
 function onItemBrandChange() {
-  const sel = document.getElementById('item-form-brand');
-  const inp = document.getElementById('item-form-brand-input');
+  const els = getActiveItemEls();
+  const sel = els.brandSelect;
+  const inp = els.brandInput;
+  if (!sel || !inp) return;
   if (sel.value === '__other__') {
     inp.style.display = 'block';
     inp.focus();
@@ -2301,17 +2394,18 @@ function onItemBrandChange() {
 }
 
 async function submitItemForm() {
-  const nameSel = document.getElementById('item-form-name-select');
-  const nameInp = document.getElementById('item-form-name-input');
+  const els = getActiveItemEls();
+  const nameSel = els.nameSelect;
+  const nameInp = els.nameInput;
   const name = nameSel.value === '__other__' ? nameInp.value.trim() : nameSel.value.trim();
-  const brandSel = document.getElementById('item-form-brand');
-  const brandInp = document.getElementById('item-form-brand-input');
+  const brandSel = els.brandSelect;
+  const brandInp = els.brandInput;
   const brand = brandSel.value === '__other__' ? brandInp.value.trim() : brandSel.value;
-  const sizeSel = document.getElementById('item-form-size-select');
-  const sizeInp = document.getElementById('item-form-size-input');
+  const sizeSel = els.sizeSelect;
+  const sizeInp = els.sizeInput;
   const size = sizeSel.value === '__other__' ? sizeInp.value.trim() : sizeSel.value;
-  const note = document.getElementById('item-form-note').value.trim();
-  const errEl = document.getElementById('item-form-error');
+  const note = els.noteInput.value.trim();
+  const errEl = els.error;
 
   if (!name) {
     errEl.textContent = 'Выберите или введите название';
@@ -2334,7 +2428,7 @@ async function submitItemForm() {
     }
     const item = await r.json();
     hideItemAddForm();
-    const content = document.getElementById('item-list-content');
+    const content = els.content;
     const empty = content.querySelector('div[style*="Нет вещей"]') || content.querySelector('div[style*="Загрузка"]');
     if (empty) content.innerHTML = '';
     content.insertAdjacentHTML('beforeend', renderItemRow(item));
@@ -2351,7 +2445,8 @@ async function deleteItem(id) {
     if (!r.ok) return;
     const row = document.getElementById('item-row-' + id);
     if (row) row.remove();
-    const content = document.getElementById('item-list-content');
+    const content = getActiveItemEls().content;
+    if (!content) return;
     if (!content.querySelector('.item-entry')) {
       content.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
     }
@@ -2960,6 +3055,46 @@ const DAILY_INPUTS = {
 };
 
 let _dailySaveTimer = null;
+const _sizeSaveTimers = {};
+
+function debounceSizeSave(input) {
+  const key = input?.dataset?.sizeKey;
+  if (!key) return;
+  clearTimeout(_sizeSaveTimers[key]);
+  _sizeSaveTimers[key] = setTimeout(() => saveSingleSize(input), 450);
+}
+
+async function saveSingleSize(input) {
+  const key = input?.dataset?.sizeKey;
+  if (!key) return;
+  const patch = {};
+  patch[key] = input.value.trim();
+  try {
+    const r = await fetch(API + '/sizes', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(patch)
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showPageSaveMsg(input, 'Ошибка: ' + (err.error || r.status), true);
+      return;
+    }
+    showPageSaveMsg(input, 'Сохранено');
+  } catch (e) {
+    showPageSaveMsg(input, 'Ошибка сети', true);
+  }
+}
+
+function showPageSaveMsg(input, text, isError) {
+  const page = input.closest('.page');
+  const el = page?.querySelector('.daily-save-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#c0392b' : 'var(--text3)';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.textContent = ''; }, 1500);
+}
 
 function debounceDailySave() {
   clearTimeout(_dailySaveTimer);
