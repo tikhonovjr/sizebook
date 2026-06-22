@@ -1759,6 +1759,7 @@ function doLogout() {
 
 let wlItems = [];
 let wlAutoImage = '';
+let _wlParseAbort = null;
 
 async function loadWishlist() {
   try {
@@ -1824,7 +1825,12 @@ async function deleteWlItem(id) {
   } catch(e) {}
 }
 
+function _cancelWlParse() {
+  if (_wlParseAbort) { _wlParseAbort.abort(); _wlParseAbort = null; }
+}
+
 function openWishlistModal() {
+  _cancelWlParse();
   wlAutoImage = '';
   document.getElementById('wl-url-input').value = '';
   document.getElementById('wl-title-input').value = '';
@@ -1840,11 +1846,13 @@ function openWishlistModal() {
 
 function closeWishlistModal(e) {
   if (e === null || e.target === document.getElementById('wl-modal')) {
+    _cancelWlParse();
     document.getElementById('wl-modal').classList.remove('open');
   }
 }
 
 function onWlUrlInput() {
+  _cancelWlParse();
   onWlFieldInput();
   wlAutoImage = '';
   document.getElementById('wl-autofill-note').textContent = '';
@@ -1862,6 +1870,10 @@ async function tryAutoFetch() {
   if (!url.startsWith('http')) return;
   onWlFieldInput();
 
+  _cancelWlParse();
+  _wlParseAbort = new AbortController();
+  const ctrl = _wlParseAbort;
+
   const spinner = document.getElementById('wl-spinner');
   const note = document.getElementById('wl-autofill-note');
   spinner.style.display = 'block';
@@ -1871,11 +1883,16 @@ async function tryAutoFetch() {
     const r = await fetch(API + '/parse', {
       method: 'POST',
       headers: apiHeaders(),
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url }),
+      signal: ctrl.signal,
     });
+    // Если запрос отменён (новый URL или закрытый модал) — ничего не делаем
+    if (ctrl.signal.aborted) return;
     spinner.style.display = 'none';
     if (!r.ok) return;
     const m = await r.json();
+    // Финальная защита: URL в поле должен совпадать с тем, для которого запускали
+    if (document.getElementById('wl-url-input').value.trim() !== url) return;
     let autofilled = [];
     if (m.title && !document.getElementById('wl-title-input').value) {
       document.getElementById('wl-title-input').value = m.title;
@@ -1893,7 +1910,10 @@ async function tryAutoFetch() {
     } else {
       note.textContent = 'Заполни название вручную';
     }
-  } catch(e) { spinner.style.display = 'none'; }
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    spinner.style.display = 'none';
+  }
 }
 
 async function saveWlItem() {

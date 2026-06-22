@@ -258,7 +258,8 @@ async function parseViaPlaywright(url, locale = 'ru-RU') {
 // Wildberries — публичный CDN, не требует антибота
 async function parseWildberries(url) {
   try {
-    const nm = url.match(/\/catalog\/(\d+)\//)?.[1];
+    // Поддерживаем форматы с /detail.aspx и без trailing slash
+    const nm = url.match(/\/catalog\/(\d+)/)?.[1];
     if (!nm) return null;
     const id = Number(nm);
     const vol = Math.floor(id / 100000);
@@ -273,26 +274,36 @@ async function parseWildberries(url) {
     })();
 
     const base = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
-    const headers = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+    const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
 
-    const [cardRes, priceRes] = await Promise.all([
-      fetch(`${base}/info/ru/card.json`, { headers, signal: AbortSignal.timeout(8000) }),
-      fetch(`${base}/info/price-history.json`, { headers, signal: AbortSignal.timeout(8000) }),
-    ]);
-
+    const cardRes = await fetch(`${base}/info/ru/card.json`, { headers: cdnHeaders, signal: AbortSignal.timeout(8000) });
     if (!cardRes.ok) return null;
     const card = await cardRes.json();
     const title = card.imt_name || null;
     const image = `${base}/images/big/1.webp`;
 
+    // price-history.json удалён WB — используем search API
     let price = null;
-    if (priceRes.ok) {
-      const history = await priceRes.json();
-      if (history?.length) {
-        const kopecks = history[history.length - 1]?.price?.RUB;
-        if (kopecks) price = `${Math.round(kopecks / 100)} ₽`;
+    try {
+      const searchRes = await fetch(
+        `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&sort=popular&resultset=catalog&limit=1&query=${nm}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'application/json',
+            'Referer': 'https://www.wildberries.ru/',
+            'Origin': 'https://www.wildberries.ru',
+          },
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+      if (searchRes.ok) {
+        const sd = await searchRes.json();
+        const prod = sd?.data?.products?.find(p => String(p.id) === nm);
+        const priceKopecks = prod?.salePriceU ?? prod?.priceU;
+        if (priceKopecks) price = `${Math.round(priceKopecks / 100)} ₽`;
       }
-    }
+    } catch (_) {}
 
     return { title, price, image };
   } catch (_) { return null; }
