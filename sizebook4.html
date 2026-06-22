@@ -846,7 +846,7 @@
           </div>
         </div>
         <div class="size-page-silhouette">
-          <div class="size-page-silhouette-label">Официальное</div>
+          <div class="size-page-silhouette-label">Наведи на зону</div>
           <div id="formal-inline-sil" data-inline-sil="formal"></div>
         </div>
       </div>
@@ -1696,7 +1696,7 @@ const SECTION_SIL_CFG = {
     <circle cx="128" cy="47" r="3" fill="#B8860B" opacity="0.78"/>` }
 };
 
-const INLINE_SIL_PAGES = ['formal'];
+const INLINE_SIL_PAGES = ['formal','outer','sport','beach','under','hats','gloves','shoes','acc'];
 const INLINE_SIL_ZONE_TITLES = {
   formal: { hats:'Голова', tops:'Костюм', bottoms:'Брюки', shoes:'Обувь' },
 };
@@ -1719,6 +1719,126 @@ function getInlineSizeValue(section, key) {
   return el.tagName === 'INPUT' ? el.value.trim() : el.textContent.trim();
 }
 
+function getItemListPanelHtml() {
+  return `
+    <div class="item-list-panel" style="display:none;margin-top:1.5rem;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">
+        <button onclick="hideItemList()" style="background:none;border:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;gap:4px;font-size:13px;padding:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>назад</button>
+        <span class="item-list-title" style="font-size:15px;font-weight:600;color:var(--text);"></span>
+      </div>
+      <div class="item-list-content"></div>
+      <div class="item-add-form" style="margin-top:1rem;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);display:none;">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Добавить вещь</div>
+        <select class="item-form-name-select" onchange="onItemNameChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+        <input type="text" class="item-form-name-input" placeholder="Введите название" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+        <select class="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+        <input type="text" class="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+        <select class="item-form-size-select" onchange="onItemSizeChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+        <input type="text" class="item-form-size-input" placeholder="Введите размер" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+        <input type="text" class="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
+        <div class="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="hideItemAddForm()" style="flex:1;padding:8px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text2);cursor:pointer;">Отмена</button>
+          <button onclick="submitItemForm()" style="flex:1;padding:8px;border:none;border-radius:6px;font-size:13px;background:var(--text);color:var(--surface);cursor:pointer;font-weight:500;">Сохранить</button>
+        </div>
+      </div>
+      <button class="add-btn item-add-btn" onclick="showItemAddForm()">+ Добавить вещь</button>
+    </div>`;
+}
+
+function enhanceUnifiedSizePages() {
+  INLINE_SIL_PAGES.forEach(section => {
+    const page = document.getElementById('page-' + section);
+    if (!page) return;
+    const title = page.querySelector('.page-title');
+    if (title) title.textContent = 'Мои размеры';
+
+    if (!page.querySelector('.size-page-grid')) {
+      const grid = document.createElement('div');
+      grid.className = 'size-page-grid';
+      const main = document.createElement('div');
+      main.className = 'size-page-main-panel';
+      const secondary = document.createElement('div');
+      secondary.className = 'item-secondary-content';
+      const silhouette = document.createElement('div');
+      silhouette.className = 'size-page-silhouette';
+      silhouette.innerHTML =
+        '<div class="size-page-silhouette-label">Наведи на зону</div>' +
+        '<div data-inline-sil="' + section + '"></div>';
+
+      Array.from(page.children).forEach(child => {
+        if (child !== title) secondary.appendChild(child);
+      });
+      main.appendChild(secondary);
+      const msg = document.createElement('div');
+      msg.className = 'daily-save-msg';
+      main.appendChild(msg);
+      main.insertAdjacentHTML('beforeend', getItemListPanelHtml());
+      grid.appendChild(main);
+      grid.appendChild(silhouette);
+      page.appendChild(grid);
+    } else {
+      const label = page.querySelector('.size-page-silhouette-label');
+      if (label) label.textContent = 'Наведи на зону';
+      const main = page.querySelector('.size-page-main-panel');
+      if (main && !main.querySelector('.item-list-panel')) {
+        main.insertAdjacentHTML('beforeend', getItemListPanelHtml());
+      }
+    }
+
+    enhanceSizePageCards(page);
+  });
+}
+
+function enhanceSizePageCards(page) {
+  page.querySelectorAll('.size-card').forEach(card => {
+    const valueEl = card.querySelector('.size-card-value[data-size-key]');
+    if (!valueEl) return;
+    const key = valueEl.dataset.sizeKey;
+    if (!key) return;
+    if (valueEl.tagName !== 'INPUT') {
+      const input = document.createElement('input');
+      input.className = valueEl.className;
+      input.dataset.sizeKey = key;
+      input.type = 'text';
+      input.placeholder = '—';
+      input.value = valueEl.textContent.trim();
+      input.setAttribute('oninput', 'debounceSizeSave(this)');
+      input.setAttribute('onclick', 'event.stopPropagation()');
+      valueEl.replaceWith(input);
+    }
+    card.onclick = () => showItemList(key);
+    card.dataset.unifiedCard = '1';
+    let sub = card.querySelector('.size-card-sub');
+    if (!sub) {
+      sub = document.createElement('div');
+      sub.className = 'size-card-sub';
+      card.appendChild(sub);
+    }
+    sub.dataset.itemZone = key;
+    sub.textContent = 'нажми';
+  });
+}
+
+function inferInlineSilZone(section, key, label) {
+  const text = (section + ' ' + key + ' ' + label).toLowerCase();
+  if (/hat|head|cap|helmet|шап|кеп|голов|шлем/.test(text)) return 'hats';
+  if (/shoe|boot|sandal|sneaker|shoes|кросс|бот|туф|сап|сандал|обув|стоп|нос(к|ки)|шлеп|шлёп/.test(text)) return 'shoes';
+  if (/bottom|pants|short|swim|under|брюк|джин|шорт|плав|низ|трус|боксер|боксёр/.test(text)) return 'bottoms';
+  return 'tops';
+}
+
+function getUnifiedInlineSilItems(section, zone) {
+  const page = document.getElementById('page-' + section);
+  if (!page) return [];
+  return Array.from(page.querySelectorAll('.size-card-value[data-size-key]')).map(el => {
+    const card = el.closest('.size-card');
+    const label = card?.querySelector('.size-card-label')?.textContent.trim() || el.dataset.sizeKey;
+    const value = el.tagName === 'INPUT' ? el.value.trim() : el.textContent.trim();
+    return { label, value: value || '—', zone: inferInlineSilZone(section, el.dataset.sizeKey, label) };
+  }).filter(item => item.zone === zone);
+}
+
 function getInlineSilItems(section, zone) {
   const mapped = INLINE_SIL_SIZE_MAP[section]?.[zone];
   if (mapped) {
@@ -1730,7 +1850,7 @@ function getInlineSilItems(section, zone) {
       value: box.querySelector('.sys-box-value')?.textContent.trim() || '—',
     })).filter(item => item.label);
   }
-  return [];
+  return getUnifiedInlineSilItems(section, zone);
 }
 
 function renderInlineSilPanelItems(items) {
@@ -1793,7 +1913,7 @@ function renderInlineSectionSilhouettes() {
 function renderInteractiveSectionSilhouette(section, cfg) {
   return `
     <div class="section-silhouette-stage">
-      <svg class="section-silhouette-svg" viewBox="${cfg.vb}" xmlns="http://www.w3.org/2000/svg">
+      <svg class="section-silhouette-svg" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg">
         ${_SIL_BASE}${cfg.overlay}
         <g id="${section}-inline-hl-hats" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
           <ellipse cx="100" cy="40" rx="26" ry="30" fill="#185FA5"/>
@@ -1831,6 +1951,7 @@ function renderInteractiveSectionSilhouette(section, cfg) {
     </div>`;
 }
 
+enhanceUnifiedSizePages();
 renderInlineSectionSilhouettes();
 
 function updateSilPanel(section) {
@@ -1860,7 +1981,7 @@ function showPage(name) {
   if (name === 'share') updateSharePage();
   const SIZE_PAGES = ['daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc'];
   if (SIZE_PAGES.includes(name)) loadAllSizes();
-  if (name === 'daily' || name === 'formal') loadItemCounts();
+  if (SIZE_PAGES.includes(name)) loadItemCounts();
   updateSilPanel(name);
 }
 
@@ -2162,6 +2283,13 @@ function getActiveItemEls() {
   };
 }
 
+function getZoneLabel(zone) {
+  const page = getActivePage() || document;
+  const sub = page.querySelector('.size-card-sub[data-item-zone="' + zone + '"]');
+  const label = sub?.closest('.size-card')?.querySelector('.size-card-label');
+  return label?.textContent.trim() || '';
+}
+
 function updateCardCount(zone) {
   const els = getActiveItemEls();
   const count = els.content ? els.content.querySelectorAll('.item-entry').length : 0;
@@ -2171,7 +2299,9 @@ function updateCardCount(zone) {
 }
 
 async function loadItemCounts() {
-  const zones = ITEM_COUNT_ZONES;
+  const zones = [...new Set(Array.from(document.querySelectorAll('.size-card-sub[data-item-zone]'))
+    .map(el => el.dataset.itemZone)
+    .filter(Boolean))];
   try {
     const results = await Promise.all(zones.map(z =>
       fetch(API + '/items?zone=' + z, { headers: apiHeaders() }).then(r => r.ok ? r.json() : []).catch(() => [])
@@ -2253,6 +2383,7 @@ async function showItemList(zone) {
   _currentItemZone = zone;
   const els = getActiveItemEls();
   if (!els.panel || !els.content) return;
+  const zoneLabel = getZoneLabel(zone);
 
   if (els.grid) els.grid.style.display = 'none';
   if (els.secondary) els.secondary.style.display = 'none';
@@ -2261,12 +2392,12 @@ async function showItemList(zone) {
   });
 
   els.panel.style.display = 'block';
-  if (els.title) els.title.textContent = itemListTitles[zone] || zone;
+  if (els.title) els.title.textContent = itemListTitles[zone] || zoneLabel || zone;
   els.content.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Загрузка...</div>';
   hideItemAddForm();
 
   // populate name select for the add form
-  const names = zoneItemNames[zone] || [];
+  const names = zoneItemNames[zone] || (zoneLabel ? [zoneLabel] : []);
   if (els.nameSelect) {
     els.nameSelect.innerHTML = '<option value="">— выберите название —</option>' +
       names.map(n => `<option value="${n}">${n}</option>`).join('') +
@@ -2290,7 +2421,7 @@ async function showItemList(zone) {
   }
 
   // populate brand select for the add form (alphabetically sorted)
-  const group = sectionBrandGroup[zone] || 'clothing';
+  const group = sectionBrandGroup[zone] || sectionBrandGroup[currentSection] || 'clothing';
   const brands = [...(brandOptions[group] || brandOptions.clothing)].sort((a, b) => a.localeCompare(b, 'ru'));
   if (els.brandSelect) {
     els.brandSelect.innerHTML = '<option value="">— бренд не указан —</option>' +
