@@ -293,33 +293,43 @@ async function parseWildberries(url, dbg) {
     dbg.push(`title="${title}"`);
     const image = `${base}/images/big/1.webp`;
 
-    // price-history.json удалён WB — используем search API
+    // Пробуем несколько WB price-эндпоинтов
     let price = null;
-    const searchUrl = `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&sort=popular&resultset=catalog&limit=1&query=${nm}`;
-    dbg.push(`fetching search: ${searchUrl}`);
-    try {
-      const searchRes = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://www.wildberries.ru/',
-          'Origin': 'https://www.wildberries.ru',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      dbg.push(`searchRes: ${searchRes.status} ok=${searchRes.ok}`);
-      if (searchRes.ok) {
-        const sd = await searchRes.json();
+    const wbPriceHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'application/json',
+      'Referer': 'https://www.wildberries.ru/',
+      'Origin': 'https://www.wildberries.ru',
+    };
+    const subjectId = card?.data?.subject_id;
+    const priceEndpoints = [
+      // Catalog API с subject_id из card.json
+      subjectId ? `https://catalog.wb.ru/catalog/${subjectId}/catalog?appType=1&curr=rub&dest=-1257786&sort=popular&limit=1&nm=${nm}` : null,
+      // Catalog API без subject (широкий запрос)
+      `https://catalog.wb.ru/catalog/v2/filters?appType=1&curr=rub&dest=-1257786&nm=${nm}`,
+      // Search API (может работать с Railway IP при других заголовках)
+      `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
+    ].filter(Boolean);
+
+    for (const ep of priceEndpoints) {
+      if (price) break;
+      dbg.push(`trying price endpoint: ${ep}`);
+      try {
+        const r = await fetch(ep, { headers: wbPriceHeaders, signal: AbortSignal.timeout(5000) });
+        dbg.push(`  → ${r.status} ok=${r.ok}`);
+        if (!r.ok) {
+          const body = await r.text().catch(() => '');
+          dbg.push(`  → body: ${body.slice(0, 120)}`);
+          continue;
+        }
+        const sd = await r.json();
         const prod = sd?.data?.products?.find(p => String(p.id) === nm);
-        dbg.push(`search prod found: ${!!prod}, salePriceU=${prod?.salePriceU}, priceU=${prod?.priceU}`);
+        dbg.push(`  → prod found: ${!!prod} salePriceU=${prod?.salePriceU} priceU=${prod?.priceU}`);
         const priceKopecks = prod?.salePriceU ?? prod?.priceU;
         if (priceKopecks) price = `${Math.round(priceKopecks / 100)} ₽`;
-      } else {
-        const body = await searchRes.text().catch(() => '');
-        dbg.push(`searchRes error body: ${body.slice(0, 200)}`);
+      } catch (e) {
+        dbg.push(`  → error: ${e.message}`);
       }
-    } catch (e) {
-      dbg.push(`search fetch error: ${e.message}`);
     }
 
     dbg.push(`result: title="${title}" price="${price}" image="${image}"`);
