@@ -598,12 +598,12 @@
         <div id="left-panel">
           <div class="section-label">Одежда</div>
           <div class="cards-grid">
-            <div class="size-card" onclick="showItemList('tops')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></div><div class="size-card-label">Футболка / рубашка</div><input id="sz-daily-top" data-size-key="daily_top" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">3 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('bottoms')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></div><div class="size-card-label">Джинсы / брюки</div><input id="sz-daily-bottom" data-size-key="daily_bottom" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">2 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('shoes')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></div><div class="size-card-label">Обувь</div><input id="sz-shoes-eu" data-size-key="shoes_eu" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">4 бренда · нажми</div></div>
-            <div class="size-card" onclick="showItemList('outer')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></div><div class="size-card-label">Верхняя одежда</div><input id="sz-outer" data-size-key="outer" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">2 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('acc')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="size-card-label">Аксессуары</div><input id="sz-ring-mm" data-size-key="ring_mm" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">кольцо · нажми</div></div>
-            <div class="size-card" onclick="showItemList('hats')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Головные уборы</div><input id="sz-hat" data-size-key="hat" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">58 см · нажми</div></div>
+            <div class="size-card" onclick="showItemList('tops')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></div><div class="size-card-label">Футболка / рубашка</div><input id="sz-daily-top" data-size-key="daily_top" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="tops">нажми</div></div>
+            <div class="size-card" onclick="showItemList('bottoms')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></div><div class="size-card-label">Джинсы / брюки</div><input id="sz-daily-bottom" data-size-key="daily_bottom" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="bottoms">нажми</div></div>
+            <div class="size-card" onclick="showItemList('shoes')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></div><div class="size-card-label">Обувь</div><input id="sz-shoes-eu" data-size-key="shoes_eu" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="shoes">нажми</div></div>
+            <div class="size-card" onclick="showItemList('outer')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></div><div class="size-card-label">Верхняя одежда</div><input id="sz-outer" data-size-key="outer" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="outer">нажми</div></div>
+            <div class="size-card" onclick="showItemList('acc')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="size-card-label">Аксессуары</div><input id="sz-ring-mm" data-size-key="ring_mm" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="acc">нажми</div></div>
+            <div class="size-card" onclick="showItemList('hats')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Головные уборы</div><input id="sz-hat" data-size-key="hat" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub" data-item-zone="hats">нажми</div></div>
             <div class="add-card" onclick="openModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Добавить</span></div>
           </div>
           <div id="daily-save-msg" class="daily-save-msg"></div>
@@ -687,7 +687,7 @@
               </div>
               <div id="zone-panel-items" style="padding:8px 12px;max-height:260px;overflow-y:auto;"></div>
               <div style="padding:6px 12px 10px;border-top:0.5px solid var(--border);">
-                <button onclick="openModal()" style="width:100%;background:none;border:0.5px solid var(--border2);border-radius:6px;padding:5px 0;font-size:12px;color:var(--text3);cursor:pointer;">+ Добавить</button>
+                <button onclick="showItemList(_zonePanelZone)" style="width:100%;background:none;border:0.5px solid var(--border2);border-radius:6px;padding:5px 0;font-size:12px;color:var(--text3);cursor:pointer;">+ Добавить</button>
               </div>
             </div>
           </div>
@@ -1464,6 +1464,7 @@ function showPage(name) {
   if (name === 'share') updateSharePage();
   const SIZE_PAGES = ['daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc'];
   if (SIZE_PAGES.includes(name)) loadAllSizes();
+  if (name === 'daily') loadItemCounts();
 }
 
 // ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
@@ -1701,11 +1702,56 @@ function toggleSport(sport) {
   });
 })();
 
-function showZonePanel(zone) {
+let _zonePanelZone = null;
+const _zonePanelCache = {};
+
+function pluralVeshchi(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return 'вещь';
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'вещи';
+  return 'вещей';
+}
+
+function renderZonePanelItems(items) {
+  document.getElementById("zone-panel-items").innerHTML = items.length
+    ? items.map(item => {
+        const sub = [item.brand, item.note].filter(Boolean).join(' · ');
+        return "<div style=\"display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);\">" +
+          "<div style=\"flex:1;min-width:0;\">" +
+          "<div style=\"font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">" + item.name + "</div>" +
+          (sub ? "<div style=\"font-size:11px;color:var(--text3);\">" + sub + "</div>" : "") +
+          "</div>" +
+          (item.size ? "<span style=\"font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0\">" + item.size + "</span>" : "") +
+          "</div>";
+      }).join("")
+    : "<div style=\"font-size:12px;color:var(--text3);padding:4px 0;\">Нет вещей</div>";
+}
+
+function updateCardCount(zone) {
+  const count = document.querySelectorAll('#item-list-content .item-entry').length;
+  const el = document.querySelector('.size-card-sub[data-item-zone="' + zone + '"]');
+  if (el) el.textContent = count > 0 ? count + ' ' + pluralVeshchi(count) + ' · нажми' : 'нажми';
+  delete _zonePanelCache[zone];
+}
+
+async function loadItemCounts() {
+  const zones = ['tops','bottoms','shoes','outer','acc','hats'];
+  try {
+    const results = await Promise.all(zones.map(z =>
+      fetch(API + '/items?zone=' + z, { headers: apiHeaders() }).then(r => r.ok ? r.json() : []).catch(() => [])
+    ));
+    zones.forEach((z, i) => {
+      const el = document.querySelector('.size-card-sub[data-item-zone="' + z + '"]');
+      if (!el) return;
+      const count = results[i].length;
+      el.textContent = count > 0 ? count + ' ' + pluralVeshchi(count) + ' · нажми' : 'нажми';
+    });
+  } catch(e) { /* silent */ }
+}
+
+async function showZonePanel(zone) {
   const panel = document.getElementById("zone-panel");
-  const data = zoneData[zone];
-  if (!data) return;
   cancelHidePanel();
+  _zonePanelZone = zone;
 
   // подсветка зон через clipPath
   ["hats","tops","bottoms","shoes"].forEach(z => {
@@ -1715,19 +1761,24 @@ function showZonePanel(zone) {
   const hlEl = document.getElementById("hl-" + zone);
   if (hlEl) hlEl.style.opacity = "0.22";
 
-  document.getElementById("zone-panel-title").textContent = data.title;
-  document.getElementById("zone-panel-items").innerHTML = data.items.map(item =>
-    "<div style=\"display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);\">" +
-    "<div style=\"width:7px;height:7px;border-radius:50%;background:" + item.color + ";flex-shrink:0\"></div>" +
-    "<div style=\"flex:1;min-width:0;\">" +
-    "<div style=\"font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">" + item.name + "</div>" +
-    "<div style=\"font-size:11px;color:var(--text3);\">" + item.brand + "</div>" +
-    "</div>" +
-    "<span style=\"font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0\">" + item.size + "</span>" +
-    "</div>"
-  ).join("") + (data.items.length === 0 ? "<div style=\"font-size:12px;color:var(--text3);padding:8px 0;\">Нет вещей</div>" : "");
-
+  document.getElementById("zone-panel-title").textContent = itemListTitles[zone] || zone;
   panel.style.display = "block";
+
+  if (_zonePanelCache[zone]) {
+    renderZonePanelItems(_zonePanelCache[zone]);
+    return;
+  }
+
+  document.getElementById("zone-panel-items").innerHTML = "<div style=\"font-size:12px;color:var(--text3);padding:4px 0;\">Загрузка...</div>";
+  try {
+    const r = await fetch(API + '/items?zone=' + encodeURIComponent(zone), { headers: apiHeaders() });
+    if (!r.ok) { document.getElementById("zone-panel-items").innerHTML = ""; return; }
+    const items = await r.json();
+    _zonePanelCache[zone] = items;
+    if (_zonePanelZone === zone) renderZonePanelItems(items);
+  } catch(e) {
+    document.getElementById("zone-panel-items").innerHTML = "";
+  }
 }
 
 let _hideTimer = null;
@@ -1918,6 +1969,7 @@ async function submitItemForm() {
     const empty = content.querySelector('div[style*="Нет вещей"]') || content.querySelector('div[style*="Загрузка"]');
     if (empty) content.innerHTML = '';
     content.insertAdjacentHTML('beforeend', renderItemRow(item));
+    updateCardCount(_currentItemZone);
   } catch (e) {
     errEl.textContent = 'Ошибка сети';
     errEl.style.display = '';
@@ -1934,6 +1986,7 @@ async function deleteItem(id) {
     if (!content.querySelector('.item-entry')) {
       content.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
     }
+    updateCardCount(_currentItemZone);
   } catch (e) { /* silent */ }
 }
 
