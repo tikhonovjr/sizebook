@@ -145,6 +145,37 @@
   }
   .section-label:first-child { margin-top: 0; }
 
+  /* UNIFIED SIZE PAGE LAYOUT */
+  .size-page-grid {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 2rem;
+    align-items: start;
+  }
+  .size-page-main-panel { min-width: 0; }
+  .size-page-silhouette {
+    position: sticky;
+    top: 80px;
+  }
+  .size-page-silhouette-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .section-silhouette-svg {
+    width: 100%;
+    max-width: 200px;
+    display: block;
+    margin: 0 auto;
+  }
+  @media (max-width: 1060px) {
+    .size-page-grid { grid-template-columns: 1fr; }
+    .size-page-silhouette { display: none; }
+  }
+
   /* CARDS GRID */
   .cards-grid {
     display: grid;
@@ -710,27 +741,35 @@
     <div class="page" id="page-formal">
       <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span> Официальное</div>
 
-      <div class="section-label">Костюм</div>
-      <div class="cards-grid">
-        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span></div><div class="size-card-label">Пиджак</div><div class="size-card-value" data-size-key="formal_jacket">48</div><div class="size-card-sub">EU / M</div></div>
-        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></span></div><div class="size-card-label">Брюки</div><div class="size-card-value" data-size-key="formal_pants">32/32</div><div class="size-card-sub">пояс / длина</div></div>
-        <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span></div><div class="size-card-label">Рубашка</div><div class="size-card-value" data-size-key="formal_shirt">39</div><div class="size-card-sub">размер ворота</div></div>
-        <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
-      </div>
+      <div class="size-page-grid">
+        <div class="size-page-main-panel">
+          <div class="section-label">Костюм</div>
+          <div class="cards-grid">
+            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22l3-10H9l3 10z"/><path d="M9 12l-2-8h10l-2 8"/></svg></span></div><div class="size-card-label">Пиджак</div><div class="size-card-value" data-size-key="formal_jacket">48</div><div class="size-card-sub">EU / M</div></div>
+            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></span></div><div class="size-card-label">Брюки</div><div class="size-card-value" data-size-key="formal_pants">32/32</div><div class="size-card-sub">пояс / длина</div></div>
+            <div class="size-card"><div class="size-card-icon"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span></div><div class="size-card-label">Рубашка</div><div class="size-card-value" data-size-key="formal_shirt">39</div><div class="size-card-sub">размер ворота</div></div>
+            <div class="add-card" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Добавить</span></div>
+          </div>
 
-      <div class="section-label">Мерки для пошива</div>
-      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M3 12h18"/></svg></span><span class="measure-label">Ширина плеч</span><span class="measure-value">44</span><span class="measure-unit">см</span></div>
-      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4-4 4 4M8 17l4 4 4-4M12 3v18"/></svg></span><span class="measure-label">Длина рукава</span><span class="measure-value">64</span><span class="measure-unit">см</span></div>
-      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват груди</span><span class="measure-value">96</span><span class="measure-unit">см</span></div>
-      <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват талии</span><span class="measure-value">82</span><span class="measure-unit">см</span></div>
-      <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить мерку</button>
+          <div class="section-label">Мерки для пошива</div>
+          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4m10-8l4 4-4 4M3 12h18"/></svg></span><span class="measure-label">Ширина плеч</span><span class="measure-value">44</span><span class="measure-unit">см</span></div>
+          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l4-4 4 4M8 17l4 4 4-4M12 3v18"/></svg></span><span class="measure-label">Длина рукава</span><span class="measure-value">64</span><span class="measure-unit">см</span></div>
+          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват груди</span><span class="measure-value">96</span><span class="measure-unit">см</span></div>
+          <div class="measure-row"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span><span class="measure-label">Обхват талии</span><span class="measure-value">82</span><span class="measure-unit">см</span></div>
+          <button class="add-btn" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить мерку</button>
 
-      <div class="section-label">Обувь для костюма</div>
-      <div class="sys-row">
-        <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
-        <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
-        <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
-        <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+          <div class="section-label">Обувь для костюма</div>
+          <div class="sys-row">
+            <div class="sys-box active"><div class="sys-box-label">EU</div><div class="sys-box-value">43</div></div>
+            <div class="sys-box"><div class="sys-box-label">US</div><div class="sys-box-value">10</div></div>
+            <div class="sys-box"><div class="sys-box-label">UK</div><div class="sys-box-value">9</div></div>
+            <div class="sys-box"><div class="sys-box-label">CM</div><div class="sys-box-value">27.5</div></div>
+          </div>
+        </div>
+        <div class="size-page-silhouette">
+          <div class="size-page-silhouette-label">Официальное</div>
+          <div id="formal-inline-sil" data-inline-sil="formal"></div>
+        </div>
       </div>
     </div>
 
@@ -1578,10 +1617,25 @@ const SECTION_SIL_CFG = {
     <circle cx="128" cy="47" r="3" fill="#B8860B" opacity="0.78"/>` }
 };
 
+const INLINE_SIL_PAGES = ['formal'];
+
+function renderInlineSectionSilhouettes() {
+  document.querySelectorAll('[data-inline-sil]').forEach(el => {
+    const section = el.dataset.inlineSil;
+    const cfg = SECTION_SIL_CFG[section];
+    if (!cfg) return;
+    el.innerHTML =
+      '<svg class="section-silhouette-svg" viewBox="' + cfg.vb + '" xmlns="http://www.w3.org/2000/svg">' +
+      _SIL_BASE + cfg.overlay + '</svg>';
+  });
+}
+
+renderInlineSectionSilhouettes();
+
 function updateSilPanel(section) {
   const panel = document.getElementById('sil-side');
   if (!panel) return;
-  if (section === 'daily' || !SECTION_SIL_CFG[section]) {
+  if (section === 'daily' || INLINE_SIL_PAGES.includes(section) || !SECTION_SIL_CFG[section]) {
     panel.style.display = 'none';
     return;
   }
