@@ -619,7 +619,8 @@
               <input type="text" id="item-form-name-input" placeholder="Введите название" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
               <select id="item-form-brand" onchange="onItemBrandChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
               <input type="text" id="item-form-brand-input" placeholder="Введите бренд" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
-              <input type="text" id="item-form-size" placeholder="Размер (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
+              <select id="item-form-size-select" onchange="onItemSizeChange()" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;"></select>
+              <input type="text" id="item-form-size-input" placeholder="Введите размер" style="display:none;width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px;outline:none;">
               <input type="text" id="item-form-note" placeholder="Заметка (необязательно)" style="width:100%;padding:8px 10px;border:0.5px solid var(--border2);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none;">
               <div id="item-form-error" style="font-size:12px;color:#c0392b;margin-bottom:6px;display:none;"></div>
               <div style="display:flex;gap:8px;">
@@ -1561,6 +1562,14 @@ const zoneItemNames = {
   acc:     ['Ремень','Кольцо','Браслет','Часы','Цепочка','Серьги','Сумка','Рюкзак','Шарф','Перчатки','Кошелёк','Очки','Галстук'],
   hats:    ['Бейсболка','Шапка','Кепка','Панама','Берет','Федора','Ушанка','Шляпа','Снуд','Балаклава'],
 };
+const zoneSizeOptions = {
+  tops:    ['XS','S','M','L','XL','XXL','XXXL','4XL'],
+  bottoms: ['XS','S','M','L','XL','XXL','XXXL','W26','W27','W28','W29','W30','W31','W32','W33','W34','W36','W38','W40'],
+  shoes:   ['EU 35','EU 36','EU 37','EU 38','EU 39','EU 40','EU 41','EU 42','EU 43','EU 44','EU 45','EU 46','EU 47'],
+  outer:   ['XS','S','M','L','XL','XXL','XXXL','4XL'],
+  acc:     ['One Size','XS','S','M','L','XL'],
+  hats:    ['54','55','56','57','58','59','60','61','S/M','L/XL','One Size'],
+};
 
 // ---- JSONB КЛЮЧИ ПО КАТЕГОРИИ ----
 const CATEGORY_KEY_MAP = {
@@ -1775,6 +1784,15 @@ async function showItemList(zone) {
   document.getElementById('item-form-name-input').style.display = 'none';
   document.getElementById('item-form-name-input').value = '';
 
+  // populate size select for the add form
+  const sizes = zoneSizeOptions[zone] || [];
+  const sizeSel = document.getElementById('item-form-size-select');
+  sizeSel.innerHTML = '<option value="">— размер не указан —</option>' +
+    sizes.map(s => `<option value="${s}">${s}</option>`).join('') +
+    '<option value="__other__">Другое...</option>';
+  document.getElementById('item-form-size-input').style.display = 'none';
+  document.getElementById('item-form-size-input').value = '';
+
   // populate brand select for the add form (alphabetically sorted)
   const group = sectionBrandGroup[zone] || 'clothing';
   const brands = [...(brandOptions[group] || brandOptions.clothing)].sort((a, b) => a.localeCompare(b, 'ru'));
@@ -1811,7 +1829,9 @@ function showItemAddForm() {
   document.getElementById('item-form-name-select').value = '';
   document.getElementById('item-form-name-input').style.display = 'none';
   document.getElementById('item-form-name-input').value = '';
-  document.getElementById('item-form-size').value = '';
+  document.getElementById('item-form-size-select').value = '';
+  document.getElementById('item-form-size-input').style.display = 'none';
+  document.getElementById('item-form-size-input').value = '';
   document.getElementById('item-form-note').value = '';
   document.getElementById('item-form-brand').value = '';
   document.getElementById('item-form-brand-input').style.display = 'none';
@@ -1828,6 +1848,18 @@ function hideItemAddForm() {
 function onItemNameChange() {
   const sel = document.getElementById('item-form-name-select');
   const inp = document.getElementById('item-form-name-input');
+  if (sel.value === '__other__') {
+    inp.style.display = 'block';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+    inp.value = '';
+  }
+}
+
+function onItemSizeChange() {
+  const sel = document.getElementById('item-form-size-select');
+  const inp = document.getElementById('item-form-size-input');
   if (sel.value === '__other__') {
     inp.style.display = 'block';
     inp.focus();
@@ -1855,7 +1887,9 @@ async function submitItemForm() {
   const brandSel = document.getElementById('item-form-brand');
   const brandInp = document.getElementById('item-form-brand-input');
   const brand = brandSel.value === '__other__' ? brandInp.value.trim() : brandSel.value;
-  const size = document.getElementById('item-form-size').value.trim();
+  const sizeSel = document.getElementById('item-form-size-select');
+  const sizeInp = document.getElementById('item-form-size-input');
+  const size = sizeSel.value === '__other__' ? sizeInp.value.trim() : sizeSel.value;
   const note = document.getElementById('item-form-note').value.trim();
   const errEl = document.getElementById('item-form-error');
 
