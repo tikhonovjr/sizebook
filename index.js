@@ -154,8 +154,8 @@ app.get('/sizes', authenticateToken, async (req, res) => {
 app.post('/sizes', authenticateToken, async (req, res) => {
   try {
     await pool.query(
-      `INSERT INTO sizes (user_id, data) VALUES ($1,$2)
-       ON CONFLICT (user_id) DO UPDATE SET data=$2, updated_at=NOW()`,
+      `INSERT INTO sizes (user_id, data) VALUES ($1,$2::jsonb)
+       ON CONFLICT (user_id) DO UPDATE SET data = sizes.data || $2::jsonb, updated_at=NOW()`,
       [req.user.id, JSON.stringify(req.body)]
     );
     res.json({ ok: true });

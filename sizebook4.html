@@ -149,6 +149,8 @@
   .size-card-icon { font-size: 20px; color: var(--text3); margin-bottom: 10px; }
   .size-card-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
   .size-card-value { font-size: 22px; font-weight: 600; color: var(--text); }
+  input.size-card-value { background: none; border: none; outline: none; width: 100%; padding: 0; font-family: inherit; cursor: text; }
+  .daily-save-msg { font-size: 10px; color: var(--text3); margin-top: 3px; min-height: 13px; }
   .size-card-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
   .add-card {
     background: var(--bg); border: 0.5px dashed var(--border2);
@@ -596,14 +598,15 @@
         <div id="left-panel">
           <div class="section-label">Одежда</div>
           <div class="cards-grid">
-            <div class="size-card" onclick="showItemList('tops')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></div><div class="size-card-label">Футболка / рубашка</div><div class="size-card-value">M</div><div class="size-card-sub">3 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('bottoms')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></div><div class="size-card-label">Джинсы / брюки</div><div class="size-card-value">32/32</div><div class="size-card-sub">2 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('shoes')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></div><div class="size-card-label">Обувь</div><div class="size-card-value">EU 43</div><div class="size-card-sub">4 бренда · нажми</div></div>
-            <div class="size-card" onclick="showItemList('outer')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></div><div class="size-card-label">Верхняя одежда</div><div class="size-card-value">L</div><div class="size-card-sub">2 вещи · нажми</div></div>
-            <div class="size-card" onclick="showItemList('acc')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="size-card-label">Аксессуары</div><div class="size-card-value">17.5мм</div><div class="size-card-sub">кольцо · нажми</div></div>
-            <div class="size-card" onclick="showItemList('hats')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Головные уборы</div><div class="size-card-value">L</div><div class="size-card-sub">58 см · нажми</div></div>
+            <div class="size-card" onclick="showItemList('tops')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></div><div class="size-card-label">Футболка / рубашка</div><input id="sz-daily-top" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">3 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('bottoms')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M8 8h8m-8 4h8m-8 4h4"/></svg></div><div class="size-card-label">Джинсы / брюки</div><input id="sz-daily-bottom" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">2 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('shoes')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></div><div class="size-card-label">Обувь</div><input id="sz-shoes-eu" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">4 бренда · нажми</div></div>
+            <div class="size-card" onclick="showItemList('outer')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h8.5a2.5 2.5 0 1 0-2.34-3.24"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.34 3.24"/><path d="M4 16h5.5a2.5 2.5 0 1 0-2.34 3.24"/></svg></div><div class="size-card-label">Верхняя одежда</div><input id="sz-outer" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">2 вещи · нажми</div></div>
+            <div class="size-card" onclick="showItemList('acc')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div><div class="size-card-label">Аксессуары</div><input id="sz-ring-mm" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">кольцо · нажми</div></div>
+            <div class="size-card" onclick="showItemList('hats')"><div class="size-card-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg></div><div class="size-card-label">Головные уборы</div><input id="sz-hat" class="size-card-value" type="text" placeholder="—" oninput="debounceDailySave()" onclick="event.stopPropagation()"><div class="size-card-sub">58 см · нажми</div></div>
             <div class="add-card" onclick="openModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Добавить</span></div>
           </div>
+          <div id="daily-save-msg" class="daily-save-msg"></div>
           <div id="item-list-panel" style="display:none;margin-top:1.5rem;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;">
               <button onclick="hideItemList()" style="background:none;border:none;cursor:pointer;color:var(--text3);display:flex;align-items:center;gap:4px;font-size:13px;padding:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>назад</button>
@@ -2149,8 +2152,70 @@ async function saveWlItem() {
   closeWishlistModal(null);
 }
 
+// ── PAGE-DAILY: сохранение/загрузка размеров ─────────────────────────────────
+const DAILY_INPUTS = {
+  daily_top:    'sz-daily-top',
+  daily_bottom: 'sz-daily-bottom',
+  shoes_eu:     'sz-shoes-eu',
+  outer:        'sz-outer',
+  ring_mm:      'sz-ring-mm',
+  hat:          'sz-hat'
+};
+
+let _dailySaveTimer = null;
+
+function debounceDailySave() {
+  clearTimeout(_dailySaveTimer);
+  _dailySaveTimer = setTimeout(saveDailySizes, 450);
+}
+
+async function saveDailySizes() {
+  const patch = {};
+  Object.entries(DAILY_INPUTS).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) patch[key] = el.value.trim();
+  });
+  try {
+    const r = await fetch(API + '/sizes', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(patch)
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showDailyMsg('Ошибка: ' + (err.error || r.status), true);
+      return;
+    }
+    showDailyMsg('Сохранено');
+  } catch (e) {
+    showDailyMsg('Ошибка сети', true);
+  }
+}
+
+function showDailyMsg(text, isError) {
+  const el = document.getElementById('daily-save-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#c0392b' : 'var(--text3)';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.textContent = ''; }, 1500);
+}
+
+async function loadDailySizes() {
+  try {
+    const r = await fetch(API + '/sizes', { headers: apiHeaders() });
+    if (!r.ok) return;
+    const data = await r.json();
+    Object.entries(DAILY_INPUTS).forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      if (el && data[key] != null) el.value = data[key];
+    });
+  } catch (e) { /* silent */ }
+}
+
 checkAuth();
 renderWishlist();
+loadDailySizes();
 </script>
 
 </body>
