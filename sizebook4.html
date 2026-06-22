@@ -1865,6 +1865,23 @@ function onWlFieldInput() {
   document.getElementById('wl-save-btn').disabled = (title.length === 0 && url.length === 0);
 }
 
+// Доп. получение цены WB прямо из браузера пользователя.
+// search.wb.ru имеет Access-Control-Allow-Origin: * (CORS открыт).
+// С домашнего IP не блокируется (429 только для датацентровых IP).
+async function fetchWbPriceFromBrowser(nm) {
+  try {
+    const r = await fetch(
+      `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
+      { headers: { Accept: 'application/json' } }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const prod = data?.data?.products?.find(p => String(p.id) === String(nm));
+    const kopecks = prod?.salePriceU ?? prod?.priceU;
+    return kopecks ? `${Math.round(kopecks / 100)} ₽` : null;
+  } catch (_) { return null; }
+}
+
 async function tryAutoFetch() {
   const url = document.getElementById('wl-url-input').value.trim();
   if (!url.startsWith('http')) return;
@@ -1909,6 +1926,26 @@ async function tryAutoFetch() {
       note.textContent = '✓ Автозаполнено: ' + autofilled.join(', ');
     } else {
       note.textContent = 'Заполни название вручную';
+    }
+
+    // WB: если сервер не вернул цену — пробуем добрать из браузера (домашний IP, не Railway)
+    if (!m.price && url.includes('wildberries')) {
+      const wbNm = url.match(/\/catalog\/(\d+)/)?.[1];
+      if (wbNm) {
+        fetchWbPriceFromBrowser(wbNm).then(browserPrice => {
+          if (!browserPrice) return;
+          if (!document.getElementById('wl-modal').classList.contains('open')) return;
+          if (document.getElementById('wl-url-input').value.trim() !== url) return;
+          const priceEl = document.getElementById('wl-price-input');
+          if (priceEl.value) return;
+          priceEl.value = browserPrice;
+          const noteEl = document.getElementById('wl-autofill-note');
+          noteEl.className = 'wl-autofill-note ok';
+          noteEl.textContent = noteEl.textContent.startsWith('✓ Автозаполнено:')
+            ? noteEl.textContent + ', цена'
+            : '✓ Автозаполнено: цена';
+        });
+      }
     }
   } catch(e) {
     if (e.name === 'AbortError') return;
