@@ -343,6 +343,13 @@
   }
   .idea-card:hover .idea-del-btn { display: flex; }
   .idea-del-btn:hover { background: var(--red-bg); color: var(--red-text); }
+  .idea-edit-btn {
+    position: absolute; top: 8px; right: 34px; width: 20px; height: 20px;
+    border-radius: 50%; border: none; background: transparent; color: var(--text3);
+    font-size: 13px; cursor: pointer; display: none; align-items: center; justify-content: center;
+  }
+  .idea-card:hover .idea-edit-btn { display: flex; }
+  .idea-edit-btn:hover { background: var(--blue-bg); color: var(--blue-text); }
   .idea-manual-tag { font-size: 10px; padding: 1px 7px; border-radius: 20px; background: var(--purple-bg); color: var(--purple-text); }
 
   /* IDEAS STATS */
@@ -544,7 +551,7 @@
 
 <!-- TOP NAV -->
 <nav class="topnav">
-  <a class="logo" href="#"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7v2m0 4v2m4-6v2m0 4v2m4-6v2"/></svg></span> SizeBook</a>
+  <a class="logo" href="javascript:void(0)" onclick="showPage('daily')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7v2m0 4v2m4-6v2m0 4v2m4-6v2"/></svg></span> SizeBook</a>
   <div class="top-actions">
     <div id="nav-user-badge" class="user-badge" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><b id="nav-username"></b></div>
     <button class="btn-ghost" onclick="showPage('share')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</button>
@@ -1014,6 +1021,11 @@
     <div class="page" id="page-wishlist">
       <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</div>
 
+      <button class="add-btn" onclick="openWishlistModal()" style="margin-bottom:1rem">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Добавить по ссылке
+      </button>
+
       <div class="section-label">Хочу получить в подарок</div>
 
       <div id="wishlist-items"></div>
@@ -1021,11 +1033,6 @@
       <div id="wishlist-empty" style="text-align:center; padding: 2rem 0; color: var(--text3); font-size:13px; display:none;">
         Пока пусто — добавь первую вещь по ссылке
       </div>
-
-      <button class="add-btn" onclick="openWishlistModal()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        Добавить по ссылке
-      </button>
     </div>
 
     <!-- ПОДЕЛИТЬСЯ -->
@@ -1061,7 +1068,7 @@
       <div class="ideas-stats" id="ideas-stats"></div>
 
       <div class="add-idea-bar">
-        <button class="btn-add-idea" onclick="toggleAddIdeaForm()">
+        <button class="btn-add-idea" onclick="openAddIdeaForm()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           Добавить идею
         </button>
@@ -1334,7 +1341,8 @@ function renderIdeas() {
       const manualTag = idea.manual ? '<span class="idea-manual-tag">вручную</span>' : '';
       html += `
         <div class="idea-card">
-          <button class="idea-del-btn" onclick="deleteIdea('${idea.id}')" title="Удалить">✕</button>
+          <button class="idea-del-btn" onclick="event.stopPropagation();deleteIdea('${idea.id}')" title="Удалить">✕</button>
+          <button class="idea-edit-btn" onclick="event.stopPropagation();openEditIdeaForm('${idea.id}')" title="Редактировать">✎</button>
           <div class="status-dot-wrap"><div class="status-dot dot-${status}"></div></div>
           <div>
             <div class="idea-title">${escapeHtml(idea.title)}</div>
@@ -1347,16 +1355,34 @@ function renderIdeas() {
   listEl.innerHTML = html;
 }
 
+let _editingIdeaId = null;
+
+function openAddIdeaForm() {
+  _editingIdeaId = null;
+  document.getElementById('idea-title-input').value = '';
+  document.getElementById('idea-desc-input').value = '';
+  document.getElementById('idea-status-input').value = 'planned';
+  document.getElementById('idea-tags-input').value = '';
+  document.getElementById('add-idea-form').classList.add('open');
+  document.getElementById('idea-title-input').focus();
+}
+
+function openEditIdeaForm(id) {
+  const idea = ideasData.find(i => i.id === id);
+  if (!idea) return;
+  _editingIdeaId = id;
+  document.getElementById('idea-title-input').value = idea.title;
+  document.getElementById('idea-desc-input').value = idea.desc || '';
+  document.getElementById('idea-status-input').value = idea.status;
+  document.getElementById('idea-tags-input').value = (idea.tags || []).join(', ');
+  document.getElementById('add-idea-form').classList.add('open');
+  document.getElementById('idea-title-input').focus();
+}
+
 function toggleAddIdeaForm() {
   const form = document.getElementById('add-idea-form');
-  form.classList.toggle('open');
-  if (form.classList.contains('open')) {
-    document.getElementById('idea-title-input').value = '';
-    document.getElementById('idea-desc-input').value = '';
-    document.getElementById('idea-status-input').value = 'planned';
-    document.getElementById('idea-tags-input').value = '';
-    document.getElementById('idea-title-input').focus();
-  }
+  form.classList.remove('open');
+  _editingIdeaId = null;
 }
 
 function saveNewIdea() {
@@ -1367,11 +1393,13 @@ function saveNewIdea() {
   const tags = document.getElementById('idea-tags-input').value
     .split(',').map(t => t.trim()).filter(Boolean);
 
-  ideasData.unshift({
-    id: 'manual-' + Date.now(),
-    title, desc, status, tags,
-    manual: true
-  });
+  if (_editingIdeaId) {
+    const idx = ideasData.findIndex(i => i.id === _editingIdeaId);
+    if (idx !== -1) ideasData[idx] = { ...ideasData[idx], title, desc, status, tags };
+    _editingIdeaId = null;
+  } else {
+    ideasData.unshift({ id: 'manual-' + Date.now(), title, desc, status, tags, manual: true });
+  }
   persistIdeas(ideasData);
   renderIdeas();
   toggleAddIdeaForm();
@@ -1741,6 +1769,17 @@ async function loadWishlist() {
   renderWishlist();
 }
 
+function formatPrice(raw) {
+  if (!raw) return '';
+  const num = parseFloat(String(raw).replace(/[^\d.]/g, ''));
+  if (isNaN(num)) return String(raw);
+  const currency = /[$€£]/.test(raw) ? raw.match(/[$€£]/)[0]
+    : /₽/.test(raw) ? '₽'
+    : /\$/.test(raw) ? '$'
+    : '₸';
+  return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+}
+
 function renderWishlist() {
   const container = document.getElementById('wishlist-items');
   const empty = document.getElementById('wishlist-empty');
@@ -1753,6 +1792,10 @@ function renderWishlist() {
   wlItems.forEach((item) => {
     const el = document.createElement('div');
     el.className = 'wishlist-item';
+    if (item.url) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => window.open(item.url, '_blank'));
+    }
     const imgHtml = item.image
       ? `<img src="${item.image}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
       : `<div class="wishlist-thumb" style="flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg></div>`;
@@ -1761,10 +1804,10 @@ function renderWishlist() {
       <div class="wishlist-info">
         <div class="wishlist-name">${item.title}</div>
         <div class="wishlist-brand">${item.shop || ''}${item.size ? ' · ' + item.size : ''}</div>
-        ${item.url ? `<a class="wishlist-link" href="${item.url}" target="_blank" onclick="event.stopPropagation()">${new URL(item.url).hostname.replace('www.','')}</a>` : ''}
+        ${item.url ? `<span class="wishlist-link">${new URL(item.url).hostname.replace('www.','')}</span>` : ''}
       </div>
-      ${item.price ? `<div class="wishlist-price">${item.price}</div>` : ''}
-      <button class="wishlist-delete" onclick="deleteWlItem(${item.id})" title="Удалить">
+      ${item.price ? `<div class="wishlist-price">${formatPrice(item.price)}</div>` : ''}
+      <button class="wishlist-delete" onclick="event.stopPropagation();deleteWlItem(${item.id})" title="Удалить">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>`;
     container.appendChild(el);
