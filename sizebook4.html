@@ -744,6 +744,17 @@
               <ellipse cx="74" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
               <ellipse cx="126" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
 
+              <!-- повседневная одежда -->
+              <path d="M60 82 Q52 88 49 100 L45 160 Q44 168 54 170 L146 170 Q156 168 155 160 L151 100 Q148 88 140 82 L126 78 Q114 87 100 87 Q86 87 74 78 Z" fill="#185FA5" opacity="0.72"/>
+              <path d="M61 84 Q47 92 41 107 L36 146 Q35 155 43 157 L51 157 Q57 154 56 146 L57 110 Q60 99 68 91 Z" fill="#185FA5" opacity="0.68"/>
+              <path d="M139 84 Q153 92 159 107 L164 146 Q165 155 157 157 L149 157 Q143 154 144 146 L143 110 Q140 99 132 91 Z" fill="#185FA5" opacity="0.68"/>
+              <path d="M55 170 L55 198 Q55 204 65 206 L135 206 Q145 204 145 198 L145 170 Z" fill="#2F3A45" opacity="0.82"/>
+              <path d="M65 204 L62 300 Q61 310 70 312 L88 312 Q96 310 96 300 L99 204 Z" fill="#26323D" opacity="0.82"/>
+              <path d="M135 204 L138 300 Q139 310 130 312 L112 312 Q104 310 104 300 L101 204 Z" fill="#26323D" opacity="0.82"/>
+              <path d="M67 314 Q77 309 93 316 Q98 320 92 326 L58 326 Q56 319 67 314 Z" fill="#263238" opacity="0.86"/>
+              <path d="M107 316 Q123 309 133 314 Q144 319 142 326 L108 326 Q102 320 107 316 Z" fill="#263238" opacity="0.86"/>
+              <path d="M75 316 Q84 314 93 318 M116 318 Q125 314 134 316" stroke="#607D8B" stroke-width="1.4" fill="none" opacity="0.75"/>
+
               <!-- подсветка — точные дубликаты форм, opacity управляется JS -->
               <g id="hl-hats" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
                 <ellipse cx="100" cy="40" rx="26" ry="30" fill="#185FA5"/>
@@ -1425,6 +1436,7 @@
 
 <script>
 let currentSection = 'daily';
+let currentGender = 'male';
 
 // ===== IDEAS =====
 const IDEAS_SEED = [
@@ -1598,6 +1610,53 @@ const _SIL_BASE = `
   <ellipse cx="74" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
   <ellipse cx="126" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>`;
 
+const SIL_OVERLAY_BEACH_MALE = `
+    <path d="M56 172 L56 202 Q56 210 67 212 L133 212 Q144 210 144 202 L144 172 Z" fill="#0277BD" opacity="0.82"/>
+    <path d="M67 210 L65 252 Q64 260 73 262 L91 262 Q99 258 99 250 L100 210 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M133 210 L135 252 Q136 260 127 262 L109 262 Q101 258 101 250 L100 210 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M64 262 L62 300 Q61 310 70 312 L88 312 Q96 310 96 300 L98 262 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M136 262 L138 300 Q139 310 130 312 L112 312 Q104 310 104 300 L102 262 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M66 319 Q78 315 91 320 Q96 323 91 328 L56 328 Q55 322 66 319 Z" fill="#c8a55a" opacity="0.78"/>
+    <path d="M109 320 Q122 315 134 319 Q145 322 144 328 L109 328 Q104 323 109 320 Z" fill="#c8a55a" opacity="0.78"/>
+    <circle cx="170" cy="28" r="14" fill="#FFD600" opacity="0.28"/>
+    <circle cx="170" cy="28" r="8" fill="#FFC200" opacity="0.45"/>
+    <path d="M170 10 L170 4 M185 14 L189 10 M191 28 L197 28 M185 42 L189 46 M170 52 L170 58 M155 42 L151 46 M149 28 L143 28 M155 14 L151 10" stroke="#FFC200" stroke-width="1.5" fill="none" opacity="0.38"/>`;
+
+const SIL_OVERLAY_BEACH_FEMALE = `
+    <path d="M78 86 Q90 96 100 96 Q110 96 122 86 L118 113 Q108 120 100 121 Q92 120 82 113 Z" fill="#0277BD" opacity="0.82"/>
+    <path d="M78 114 Q88 122 100 123 Q112 122 122 114 L128 170 L72 170 Z" fill="#0277BD" opacity="0.74"/>
+    <path d="M55 172 L55 196 Q55 203 66 205 L134 205 Q145 203 145 196 L145 172 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M66 203 L64 232 Q66 240 78 240 L100 236 L100 203 Z" fill="#0277BD" opacity="0.72"/>
+    <path d="M134 203 L136 232 Q134 240 122 240 L100 236 L100 203 Z" fill="#0277BD" opacity="0.72"/>
+    <path d="M62 240 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 240 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M138 240 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 240 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M66 319 Q78 315 91 320 Q96 323 91 328 L56 328 Q55 322 66 319 Z" fill="#c8a55a" opacity="0.78"/>
+    <path d="M109 320 Q122 315 134 319 Q145 322 144 328 L109 328 Q104 323 109 320 Z" fill="#c8a55a" opacity="0.78"/>
+    <circle cx="170" cy="28" r="14" fill="#FFD600" opacity="0.28"/>
+    <circle cx="170" cy="28" r="8" fill="#FFC200" opacity="0.45"/>
+    <path d="M170 10 L170 4 M185 14 L189 10 M191 28 L197 28 M185 42 L189 46 M170 52 L170 58 M155 42 L151 46 M149 28 L143 28 M155 14 L151 10" stroke="#FFC200" stroke-width="1.5" fill="none" opacity="0.38"/>`;
+
+const SIL_OVERLAY_HATS = `
+    <path d="M70 32 Q76 14 100 14 Q124 14 130 32 Q115 40 100 40 Q85 40 70 32 Z" fill="#5D4037" opacity="0.88"/>
+    <path d="M66 36 Q100 46 134 36 Q126 45 100 48 Q74 45 66 36 Z" fill="#3e2723" opacity="0.88"/>
+    <path d="M88 17 Q100 9 112 17" stroke="#795548" stroke-width="2" fill="none" opacity="0.7"/>`;
+
+const SIL_OVERLAY_GLOVES = `
+    <ellipse cx="33" cy="172" rx="10" ry="12" fill="#37474F" opacity="0.86"/>
+    <path d="M25 163 L22 151 M30 161 L30 148 M35 161 L37 148 M40 164 L45 153" stroke="#37474F" stroke-width="4" stroke-linecap="round" opacity="0.82"/>
+    <rect x="23" y="166" width="21" height="7" rx="3" fill="#263238" opacity="0.82"/>
+    <ellipse cx="167" cy="172" rx="10" ry="12" fill="#37474F" opacity="0.86"/>
+    <path d="M159 164 L154 153 M164 161 L162 148 M170 161 L170 148 M175 163 L178 151" stroke="#37474F" stroke-width="4" stroke-linecap="round" opacity="0.82"/>
+    <rect x="156" y="166" width="21" height="7" rx="3" fill="#263238" opacity="0.82"/>`;
+
+const SIL_OVERLAY_SHOES = `
+    <path d="M66 314 Q78 309 93 316 Q100 320 95 328 L56 328 Q54 320 66 314 Z" fill="#4E342E" opacity="0.86"/>
+    <path d="M60 325 L94 325 Q96 329 90 331 L58 331 Q54 329 56 325 Z" fill="#2a1a16" opacity="0.9"/>
+    <path d="M72 316 Q82 314 92 319" stroke="#a0744c" stroke-width="1.4" fill="none" opacity="0.85"/>
+    <path d="M107 316 Q122 309 134 314 Q146 320 144 328 L105 328 Q100 320 107 316 Z" fill="#4E342E" opacity="0.86"/>
+    <path d="M106 325 L140 325 Q146 329 142 331 L110 331 Q104 329 106 325 Z" fill="#2a1a16" opacity="0.9"/>
+    <path d="M108 319 Q118 314 128 316" stroke="#a0744c" stroke-width="1.4" fill="none" opacity="0.85"/>`;
+
 const SECTION_SIL_CFG = {
   formal: { color:'#1E3A5F', label:'Официальное', vb:'0 0 200 380', overlay:`
     <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#1E3A5F" opacity="0.72"/>
@@ -1634,18 +1693,7 @@ const SECTION_SIL_CFG = {
     <ellipse cx="126" cy="322" rx="20" ry="10" fill="#1B5E20" opacity="0.8"/>
     <path d="M58 320 Q72 316 88 322" stroke="#5ca65c" stroke-width="1.5" fill="none" opacity="0.85"/>
     <path d="M112 320 Q126 316 142 322" stroke="#5ca65c" stroke-width="1.5" fill="none" opacity="0.85"/>` },
-  beach: { color:'#0277BD', label:'Пляж', vb:'0 0 200 380', overlay:`
-    <path d="M80 86 Q90 94 100 95 Q110 94 120 86 L118 108 Q108 115 100 116 Q92 115 82 108 Z" fill="#0277BD" opacity="0.78"/>
-    <path d="M56 172 L56 196 Q56 204 66 206 L134 206 Q144 204 144 196 L144 172 Z" fill="#0277BD" opacity="0.78"/>
-    <path d="M66 204 L64 244 Q63 252 72 254 L90 254 Q98 250 98 242 L100 204 Z" fill="#0277BD" opacity="0.78"/>
-    <path d="M134 204 L136 244 Q137 252 128 254 L110 254 Q102 250 102 242 L100 204 Z" fill="#0277BD" opacity="0.78"/>
-    <path d="M64 252 L62 300 Q61 310 70 312 L88 312 Q96 310 96 300 L98 252 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
-    <path d="M136 252 L138 300 Q139 310 130 312 L112 312 Q104 310 104 300 L102 252 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
-    <ellipse cx="74" cy="323" rx="17" ry="7" fill="#c8a55a" opacity="0.75"/>
-    <ellipse cx="126" cy="323" rx="17" ry="7" fill="#c8a55a" opacity="0.75"/>
-    <circle cx="170" cy="28" r="14" fill="#FFD600" opacity="0.28"/>
-    <circle cx="170" cy="28" r="8" fill="#FFC200" opacity="0.45"/>
-    <path d="M170 10 L170 4 M185 14 L189 10 M191 28 L197 28 M185 42 L189 46 M170 52 L170 58 M155 42 L151 46 M149 28 L143 28 M155 14 L151 10" stroke="#FFC200" stroke-width="1.5" fill="none" opacity="0.38"/>` },
+  beach: { color:'#0277BD', label:'Пляж', vb:'0 0 200 380', overlay:SIL_OVERLAY_BEACH_MALE, femaleOverlay:SIL_OVERLAY_BEACH_FEMALE },
   under: { color:'#7B1FA2', label:'Нижнее бельё', vb:'0 0 200 380', overlay:`
     <path d="M56 172 L56 194 Q56 202 66 204 L134 204 Q144 202 144 194 L144 172 Z" fill="#7B1FA2" opacity="0.75"/>
     <rect x="54" y="170" width="92" height="10" rx="3" fill="#4A0072" opacity="0.7"/>
@@ -1656,33 +1704,9 @@ const SECTION_SIL_CFG = {
     <path d="M138 232 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 232 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
     <ellipse cx="74" cy="316" rx="16" ry="12" fill="#7B1FA2" opacity="0.65"/>
     <ellipse cx="126" cy="316" rx="16" ry="12" fill="#7B1FA2" opacity="0.65"/>` },
-  hats: { color:'#5D4037', label:'Головные уборы', vb:'44 -22 112 130', overlay:`
-    <ellipse cx="100" cy="12" rx="40" ry="11" fill="#5D4037" opacity="0.88"/>
-    <path d="M60 12 Q62 -18 100 -21 Q138 -18 140 12 Z" fill="#5D4037" opacity="0.88"/>
-    <circle cx="100" cy="-18" r="4" fill="#3e2723" opacity="0.9"/>
-    <path d="M60 12 Q58 22 52 28 Q76 24 100 22 Q124 24 148 28 Q142 22 140 12 Z" fill="#3e2723" opacity="0.92"/>` },
-  gloves: { color:'#37474F', label:'Перчатки', vb:'-10 120 220 100', overlay:`
-    <ellipse cx="33" cy="172" rx="14" ry="18" fill="#37474F" opacity="0.88"/>
-    <rect x="20" y="150" width="6" height="16" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="27" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="34" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="41" y="149" width="6" height="15" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="22" y="163" width="24" height="7" rx="2" fill="#263238" opacity="0.8"/>
-    <ellipse cx="167" cy="172" rx="14" ry="18" fill="#37474F" opacity="0.88"/>
-    <rect x="148" y="150" width="6" height="16" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="155" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="162" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="169" y="149" width="6" height="15" rx="3" fill="#37474F" opacity="0.85"/>
-    <rect x="154" y="163" width="24" height="7" rx="2" fill="#263238" opacity="0.8"/>` },
-  shoes: { color:'#4E342E', label:'Обувь', vb:'24 265 152 110', overlay:`
-    <path d="M48 308 L50 326 Q50 336 66 338 L90 338 Q102 334 100 324 L100 298 L86 300 Z" fill="#4E342E" opacity="0.82"/>
-    <path d="M46 330 Q50 338 68 340 L90 340 Q102 337 102 330 Z" fill="#2a1a16" opacity="0.9"/>
-    <path d="M50 326 Q76 322 100 326" stroke="#a0744c" stroke-width="2" fill="none" opacity="0.8"/>
-    <path d="M60 308 L88 308 M58 313 L88 313 M60 318 L88 318" stroke="#d0b898" stroke-width="1" opacity="0.65"/>
-    <path d="M100 298 L100 326 Q100 336 116 338 L140 338 Q154 334 152 324 L152 308 L136 300 Z" fill="#4E342E" opacity="0.82"/>
-    <path d="M98 330 Q102 338 118 340 L142 340 Q154 337 154 330 Z" fill="#2a1a16" opacity="0.9"/>
-    <path d="M100 326 Q126 322 152 326" stroke="#a0744c" stroke-width="2" fill="none" opacity="0.8"/>
-    <path d="M112 308 L140 308 M112 313 L142 313 M112 318 L140 318" stroke="#d0b898" stroke-width="1" opacity="0.65"/>` },
+  hats: { color:'#5D4037', label:'Головные уборы', vb:'0 0 200 380', overlay:SIL_OVERLAY_HATS },
+  gloves: { color:'#37474F', label:'Перчатки', vb:'0 0 200 380', overlay:SIL_OVERLAY_GLOVES },
+  shoes: { color:'#4E342E', label:'Обувь', vb:'0 0 200 380', overlay:SIL_OVERLAY_SHOES },
   acc: { color:'#B8860B', label:'Аксессуары', vb:'0 0 200 380', overlay:`
     <circle cx="28" cy="178" r="5" fill="none" stroke="#B8860B" stroke-width="3" opacity="0.92"/>
     <rect x="157" y="156" width="20" height="12" rx="3" fill="#B8860B" opacity="0.85"/>
@@ -1910,11 +1934,16 @@ function renderInlineSectionSilhouettes() {
   });
 }
 
+function getSectionSilOverlay(section, cfg) {
+  if (section === 'beach' && currentGender === 'female') return cfg.femaleOverlay || cfg.overlay || '';
+  return cfg.overlay || '';
+}
+
 function renderInteractiveSectionSilhouette(section, cfg) {
   return `
     <div class="section-silhouette-stage">
       <svg class="section-silhouette-svg" viewBox="0 0 200 380" xmlns="http://www.w3.org/2000/svg">
-        ${_SIL_BASE}${cfg.overlay}
+        ${_SIL_BASE}${getSectionSilOverlay(section, cfg)}
         <g id="${section}-inline-hl-hats" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
           <ellipse cx="100" cy="40" rx="26" ry="30" fill="#185FA5"/>
           <rect x="88" y="66" width="24" height="14" rx="4" fill="#185FA5"/>
@@ -1965,7 +1994,7 @@ function updateSilPanel(section) {
   panel.style.display = '';
   panel.innerHTML =
     '<svg viewBox="' + cfg.vb + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">' +
-    _SIL_BASE + cfg.overlay + '</svg>' +
+    _SIL_BASE + getSectionSilOverlay(section, cfg) + '</svg>' +
     '<div style="text-align:center;font-size:9px;font-weight:600;color:' + cfg.color + ';text-transform:uppercase;' +
     'letter-spacing:0.07em;margin-top:10px;opacity:0.6;">' + cfg.label + '</div>';
 }
@@ -2141,6 +2170,8 @@ function getModalKey(category) {
 function selectGender(el, gender) {
   document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
+  currentGender = gender || 'male';
+  renderInlineSectionSilhouettes();
 }
 
 
