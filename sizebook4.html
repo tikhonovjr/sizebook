@@ -117,6 +117,17 @@
   /* CONTENT */
   .main { flex: 1; padding: 2rem 2rem; max-width: 820px; }
 
+  /* SECTION SILHOUETTE PANEL */
+  .sil-side {
+    width: 140px; flex-shrink: 0;
+    padding: 1.5rem 0.5rem 1rem;
+    position: sticky; top: 56px;
+    align-self: flex-start;
+    max-height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+  @media (max-width: 1060px) { .sil-side { display: none !important; } }
+
   .page { display: none; }
   .page.active { display: block; }
 
@@ -1222,6 +1233,7 @@
     </div>
 
   </main>
+  <div id="sil-side" class="sil-side" style="display:none;"></div>
 </div>
 
 <!-- MODAL -->
@@ -1453,6 +1465,135 @@ function deleteIdea(id) {
 renderIdeas();
 // ===== /IDEAS =====
 
+// ── SECTION SILHOUETTES ───────────────────────────────────────────────────────
+const _SIL_BASE = `
+  <ellipse cx="100" cy="40" rx="26" ry="30" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <rect x="88" y="66" width="24" height="14" rx="4" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M58 82 Q42 88 36 104 L30 152 Q28 162 36 164 L46 164 Q52 162 52 152 L54 108 Q58 96 64 90 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M142 82 Q158 88 164 104 L170 152 Q172 162 164 164 L154 164 Q148 162 148 152 L146 108 Q142 96 136 90 Z" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <ellipse cx="33" cy="172" rx="9" ry="13" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <ellipse cx="167" cy="172" rx="9" ry="13" fill="#e8e6e2" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M52 172 L52 192 Q52 200 62 202 L138 202 Q148 200 148 192 L148 172 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M62 200 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 200 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+  <path d="M138 200 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 200 Z" fill="#dddbd6" stroke="#d0cec9" stroke-width="1"/>
+  <ellipse cx="74" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>
+  <ellipse cx="126" cy="324" rx="16" ry="9" fill="#ccc9c2" stroke="#d0cec9" stroke-width="1"/>`;
+
+const SECTION_SIL_CFG = {
+  formal: { color:'#1E3A5F', label:'Официальное', vb:'0 0 200 380', overlay:`
+    <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#1E3A5F" opacity="0.72"/>
+    <path d="M58 82 Q42 88 36 104 L30 152 Q28 162 36 164 L46 164 Q52 162 52 152 L54 108 Q58 96 64 90 Z" fill="#1E3A5F" opacity="0.72"/>
+    <path d="M142 82 Q158 88 164 104 L170 152 Q172 162 164 164 L154 164 Q148 162 148 152 L146 108 Q142 96 136 90 Z" fill="#1E3A5F" opacity="0.72"/>
+    <rect x="95" y="86" width="10" height="86" fill="#f0eeea" opacity="0.95"/>
+    <path d="M88 86 L78 112 L95 116 L95 86 Z" fill="#1E3A5F" opacity="0.82"/>
+    <path d="M112 86 L122 112 L105 116 L105 86 Z" fill="#1E3A5F" opacity="0.82"/>
+    <path d="M97 93 L94 133 L100 141 L106 133 L103 93 Z" fill="#8B1A1A" opacity="0.85"/>
+    <path d="M52 172 L52 192 Q52 200 62 202 L138 202 Q148 200 148 192 L148 172 Z" fill="#152736" opacity="0.78"/>
+    <path d="M62 200 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 200 Z" fill="#152736" opacity="0.78"/>
+    <path d="M138 200 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 200 Z" fill="#152736" opacity="0.78"/>
+    <ellipse cx="74" cy="323" rx="19" ry="8" fill="#0a0a12" opacity="0.68"/>
+    <ellipse cx="126" cy="323" rx="19" ry="8" fill="#0a0a12" opacity="0.68"/>` },
+  outer: { color:'#1B5E7A', label:'Верхняя одежда', vb:'0 0 200 380', overlay:`
+    <path d="M50 78 Q35 84 31 100 L25 168 Q23 180 40 182 L160 182 Q177 180 175 168 L169 100 Q165 84 150 78 L134 72 Q116 85 100 85 Q84 85 66 72 Z" fill="#1B5E7A" opacity="0.72"/>
+    <path d="M50 80 Q29 88 22 108 L16 158 Q14 172 26 174 L42 174 Q52 170 50 158 L52 114 Q56 100 66 90 Z" fill="#1B5E7A" opacity="0.72"/>
+    <path d="M150 80 Q171 88 178 108 L184 158 Q186 172 174 174 L158 174 Q148 170 150 158 L148 114 Q144 100 134 90 Z" fill="#1B5E7A" opacity="0.72"/>
+    <path d="M40 182 L40 252 Q40 260 52 262 L148 262 Q160 260 160 252 L160 182 Z" fill="#1B5E7A" opacity="0.65"/>
+    <path d="M62 260 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 260 Z" fill="#0d3344" opacity="0.7"/>
+    <path d="M138 260 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 260 Z" fill="#0d3344" opacity="0.7"/>
+    <ellipse cx="74" cy="323" rx="18" ry="9" fill="#1B5E7A" opacity="0.75"/>
+    <ellipse cx="126" cy="323" rx="18" ry="9" fill="#1B5E7A" opacity="0.75"/>` },
+  sport: { color:'#2E7D32', label:'Спорт', vb:'0 0 200 380', overlay:`
+    <path d="M62 82 Q54 86 51 98 L47 160 Q45 168 56 170 L144 170 Q155 168 153 160 L149 98 Q146 86 138 82 L126 78 Q114 87 100 87 Q86 87 74 78 Z" fill="#2E7D32" opacity="0.72"/>
+    <path d="M62 84 Q46 90 40 106 L34 152 Q32 162 40 164 L48 164 Q54 160 52 152 L54 110 Q58 98 66 90 Z" fill="#2E7D32" opacity="0.72"/>
+    <path d="M138 84 Q154 90 160 106 L166 152 Q168 162 160 164 L152 164 Q146 160 148 152 L146 110 Q142 98 134 90 Z" fill="#2E7D32" opacity="0.72"/>
+    <path d="M54 170 L54 196 Q54 202 64 204 L136 204 Q146 202 146 196 L146 170 Z" fill="#1B5E20" opacity="0.78"/>
+    <path d="M64 202 L62 244 Q61 252 70 254 L90 254 Q98 250 98 242 L100 202 Z" fill="#1B5E20" opacity="0.78"/>
+    <path d="M136 202 L138 244 Q139 252 130 254 L110 254 Q102 250 102 242 L100 202 Z" fill="#1B5E20" opacity="0.78"/>
+    <path d="M62 252 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 252 Z" fill="#e2ccb8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M138 252 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 252 Z" fill="#e2ccb8" stroke="#d0cec9" stroke-width="0.5"/>
+    <ellipse cx="74" cy="322" rx="20" ry="10" fill="#1B5E20" opacity="0.8"/>
+    <ellipse cx="126" cy="322" rx="20" ry="10" fill="#1B5E20" opacity="0.8"/>
+    <path d="M58 320 Q72 316 88 322" stroke="#5ca65c" stroke-width="1.5" fill="none" opacity="0.85"/>
+    <path d="M112 320 Q126 316 142 322" stroke="#5ca65c" stroke-width="1.5" fill="none" opacity="0.85"/>` },
+  beach: { color:'#0277BD', label:'Пляж', vb:'0 0 200 380', overlay:`
+    <path d="M80 86 Q90 94 100 95 Q110 94 120 86 L118 108 Q108 115 100 116 Q92 115 82 108 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M56 172 L56 196 Q56 204 66 206 L134 206 Q144 204 144 196 L144 172 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M66 204 L64 244 Q63 252 72 254 L90 254 Q98 250 98 242 L100 204 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M134 204 L136 244 Q137 252 128 254 L110 254 Q102 250 102 242 L100 204 Z" fill="#0277BD" opacity="0.78"/>
+    <path d="M64 252 L62 300 Q61 310 70 312 L88 312 Q96 310 96 300 L98 252 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M136 252 L138 300 Q139 310 130 312 L112 312 Q104 310 104 300 L102 252 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <ellipse cx="74" cy="323" rx="17" ry="7" fill="#c8a55a" opacity="0.75"/>
+    <ellipse cx="126" cy="323" rx="17" ry="7" fill="#c8a55a" opacity="0.75"/>
+    <circle cx="170" cy="28" r="14" fill="#FFD600" opacity="0.28"/>
+    <circle cx="170" cy="28" r="8" fill="#FFC200" opacity="0.45"/>
+    <path d="M170 10 L170 4 M185 14 L189 10 M191 28 L197 28 M185 42 L189 46 M170 52 L170 58 M155 42 L151 46 M149 28 L143 28 M155 14 L151 10" stroke="#FFC200" stroke-width="1.5" fill="none" opacity="0.38"/>` },
+  under: { color:'#7B1FA2', label:'Нижнее бельё', vb:'0 0 200 380', overlay:`
+    <path d="M56 172 L56 194 Q56 202 66 204 L134 204 Q144 202 144 194 L144 172 Z" fill="#7B1FA2" opacity="0.75"/>
+    <rect x="54" y="170" width="92" height="10" rx="3" fill="#4A0072" opacity="0.7"/>
+    <path d="M66 202 L64 228 Q66 234 78 234 L100 232 L100 202 Z" fill="#7B1FA2" opacity="0.68"/>
+    <path d="M134 202 L136 228 Q134 234 122 234 L100 232 L100 202 Z" fill="#7B1FA2" opacity="0.68"/>
+    <path d="M100 202 L100 232" stroke="#9c27b0" stroke-width="1.5" opacity="0.7"/>
+    <path d="M62 232 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 232 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <path d="M138 232 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 232 Z" fill="#e4d0b8" stroke="#d0cec9" stroke-width="0.5"/>
+    <ellipse cx="74" cy="316" rx="16" ry="12" fill="#7B1FA2" opacity="0.65"/>
+    <ellipse cx="126" cy="316" rx="16" ry="12" fill="#7B1FA2" opacity="0.65"/>` },
+  hats: { color:'#5D4037', label:'Головные уборы', vb:'44 -22 112 130', overlay:`
+    <ellipse cx="100" cy="12" rx="40" ry="11" fill="#5D4037" opacity="0.88"/>
+    <path d="M60 12 Q62 -18 100 -21 Q138 -18 140 12 Z" fill="#5D4037" opacity="0.88"/>
+    <circle cx="100" cy="-18" r="4" fill="#3e2723" opacity="0.9"/>
+    <path d="M60 12 Q58 22 52 28 Q76 24 100 22 Q124 24 148 28 Q142 22 140 12 Z" fill="#3e2723" opacity="0.92"/>` },
+  gloves: { color:'#37474F', label:'Перчатки', vb:'-10 120 220 100', overlay:`
+    <ellipse cx="33" cy="172" rx="14" ry="18" fill="#37474F" opacity="0.88"/>
+    <rect x="20" y="150" width="6" height="16" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="27" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="34" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="41" y="149" width="6" height="15" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="22" y="163" width="24" height="7" rx="2" fill="#263238" opacity="0.8"/>
+    <ellipse cx="167" cy="172" rx="14" ry="18" fill="#37474F" opacity="0.88"/>
+    <rect x="148" y="150" width="6" height="16" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="155" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="162" y="146" width="6" height="18" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="169" y="149" width="6" height="15" rx="3" fill="#37474F" opacity="0.85"/>
+    <rect x="154" y="163" width="24" height="7" rx="2" fill="#263238" opacity="0.8"/>` },
+  shoes: { color:'#4E342E', label:'Обувь', vb:'24 265 152 110', overlay:`
+    <path d="M48 308 L50 326 Q50 336 66 338 L90 338 Q102 334 100 324 L100 298 L86 300 Z" fill="#4E342E" opacity="0.82"/>
+    <path d="M46 330 Q50 338 68 340 L90 340 Q102 337 102 330 Z" fill="#2a1a16" opacity="0.9"/>
+    <path d="M50 326 Q76 322 100 326" stroke="#a0744c" stroke-width="2" fill="none" opacity="0.8"/>
+    <path d="M60 308 L88 308 M58 313 L88 313 M60 318 L88 318" stroke="#d0b898" stroke-width="1" opacity="0.65"/>
+    <path d="M100 298 L100 326 Q100 336 116 338 L140 338 Q154 334 152 324 L152 308 L136 300 Z" fill="#4E342E" opacity="0.82"/>
+    <path d="M98 330 Q102 338 118 340 L142 340 Q154 337 154 330 Z" fill="#2a1a16" opacity="0.9"/>
+    <path d="M100 326 Q126 322 152 326" stroke="#a0744c" stroke-width="2" fill="none" opacity="0.8"/>
+    <path d="M112 308 L140 308 M112 313 L142 313 M112 318 L140 318" stroke="#d0b898" stroke-width="1" opacity="0.65"/>` },
+  acc: { color:'#B8860B', label:'Аксессуары', vb:'0 0 200 380', overlay:`
+    <circle cx="28" cy="178" r="5" fill="none" stroke="#B8860B" stroke-width="3" opacity="0.92"/>
+    <rect x="157" y="156" width="20" height="12" rx="3" fill="#B8860B" opacity="0.85"/>
+    <rect x="161" y="153" width="12" height="3" rx="1" fill="#8a6300" opacity="0.8"/>
+    <rect x="161" y="168" width="12" height="3" rx="1" fill="#8a6300" opacity="0.8"/>
+    <rect x="54" y="189" width="92" height="9" rx="2" fill="#B8860B" opacity="0.78"/>
+    <rect x="94" y="186" width="12" height="14" rx="2" fill="#d4a800" opacity="0.92"/>
+    <path d="M82 88 Q100 102 118 88" fill="none" stroke="#B8860B" stroke-width="1.8" opacity="0.82"/>
+    <circle cx="100" cy="104" r="3.5" fill="#B8860B" opacity="0.85"/>
+    <circle cx="72" cy="47" r="3" fill="#B8860B" opacity="0.78"/>
+    <circle cx="128" cy="47" r="3" fill="#B8860B" opacity="0.78"/>` }
+};
+
+function updateSilPanel(section) {
+  const panel = document.getElementById('sil-side');
+  if (!panel) return;
+  if (section === 'daily' || !SECTION_SIL_CFG[section]) {
+    panel.style.display = 'none';
+    return;
+  }
+  const cfg = SECTION_SIL_CFG[section];
+  panel.style.display = '';
+  panel.innerHTML =
+    '<svg viewBox="' + cfg.vb + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">' +
+    _SIL_BASE + cfg.overlay + '</svg>' +
+    '<div style="text-align:center;font-size:9px;font-weight:600;color:' + cfg.color + ';text-transform:uppercase;' +
+    'letter-spacing:0.07em;margin-top:10px;opacity:0.6;">' + cfg.label + '</div>';
+}
+
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1465,6 +1606,7 @@ function showPage(name) {
   const SIZE_PAGES = ['daily','formal','outer','sport','beach','under','hats','gloves','shoes','acc'];
   if (SIZE_PAGES.includes(name)) loadAllSizes();
   if (name === 'daily') loadItemCounts();
+  updateSilPanel(name);
 }
 
 // ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
