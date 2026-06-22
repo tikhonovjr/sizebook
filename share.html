@@ -120,6 +120,13 @@ function formatSizeKey(k) {
   return MAP[k] || k.replace(/_/g, ' ');
 }
 
+function formatSizeValue(raw) {
+  if (raw && typeof raw === 'object') {
+    return [raw.value, raw.brand, raw.note].filter(Boolean).join(' · ');
+  }
+  return raw == null ? '' : String(raw);
+}
+
 function renderError(title, sub) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('content').style.display = '';
@@ -143,7 +150,7 @@ function renderData(data) {
     html += '<div class="section-label">Размеры</div>';
     html += '<div class="tags-row">';
     Object.entries(data.sizes).forEach(([k, v]) => {
-      html += `<span class="tag">${formatSizeKey(k)}: ${v}</span>`;
+      html += `<span class="tag">${formatSizeKey(k)}: ${formatSizeValue(v)}</span>`;
     });
     html += '</div></div>';
   }
