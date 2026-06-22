@@ -408,6 +408,17 @@ function parseProductFromHtml(html, url) {
   return { title, price, image };
 }
 
+function mergeParseResults(a, b) {
+  if (!a && !b) return { title: null, price: null, image: null };
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    title: a.title || b.title || null,
+    price: a.price || b.price || null,
+    image: a.image || b.image || null,
+  };
+}
+
 app.post('/parse', authenticateToken, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
@@ -415,22 +426,24 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
   const host = new URL(url).hostname;
 
-  // Сайты с JS-челленджем — нужен headless browser
+  // 12storeez — JS-челлендж, сразу Playwright
   if (host.includes('12storeez')) {
     const result = await parseViaPlaywright(url);
+    console.log(`[parse] 12storeez playwright:`, result);
     return res.json(result || { title: null, price: null, image: null });
   }
 
-  // Wildberries — CDN API, работает без антибота
+  // Wildberries — CDN API, без антибота
   if (host.includes('wildberries')) {
     const result = await parseWildberries(url);
+    console.log(`[parse] wildberries cdn:`, result);
     return res.json(result || { title: null, price: null, image: null });
   }
 
   const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch');
 
-  // Сначала всегда пробуем прямой HTML-парсер — если Akamai/Cloudflare пропустит,
-  // получим полные данные включая цену из og:price:amount
+  // Шаг a: прямой fetch + HTML-парсер
+  let accumulated = { title: null, price: null, image: null };
   try {
     const response = await fetch(url, {
       headers: FETCH_HEADERS,
@@ -438,23 +451,49 @@ app.post('/parse', authenticateToken, async (req, res) => {
       signal: AbortSignal.timeout(15000),
     });
     const html = await response.text();
-    const result = parseProductFromHtml(html, url);
-    // Если получили хоть что-то — отдаём сразу
-    if (result.title || result.price || result.image) return res.json(result);
+    const direct = parseProductFromHtml(html, url);
+    console.log(`[parse] direct fetch (${host}):`, direct);
+    accumulated = mergeParseResults(accumulated, direct);
+
+    // Для обычных сайтов — если что-то нашли, сразу отдаём
+    if (!BOT_PROTECTED && (accumulated.title || accumulated.price || accumulated.image)) {
+      return res.json(accumulated);
+    }
   } catch (e) {
+    console.log(`[parse] direct fetch error (${host}):`, e.message);
     if (e.name === 'TimeoutError' && !BOT_PROTECTED)
       return res.status(504).json({ error: 'Сайт не ответил' });
   }
 
-  // Прямой парсер ничего не вернул — для известных bot-protected сайтов пробуем внешние парсеры
-  if (BOT_PROTECTED) {
-    let result = await parseViaJsonlink(url);
-    if (result?.title) return res.json(result);
-    result = await parseViaIframely(url);
-    if (result?.title) return res.json(result);
+  // Для обычных сайтов без результата — возвращаем null
+  if (!BOT_PROTECTED) {
+    return res.json(accumulated);
   }
 
-  res.json({ title: null, price: null, image: null });
+  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price)
+  if (!accumulated.title || !accumulated.price) {
+    const playwright = await parseViaPlaywright(url);
+    console.log(`[parse] playwright (${host}):`, playwright);
+    accumulated = mergeParseResults(accumulated, playwright);
+  }
+
+  // Шаг c: если после Playwright всё ещё нет title или image — дополняем через внешние OG-парсеры
+  // (они умеют title/image, но не price — поэтому идут последними)
+  if (!accumulated.title || !accumulated.image) {
+    const jsonlink = await parseViaJsonlink(url);
+    console.log(`[parse] jsonlink (${host}):`, jsonlink);
+    accumulated = mergeParseResults(accumulated, jsonlink);
+
+    if (!accumulated.title || !accumulated.image) {
+      const iframely = await parseViaIframely(url);
+      console.log(`[parse] iframely (${host}):`, iframely);
+      accumulated = mergeParseResults(accumulated, iframely);
+    }
+  }
+
+  // Шаг d: отдаём что есть (price может быть null — это нормально, если ни один метод не нашёл)
+  console.log(`[parse] final result (${host}):`, accumulated);
+  res.json(accumulated);
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
