@@ -169,7 +169,59 @@
     width: 100%;
     max-width: 200px;
     display: block;
-    margin: 0 auto;
+    flex-shrink: 0;
+  }
+  .section-silhouette-stage {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .section-silhouette-panel {
+    display: none;
+    position: absolute;
+    left: 208px;
+    top: 0;
+    width: 200px;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    z-index: 50;
+    overflow: hidden;
+  }
+  .section-silhouette-panel-head {
+    padding: 10px 12px 6px;
+    border-bottom: 0.5px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+  }
+  .section-silhouette-panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .section-silhouette-panel-items {
+    padding: 8px 12px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .section-silhouette-panel-foot {
+    padding: 6px 12px 10px;
+    border-top: 0.5px solid var(--border);
+  }
+  .section-silhouette-panel-foot button {
+    width: 100%;
+    background: none;
+    border: 0.5px solid var(--border2);
+    border-radius: 6px;
+    padding: 5px 0;
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
   }
   @media (max-width: 1060px) {
     .size-page-grid { grid-template-columns: 1fr; }
@@ -1618,16 +1670,137 @@ const SECTION_SIL_CFG = {
 };
 
 const INLINE_SIL_PAGES = ['formal'];
+const INLINE_SIL_ZONE_TITLES = {
+  formal: { hats:'Голова', tops:'Костюм', bottoms:'Брюки', shoes:'Обувь' },
+};
+const INLINE_SIL_SIZE_MAP = {
+  formal: {
+    tops: [
+      { label:'Пиджак', key:'formal_jacket' },
+      { label:'Рубашка', key:'formal_shirt' },
+    ],
+    bottoms: [
+      { label:'Брюки', key:'formal_pants' },
+    ],
+  },
+};
+const _inlineSilHideTimers = {};
+
+function getInlineSizeValue(section, key) {
+  const el = document.querySelector('#page-' + section + ' [data-size-key="' + key + '"]');
+  return el ? el.textContent.trim() : '';
+}
+
+function getInlineSilItems(section, zone) {
+  const mapped = INLINE_SIL_SIZE_MAP[section]?.[zone];
+  if (mapped) {
+    return mapped.map(item => ({ label: item.label, value: getInlineSizeValue(section, item.key) || '—' }));
+  }
+  if (section === 'formal' && zone === 'shoes') {
+    return Array.from(document.querySelectorAll('#page-formal .sys-box')).map(box => ({
+      label: box.querySelector('.sys-box-label')?.textContent.trim() || '',
+      value: box.querySelector('.sys-box-value')?.textContent.trim() || '—',
+    })).filter(item => item.label);
+  }
+  return [];
+}
+
+function renderInlineSilPanelItems(items) {
+  if (!items.length) {
+    return '<div style="font-size:12px;color:var(--text3);padding:4px 0;">Нет размеров</div>';
+  }
+  return items.map(item =>
+    '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(item.label) + '</div>' +
+      '</div>' +
+      '<span style="font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0">' + escapeHtml(item.value) + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function setInlineSilHighlight(section, zone, opacity) {
+  ['hats','tops','bottoms','shoes'].forEach(z => {
+    const el = document.getElementById(section + '-inline-hl-' + z);
+    if (el) el.style.opacity = z === zone ? opacity : '0';
+  });
+}
+
+function showInlineSilPanel(section, zone) {
+  cancelHideInlineSilPanel(section);
+  setInlineSilHighlight(section, zone, '0.22');
+  const panel = document.getElementById(section + '-inline-panel');
+  const title = document.getElementById(section + '-inline-panel-title');
+  const items = document.getElementById(section + '-inline-panel-items');
+  if (!panel || !title || !items) return;
+  title.textContent = INLINE_SIL_ZONE_TITLES[section]?.[zone] || zone;
+  items.innerHTML = renderInlineSilPanelItems(getInlineSilItems(section, zone));
+  panel.style.display = 'block';
+}
+
+function scheduleHideInlineSilPanel(section) {
+  _inlineSilHideTimers[section] = setTimeout(() => {
+    const panel = document.getElementById(section + '-inline-panel');
+    if (panel) panel.style.display = 'none';
+    setInlineSilHighlight(section, null, '0');
+  }, 200);
+}
+
+function cancelHideInlineSilPanel(section) {
+  if (_inlineSilHideTimers[section]) {
+    clearTimeout(_inlineSilHideTimers[section]);
+    _inlineSilHideTimers[section] = null;
+  }
+}
 
 function renderInlineSectionSilhouettes() {
   document.querySelectorAll('[data-inline-sil]').forEach(el => {
     const section = el.dataset.inlineSil;
     const cfg = SECTION_SIL_CFG[section];
     if (!cfg) return;
-    el.innerHTML =
-      '<svg class="section-silhouette-svg" viewBox="' + cfg.vb + '" xmlns="http://www.w3.org/2000/svg">' +
-      _SIL_BASE + cfg.overlay + '</svg>';
+    el.innerHTML = renderInteractiveSectionSilhouette(section, cfg);
   });
+}
+
+function renderInteractiveSectionSilhouette(section, cfg) {
+  return `
+    <div class="section-silhouette-stage">
+      <svg class="section-silhouette-svg" viewBox="${cfg.vb}" xmlns="http://www.w3.org/2000/svg">
+        ${_SIL_BASE}${cfg.overlay}
+        <g id="${section}-inline-hl-hats" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+          <ellipse cx="100" cy="40" rx="26" ry="30" fill="#185FA5"/>
+          <rect x="88" y="66" width="24" height="14" rx="4" fill="#185FA5"/>
+        </g>
+        <g id="${section}-inline-hl-tops" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+          <path d="M58 80 Q50 84 47 96 L43 162 Q41 170 52 172 L148 172 Q159 170 157 162 L153 96 Q150 84 142 80 L128 76 Q114 86 100 86 Q86 86 72 76 Z" fill="#185FA5"/>
+          <path d="M58 82 Q42 88 36 104 L30 152 Q28 162 36 164 L46 164 Q52 162 52 152 L54 108 Q58 96 64 90 Z" fill="#185FA5"/>
+          <path d="M142 82 Q158 88 164 104 L170 152 Q172 162 164 164 L154 164 Q148 162 148 152 L146 108 Q142 96 136 90 Z" fill="#185FA5"/>
+          <ellipse cx="33" cy="172" rx="9" ry="13" fill="#185FA5"/>
+          <ellipse cx="167" cy="172" rx="9" ry="13" fill="#185FA5"/>
+        </g>
+        <g id="${section}-inline-hl-bottoms" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+          <path d="M52 172 L52 192 Q52 200 62 202 L138 202 Q148 200 148 192 L148 172 Z" fill="#533AB7"/>
+          <path d="M62 200 L60 300 Q59 310 68 312 L88 312 Q96 310 96 300 L98 200 Z" fill="#533AB7"/>
+          <path d="M138 200 L140 300 Q141 310 132 312 L112 312 Q104 310 104 300 L102 200 Z" fill="#533AB7"/>
+        </g>
+        <g id="${section}-inline-hl-shoes" opacity="0" style="transition:opacity 0.15s;pointer-events:none;">
+          <ellipse cx="74" cy="324" rx="16" ry="9" fill="#3B6D11"/>
+          <ellipse cx="126" cy="324" rx="16" ry="9" fill="#3B6D11"/>
+        </g>
+        <ellipse cx="100" cy="40" rx="30" ry="34" fill="transparent" onmouseenter="showInlineSilPanel('${section}','hats')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M38 76 L162 76 L163 178 L37 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M20 78 L58 78 L58 178 L20 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M142 78 L180 78 L180 178 L142 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M37 178 L163 178 L165 316 L35 316 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','bottoms')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M48 312 L102 312 L102 340 L48 340 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M98 312 L152 312 L152 340 L98 340 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+      </svg>
+      <div id="${section}-inline-panel" class="section-silhouette-panel" onmouseenter="cancelHideInlineSilPanel('${section}')" onmouseleave="scheduleHideInlineSilPanel('${section}')">
+        <div class="section-silhouette-panel-head"><div id="${section}-inline-panel-title" class="section-silhouette-panel-title"></div></div>
+        <div id="${section}-inline-panel-items" class="section-silhouette-panel-items"></div>
+        <div class="section-silhouette-panel-foot"><button onclick="openModal()">+ Добавить</button></div>
+      </div>
+    </div>`;
 }
 
 renderInlineSectionSilhouettes();
