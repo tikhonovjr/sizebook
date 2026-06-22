@@ -1771,11 +1771,14 @@ async function loadWishlist() {
 
 function formatPrice(raw) {
   if (!raw) return '';
-  const num = parseFloat(String(raw).replace(/[^\d.]/g, ''));
-  if (isNaN(num)) return String(raw);
-  const currency = /[$€£]/.test(raw) ? raw.match(/[$€£]/)[0]
-    : /₽/.test(raw) ? '₽'
-    : /\$/.test(raw) ? '$'
+  const s = String(raw);
+  const num = parseFloat(s.replace(/[^\d.]/g, ''));
+  if (isNaN(num)) return s;
+  const currency = /₽/.test(s) || /\bRUB\b/i.test(s) ? '₽'
+    : /€/.test(s) || /\bEUR\b/i.test(s) ? '€'
+    : /£/.test(s) || /\bGBP\b/i.test(s) ? '£'
+    : /\$/.test(s) || /\bUSD\b/i.test(s) ? '$'
+    : /₸/.test(s) || /\bKZT\b/i.test(s) ? '₸'
     : '₸';
   return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
 }
