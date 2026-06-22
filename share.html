@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SizeBook — Размеры</title>
+<style>
+  :root {
+    --bg: #f5f4f2; --surface: #ffffff; --surface2: #f0eeeb;
+    --border: rgba(0,0,0,0.10); --border2: rgba(0,0,0,0.15);
+    --text: #1a1917; --text2: #6b6965; --text3: #9c9894;
+    --radius: 12px; --radius-sm: 8px;
+    --accent: #1a1917;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); min-height: 100vh; }
+
+  .topbar {
+    background: var(--surface); border-bottom: 0.5px solid var(--border);
+    padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { font-size: 15px; font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+  .install-btn {
+    font-size: 12px; color: var(--text2); background: var(--surface2);
+    border: 0.5px solid var(--border2); border-radius: 20px;
+    padding: 5px 12px; cursor: pointer; text-decoration: none;
+  }
+
+  .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
+
+  .card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;
+  }
+
+  .section-label {
+    font-size: 11px; color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 10px; font-weight: 500;
+  }
+
+  .tags-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 0.5px solid var(--border);
+    border-radius: 20px; padding: 5px 12px; font-size: 13px; color: var(--text);
+  }
+
+  .wl-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .wl-item:last-child { border-bottom: none; }
+  .wl-thumb {
+    width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
+    background: var(--surface2); flex-shrink: 0;
+  }
+  .wl-thumb-placeholder { width: 48px; height: 48px; border-radius: 8px; background: var(--surface2); flex-shrink: 0; }
+  .wl-info { flex: 1; min-width: 0; }
+  .wl-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .wl-price { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; }
+
+  .status-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 2.5rem 1.5rem; text-align: center;
+  }
+  .status-icon { font-size: 36px; margin-bottom: 12px; }
+  .status-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .status-sub { font-size: 14px; color: var(--text2); margin-bottom: 20px; }
+  .btn-primary {
+    display: inline-block; background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius-sm); padding: 10px 20px;
+    font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
+  }
+
+  #loading { text-align: center; padding: 60px 0; color: var(--text3); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo" href="/">SizeBook</a>
+  <a class="install-btn" href="/">Открыть приложение</a>
+</div>
+
+<div class="container">
+  <div id="loading">Загрузка...</div>
+  <div id="content" style="display:none"></div>
+</div>
+
+<script>
+const API = 'https://desirable-cat-production-6c28.up.railway.app';
+
+function formatPrice(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  let symbol = '₸';
+  if (/₽/.test(s) || /\bRUB\b/i.test(s)) symbol = '₽';
+  else if (/€/.test(s) || /\bEUR\b/i.test(s)) symbol = '€';
+  else if (/£/.test(s) || /\bGBP\b/i.test(s)) symbol = '£';
+  else if (/\$/.test(s) || /\bUSD\b/i.test(s)) symbol = '$';
+  else if (/₸/.test(s) || /\bKZT\b/i.test(s)) symbol = '₸';
+  const num = s.replace(/[^\d.,]/g, '').replace(',', '.');
+  const n = parseFloat(num);
+  if (isNaN(n)) return s;
+  return n.toLocaleString('ru-RU') + ' ' + symbol;
+}
+
+function formatSizeKey(k) {
+  const MAP = {
+    daily_top: 'Верх', daily_bottom: 'Брюки', shoes_eu: 'Обувь EU',
+    shoes_us: 'Обувь US', shoes_uk: 'Обувь UK', shoes_cm: 'Обувь см',
+    ring_mm: 'Кольцо', hat: 'Шапка', outer: 'Верхняя одежда',
+    sport_top: 'Спорт верх', sport_bottom: 'Спорт низ', sport_shoes: 'Спорт обувь',
+    gloves: 'Перчатки', belt: 'Ремень', waist: 'Талия', chest: 'Грудь',
+    height: 'Рост', weight: 'Вес', under_top: 'Бельё верх', under_bottom: 'Бельё низ',
+    beach_top: 'Купальник верх', beach_bottom: 'Купальник низ',
+  };
+  return MAP[k] || k.replace(/_/g, ' ');
+}
+
+function renderError(title, sub) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = '';
+  document.getElementById('content').innerHTML = `
+    <div class="status-card">
+      <div class="status-icon">🔗</div>
+      <div class="status-title">${title}</div>
+      <div class="status-sub">${sub}</div>
+      <a class="btn-primary" href="/">Открыть SizeBook</a>
+    </div>`;
+}
+
+function renderData(data) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = '';
+
+  let html = '';
+
+  if (data.sizes && Object.keys(data.sizes).length) {
+    html += '<div class="card">';
+    html += '<div class="section-label">Размеры</div>';
+    html += '<div class="tags-row">';
+    Object.entries(data.sizes).forEach(([k, v]) => {
+      html += `<span class="tag">${formatSizeKey(k)}: ${v}</span>`;
+    });
+    html += '</div></div>';
+  }
+
+  if (data.wishlist && data.wishlist.length) {
+    html += '<div class="card">';
+    html += '<div class="section-label">Вишлист</div>';
+    data.wishlist.forEach(item => {
+      const img = item.image
+        ? `<img class="wl-thumb" src="${item.image}" alt="" onerror="this.className='wl-thumb-placeholder'">`
+        : `<div class="wl-thumb-placeholder"></div>`;
+      const meta = [item.shop, item.size].filter(Boolean).join(' · ');
+      const price = item.price ? `<div class="wl-price">${formatPrice(item.price)}</div>` : '';
+      const link = item.url
+        ? `<a href="${item.url}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">`
+        : '';
+      const linkClose = item.url ? '</a>' : '';
+      html += `<div class="wl-item">${link}${img}<div class="wl-info"><div class="wl-title">${item.title}</div>${meta ? `<div class="wl-meta">${meta}</div>` : ''}</div>${price}${linkClose}</div>`;
+    });
+    html += '</div>';
+  }
+
+  if (!html) {
+    html = '<div class="status-card"><div class="status-icon">📭</div><div class="status-title">Пусто</div><div class="status-sub">Ничего не добавлено в эту ссылку</div></div>';
+  }
+
+  document.getElementById('content').innerHTML = html;
+}
+
+async function init() {
+  const token = window.location.pathname.replace(/^\/s\//, '');
+  if (!token) { renderError('Некорректная ссылка', 'Токен не найден в URL'); return; }
+
+  try {
+    const r = await fetch(API + '/share/' + token);
+    if (r.status === 404) { renderError('Ссылка недействительна', 'Возможно, она была отозвана или никогда не существовала'); return; }
+    if (r.status === 410) { renderError('Ссылка истекла', 'Срок действия этой ссылки закончился'); return; }
+    if (!r.ok) { renderError('Ошибка', 'Не удалось загрузить данные'); return; }
+    renderData(await r.json());
+  } catch(e) {
+    renderError('Ошибка соединения', 'Проверь подключение к интернету');
+  }
+}
+
+init();
+</script>
+</body>
+</html>

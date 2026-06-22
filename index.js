@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cheerio = require('cheerio');
 const { chromium } = require('playwright-core');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +50,18 @@ async function initDB() {
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS price TEXT;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS size TEXT;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS image TEXT;
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS share_links (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token      VARCHAR(64) UNIQUE NOT NULL,
+      sections   JSONB NOT NULL DEFAULT '{}',
+      expires_at TIMESTAMP NULL,
+      revoked_at TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links(token);
   `);
   console.log('DB ready');
 }
@@ -177,6 +190,86 @@ app.get('/profile/:username', async (req, res) => {
     const wr = await pool.query('SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC', [u.id]);
     const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [u.id]);
     res.json({ username: u.username, wishlist: wr.rows, sizes: sr.rows[0]?.data || {} });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+// ── SHARE LINKS ──────────────────────────────────────────────────────────────
+app.post('/share', authenticateToken, async (req, res) => {
+  try {
+    const { sections, expires_at } = req.body;
+    const token = crypto.randomBytes(32).toString('hex');
+    await pool.query(
+      'UPDATE share_links SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL',
+      [req.user.id]
+    );
+    const r = await pool.query(
+      'INSERT INTO share_links (user_id, token, sections, expires_at) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.user.id, token, JSON.stringify(sections || {}), expires_at || null]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.get('/share', authenticateToken, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT * FROM share_links WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+      [req.user.id]
+    );
+    if (!r.rows.length) return res.json(null);
+    const link = r.rows[0];
+    if (link.expires_at && new Date(link.expires_at) < new Date()) return res.json(null);
+    res.json(link);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.post('/share/revoke', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE share_links SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL',
+      [req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.get('/share/:token', async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT * FROM share_links WHERE token=$1 AND revoked_at IS NULL',
+      [req.params.token]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Ссылка недействительна' });
+    const link = r.rows[0];
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Ссылка истекла' });
+    }
+    const sections = link.sections || {};
+    const result = { token: link.token, expires_at: link.expires_at, sections };
+
+    if (sections.sizes) {
+      const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
+      let sizesData = sr.rows[0]?.data || {};
+      const excl = Array.isArray(sections.excluded_size_keys) ? sections.excluded_size_keys : [];
+      if (excl.length) {
+        sizesData = Object.fromEntries(
+          Object.entries(sizesData).filter(([k]) => !excl.includes(k))
+        );
+      }
+      result.sizes = sizesData;
+    }
+
+    if (sections.wishlist) {
+      const wr = await pool.query(
+        'SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC', [link.user_id]
+      );
+      const excl = Array.isArray(sections.excluded_wishlist_ids) ? sections.excluded_wishlist_ids : [];
+      result.wishlist = excl.length
+        ? wr.rows.filter(item => !excl.includes(item.id))
+        : wr.rows;
+    }
+
+    res.json(result);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
@@ -509,6 +602,7 @@ app.post('/parse', authenticateToken, async (req, res) => {
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
+app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 
 // ── СТАРТ ─────────────────────────────────────────────────────────────────────

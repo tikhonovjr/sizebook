@@ -1042,22 +1042,40 @@
       <div class="share-card">
         <div class="avatar"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span></div>
         <div style="font-size:18px; font-weight:600; margin-bottom:6px">Мои размеры</div>
-        <div style="font-size:14px; color:var(--text2)">Поделись ссылкой — и друзья смогут легко выбрать подарок нужного размера</div>
+        <div style="font-size:14px; color:var(--text2); margin-bottom:4px">Поделись ссылкой — и друзья смогут легко выбрать подарок нужного размера</div>
         <div class="share-actions">
-          <button class="btn-ghost" onclick="copyShareLink()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span> Скопировать ссылку</button>
+          <button class="btn-primary" id="share-btn-create" onclick="createShareLink()">Создать ссылку</button>
+          <button class="btn-ghost" id="share-btn-copy" onclick="copyShareLink()" style="display:none"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span> Скопировать</button>
+          <button class="btn-ghost" id="share-btn-revoke" onclick="revokeShareLink()" style="display:none;color:#c0392b">Отозвать</button>
         </div>
-        <div class="share-url" id="share-url-display">Войди в аккаунт чтобы получить ссылку</div>
+        <div class="share-url" id="share-url-display" style="display:none"></div>
+        <div id="share-expires-info" style="font-size:12px;color:var(--text3);margin-top:6px;text-align:left;display:none"></div>
       </div>
 
-      <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.25rem;">
-        <div style="font-size:13px; font-weight:500; color:var(--text2); margin-bottom:10px;">Что видят другие</div>
-        <div class="tags-row">
-          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l6 3-3 3v10H6V10L3 7l6-3"/><path d="M15 4a3 3 0 0 1-6 0"/></svg></span> Футболка M</span>
-          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h13a3 3 0 0 0 3-3v-2l-5-5-3 3-4-2-4 3v3a3 3 0 0 0 0 3z"/></svg></span> Обувь EU 43</span>
-          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span> Кольцо 17.5мм</span>
-          <span class="tag"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="15" r="3"/><circle cx="19" cy="15" r="3"/><path d="M5 15l4-8h6l2 4H9"/><path d="M15 7l2 4"/></svg></span> Велосипед M</span>
-          <span class="tag"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px"><path d="M3 18h18"/><path d="M5 18v-3c0-1.5 1-3 3-3h8c2 0 3 1.5 3 3v3"/><path d="M12 12V7"/><ellipse cx="12" cy="6" rx="5" ry="2"/></svg> Шапка L</span>
+      <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;">
+        <div style="font-size:13px;font-weight:500;margin-bottom:14px;">Настройки ссылки</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;margin-bottom:10px;">
+          <input type="checkbox" id="share-inc-sizes" checked> Размеры
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;margin-bottom:16px;">
+          <input type="checkbox" id="share-inc-wishlist" checked> Вишлист
+        </label>
+        <div style="font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Срок действия</div>
+        <div style="display:flex;gap:16px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+            <input type="radio" name="share-expiry" value="never" checked onchange="onShareExpiryChange()"> Бессрочная
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+            <input type="radio" name="share-expiry" value="date" onchange="onShareExpiryChange()"> До даты
+          </label>
         </div>
+        <input type="date" id="share-expiry-date" style="display:none;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg);font-size:14px;color:var(--text);width:100%;box-sizing:border-box;margin-bottom:12px;">
+        <button class="btn-primary" id="share-btn-update" onclick="createShareLink()" style="width:100%;justify-content:center;display:none">Обновить ссылку</button>
+      </div>
+
+      <div id="share-preview" style="display:none;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;">
+        <div style="font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px;">Что видят другие</div>
+        <div id="share-preview-content"></div>
       </div>
     </div>
 
@@ -1422,6 +1440,7 @@ function showPage(name) {
   const idx = pages.indexOf(name);
   if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
   currentSection = name;
+  if (name === 'share') updateSharePage();
 }
 
 // ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
@@ -1678,16 +1697,156 @@ function updateNavUser() {
   document.getElementById('nav-logout-btn').style.display = 'flex';
 }
 
-function updateSharePage() {
-  if (!currentUser) return;
-  const url = API.replace('https://', 'https://') + '/profile/' + currentUser.username;
-  const friendlyUrl = 'desirable-cat-production-6c28.up.railway.app/profile/' + currentUser.username;
-  document.getElementById('share-url-display').textContent = friendlyUrl;
+let _shareLink = null;
+let _shareSizesData = null;
+let _shareWlData = null;
+
+async function updateSharePage() {
+  try {
+    const [linkRes, sizesRes, wlRes] = await Promise.all([
+      fetch(API + '/share', { headers: apiHeaders() }),
+      fetch(API + '/sizes', { headers: apiHeaders() }),
+      fetch(API + '/wishlist', { headers: apiHeaders() })
+    ]);
+    _shareLink = await linkRes.json();
+    _shareSizesData = await sizesRes.json();
+    _shareWlData = await wlRes.json();
+  } catch(e) {
+    console.error('updateSharePage error', e);
+  }
+  renderSharePage();
+}
+
+function renderSharePage() {
+  const hasLink = !!_shareLink;
+
+  document.getElementById('share-btn-create').style.display = hasLink ? 'none' : '';
+  document.getElementById('share-btn-copy').style.display = hasLink ? '' : 'none';
+  document.getElementById('share-btn-revoke').style.display = hasLink ? '' : 'none';
+  document.getElementById('share-btn-update').style.display = hasLink ? '' : 'none';
+
+  const urlEl = document.getElementById('share-url-display');
+  const expiresEl = document.getElementById('share-expires-info');
+
+  if (hasLink) {
+    urlEl.textContent = API.replace('https://', '') + '/s/' + _shareLink.token;
+    urlEl.style.display = '';
+    expiresEl.textContent = _shareLink.expires_at
+      ? 'Действует до ' + new Date(_shareLink.expires_at).toLocaleDateString('ru-RU')
+      : 'Бессрочная';
+    expiresEl.style.display = '';
+
+    const s = _shareLink.sections || {};
+    document.getElementById('share-inc-sizes').checked = s.sizes !== false;
+    document.getElementById('share-inc-wishlist').checked = s.wishlist !== false;
+  } else {
+    urlEl.style.display = 'none';
+    expiresEl.style.display = 'none';
+  }
+
+  renderSharePreview();
+}
+
+function renderSharePreview() {
+  const incSizes = document.getElementById('share-inc-sizes').checked;
+  const incWl = document.getElementById('share-inc-wishlist').checked;
+
+  if (!incSizes && !incWl) {
+    document.getElementById('share-preview').style.display = 'none';
+    return;
+  }
+
+  const excl_keys = (_shareLink?.sections?.excluded_size_keys) || [];
+  const excl_ids = (_shareLink?.sections?.excluded_wishlist_ids) || [];
+  let html = '';
+
+  if (incSizes) {
+    const entries = Object.entries(_shareSizesData || {}).filter(([k]) => !excl_keys.includes(k));
+    if (entries.length) {
+      html += '<div style="margin-bottom:12px;">';
+      html += '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Размеры</div>';
+      html += '<div class="tags-row">';
+      entries.forEach(([k, v]) => {
+        html += `<span class="tag">${_shareFormatKey(k)}: ${v}</span>`;
+      });
+      html += '</div></div>';
+    } else {
+      html += '<div style="font-size:13px;color:var(--text3);margin-bottom:12px;">Размеры не заполнены</div>';
+    }
+  }
+
+  if (incWl && Array.isArray(_shareWlData) && _shareWlData.length) {
+    const visible = _shareWlData.filter(item => !excl_ids.includes(item.id));
+    if (visible.length) {
+      html += '<div>';
+      html += '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Вишлист</div>';
+      visible.slice(0, 4).forEach(item => {
+        html += `<div style="font-size:13px;color:var(--text);margin-bottom:4px;">• ${item.title}${item.price ? ' — ' + formatPrice(item.price) : ''}</div>`;
+      });
+      if (visible.length > 4) {
+        html += `<div style="font-size:12px;color:var(--text3);">и ещё ${visible.length - 4}...</div>`;
+      }
+      html += '</div>';
+    }
+  }
+
+  const preview = document.getElementById('share-preview');
+  preview.style.display = html ? '' : 'none';
+  document.getElementById('share-preview-content').innerHTML = html || '';
+}
+
+function _shareFormatKey(k) {
+  const MAP = {
+    daily_top: 'Верх', daily_bottom: 'Брюки', shoes_eu: 'Обувь EU',
+    shoes_us: 'Обувь US', shoes_uk: 'Обувь UK', shoes_cm: 'Обувь см',
+    ring_mm: 'Кольцо', hat: 'Шапка', outer: 'Верхняя одежда',
+    sport_top: 'Спорт верх', sport_bottom: 'Спорт низ', sport_shoes: 'Спорт обувь',
+    gloves: 'Перчатки', belt: 'Ремень', waist: 'Талия', chest: 'Грудь',
+    height: 'Рост', weight: 'Вес', under_top: 'Бельё верх', under_bottom: 'Бельё низ',
+    beach_top: 'Купальник верх', beach_bottom: 'Купальник низ',
+  };
+  return MAP[k] || k.replace(/_/g, ' ');
+}
+
+function onShareExpiryChange() {
+  const val = document.querySelector('input[name="share-expiry"]:checked')?.value;
+  document.getElementById('share-expiry-date').style.display = (val === 'date') ? '' : 'none';
+}
+
+async function createShareLink() {
+  const sections = {
+    sizes: document.getElementById('share-inc-sizes').checked,
+    wishlist: document.getElementById('share-inc-wishlist').checked,
+    excluded_size_keys: [],
+    excluded_wishlist_ids: []
+  };
+  const body = { sections };
+  const expiryType = document.querySelector('input[name="share-expiry"]:checked')?.value;
+  const expiryDate = document.getElementById('share-expiry-date').value;
+  if (expiryType === 'date' && expiryDate) body.expires_at = expiryDate;
+
+  try {
+    const r = await fetch(API + '/share', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(body)
+    });
+    _shareLink = await r.json();
+    renderSharePage();
+  } catch(e) { console.error('createShareLink error', e); }
+}
+
+async function revokeShareLink() {
+  try {
+    await fetch(API + '/share/revoke', { method: 'POST', headers: apiHeaders() });
+    _shareLink = null;
+    renderSharePage();
+  } catch(e) { console.error('revokeShareLink error', e); }
 }
 
 function copyShareLink() {
-  if (!currentUser) return;
-  const url = API + '/profile/' + currentUser.username;
+  if (!_shareLink) return;
+  const url = API + '/s/' + _shareLink.token;
   navigator.clipboard.writeText(url).then(() => {
     const el = document.getElementById('share-url-display');
     const orig = el.textContent;
