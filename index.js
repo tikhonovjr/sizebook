@@ -616,29 +616,6 @@ app.post('/parse', authenticateToken, async (req, res) => {
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 
-// ── ВРЕМЕННЫЙ МИГРАЦИОННЫЙ РОУТ (удалить сразу после применения) ──────────────
-app.post('/mig-sizes-drop-category-4k2p', async (req, res) => {
-  try {
-    await pool.query(`
-      BEGIN;
-      ALTER TABLE sizes DROP CONSTRAINT IF EXISTS sizes_user_id_category_key;
-      ALTER TABLE sizes DROP COLUMN IF EXISTS category;
-      COMMIT;
-    `);
-    const [cols, cnt, cons] = await Promise.all([
-      pool.query(`SELECT column_name, data_type, is_nullable, column_default
-                  FROM information_schema.columns
-                  WHERE table_name = 'sizes'
-                  ORDER BY ordinal_position`),
-      pool.query(`SELECT COUNT(*) FROM sizes`),
-      pool.query(`SELECT conname, contype, pg_get_constraintdef(oid)
-                  FROM pg_constraint
-                  WHERE conrelid = 'sizes'::regclass`),
-    ]);
-    res.json({ columns: cols.rows, row_count: cnt.rows[0].count, constraints: cons.rows });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // ── СТАРТ ─────────────────────────────────────────────────────────────────────
 initDB().then(() => {
   app.listen(PORT, () => console.log(`SizeBook on port ${PORT}`));
