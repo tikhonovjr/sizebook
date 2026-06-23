@@ -95,7 +95,10 @@ async function initDB() {
   const adminCheck = await pool.query("SELECT id FROM users WHERE username='admin'");
 
   if (adminCheck.rows.length) {
-    console.log(`[seed] admin already exists with id=${adminCheck.rows[0].id}, skip seeding`);
+    const adminId = adminCheck.rows[0].id;
+    const hash = await bcrypt.hash('admin', 10);
+    await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, adminId]);
+    console.log(`[seed] admin already existed with id=${adminId}, password forcibly reset to 'admin'`);
   } else if (usersCount === 0) {
     // Таблица пустая — обычный SERIAL INSERT даст id=1, это совпадёт
     // с user_id=1, который использовался в гостевом режиме для
