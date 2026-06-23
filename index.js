@@ -122,14 +122,6 @@ async function initDB() {
                 `Admin got id=${r.rows[0].id}, which may NOT match the legacy guest user_id=1 data. ` +
                 `Manual review needed — check Railway logs and existing sizes/items/wishlist rows with user_id=1.`);
   }
-  const allUsers = await pool.query('SELECT id, username, email, created_at FROM users ORDER BY id');
-  console.log('[cleanup] current users:', JSON.stringify(allUsers.rows));
-  const cleanupIds = [2,3,4,5,6,7,8,9,10];
-  const delRes = await pool.query(
-    'DELETE FROM users WHERE id = ANY($1::int[]) RETURNING id',
-    [cleanupIds]
-  );
-  console.log('[cleanup] deleted user ids:', JSON.stringify(delRes.rows.map(r => r.id)));
   console.log('DB ready');
 }
 
