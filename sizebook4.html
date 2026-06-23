@@ -2706,15 +2706,24 @@ let authToken = localStorage.getItem('sb_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('sb_user') || 'null');
 
 function apiHeaders() {
-  // Тестовый режим без авторизации
-  return { 'Content-Type': 'application/json' };
+  const h = { 'Content-Type': 'application/json' };
+  if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+  return h;
 }
 
 // Show/hide auth screen
 function checkAuth() {
-  // AUTH ОТКЛЮЧЁН ДЛЯ ТЕСТИРОВАНИЯ
-  document.getElementById('auth-screen').classList.remove('visible');
-  loadWishlist();
+  const authScreen = document.getElementById('auth-screen');
+  if (authToken) {
+    authScreen.classList.remove('visible');
+    updateNavUser();
+    renderWishlist();
+    loadWishlist();
+    loadAllSizes();
+    loadItemCounts();
+    return;
+  }
+  authScreen.classList.add('visible');
 }
 
 function updateNavUser() {
@@ -2724,6 +2733,34 @@ function updateNavUser() {
   document.getElementById('nav-logout-btn').style.display = 'flex';
   const ideasBtn = document.getElementById('nav-ideas-btn');
   if (ideasBtn) ideasBtn.style.display = (currentUser?.username === 'admin') ? '' : 'none';
+}
+
+function clearUserScopedUi() {
+  currentGender = 'male';
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.gender-btn[onclick*="'male'"]`)?.classList.add('active');
+  updateGenderScopedCards();
+  renderInlineSectionSilhouettes();
+
+  wlItems = [];
+  renderWishlist();
+
+  document.querySelectorAll('[data-size-key]').forEach(el => {
+    if (el.tagName === 'INPUT') el.value = '';
+    else el.textContent = '—';
+  });
+  document.querySelectorAll('.size-card-sub[data-item-zone]').forEach(el => { el.textContent = 'нажми'; });
+  document.querySelectorAll('.item-list-panel').forEach(panel => { panel.style.display = 'none'; });
+  document.querySelectorAll('.item-list-content').forEach(content => { content.innerHTML = ''; });
+  document.querySelectorAll('.cards-grid').forEach(grid => { grid.style.display = 'grid'; });
+  document.querySelectorAll('.item-secondary-content').forEach(secondary => { secondary.style.display = ''; });
+  Object.keys(_zonePanelCache).forEach(key => delete _zonePanelCache[key]);
+  _zonePanelZone = null;
+  _currentItemZone = null;
+  const zonePanel = document.getElementById('zone-panel');
+  if (zonePanel) zonePanel.style.display = 'none';
+  const zonePanelItems = document.getElementById('zone-panel-items');
+  if (zonePanelItems) zonePanelItems.innerHTML = '';
 }
 
 let _shareLink = null;
@@ -2943,8 +2980,7 @@ function doLogout() {
   currentUser = null;
   localStorage.removeItem('sb_token');
   localStorage.removeItem('sb_user');
-  wlItems = [];
-  renderWishlist();
+  clearUserScopedUi();
   document.getElementById('nav-user-badge').style.display = 'none';
   document.getElementById('nav-logout-btn').style.display = 'none';
   const ideasBtn = document.getElementById('nav-ideas-btn');
@@ -3353,8 +3389,6 @@ async function loadDailySizes() {
 }
 
 checkAuth();
-renderWishlist();
-loadAllSizes();
 </script>
 
 </body>
