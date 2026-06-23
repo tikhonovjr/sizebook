@@ -122,6 +122,8 @@ async function initDB() {
                 `Admin got id=${r.rows[0].id}, which may NOT match the legacy guest user_id=1 data. ` +
                 `Manual review needed — check Railway logs and existing sizes/items/wishlist rows with user_id=1.`);
   }
+  const allUsers = await pool.query('SELECT id, username, email, created_at FROM users ORDER BY id');
+  console.log('[cleanup] current users:', JSON.stringify(allUsers.rows));
   console.log('DB ready');
 }
 
