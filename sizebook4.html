@@ -680,7 +680,7 @@
     <div class="sidebar-label">Прочее</div>
     <button class="nav-item" onclick="showPage('wishlist')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</button>
     <button class="nav-item" onclick="showPage('share')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</button>
-    <button class="nav-item" onclick="showPage('ideas')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6m-5 2h4M12 2a7 7 0 0 1 5 11.9V15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1.1A7 7 0 0 1 12 2z"/></svg></span> Идеи</button>
+    <button class="nav-item" id="nav-ideas-btn" style="display:none" onclick="showPage('ideas')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6m-5 2h4M12 2a7 7 0 0 1 5 11.9V15a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1.1A7 7 0 0 1 12 2z"/></svg></span> Идеи</button>
   </aside>
 
   <!-- MAIN CONTENT -->
@@ -2007,6 +2007,7 @@ function updateSilPanel(section) {
 }
 
 function showPage(name) {
+  if (name === 'ideas' && currentUser?.username !== 'admin') return;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -2721,6 +2722,8 @@ function updateNavUser() {
   document.getElementById('nav-username').textContent = currentUser.username;
   document.getElementById('nav-user-badge').style.display = 'flex';
   document.getElementById('nav-logout-btn').style.display = 'flex';
+  const ideasBtn = document.getElementById('nav-ideas-btn');
+  if (ideasBtn) ideasBtn.style.display = (currentUser?.username === 'admin') ? '' : 'none';
 }
 
 let _shareLink = null;
@@ -2944,6 +2947,8 @@ function doLogout() {
   renderWishlist();
   document.getElementById('nav-user-badge').style.display = 'none';
   document.getElementById('nav-logout-btn').style.display = 'none';
+  const ideasBtn = document.getElementById('nav-ideas-btn');
+  if (ideasBtn) ideasBtn.style.display = 'none';
   checkAuth();
 }
 
