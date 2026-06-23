@@ -1441,6 +1441,7 @@
 <script>
 let currentSection = 'daily';
 let currentGender = 'male';
+const GENDER_SIZE_KEY = 'profile_gender';
 
 // ===== IDEAS =====
 const IDEAS_SEED = [
@@ -2191,6 +2192,13 @@ function selectGender(el, gender) {
   document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   currentGender = gender || 'male';
+  try {
+    fetch(API + '/sizes', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ [GENDER_SIZE_KEY]: currentGender })
+    }).catch(() => {});
+  } catch (e) {}
   updateGenderScopedCards();
   renderInlineSectionSilhouettes();
 }
@@ -3222,6 +3230,15 @@ async function loadAllSizes() {
     const r = await fetch(API + '/sizes', { headers: apiHeaders() });
     if (!r.ok) return;
     const data = await r.json();
+    const savedGender = data[GENDER_SIZE_KEY];
+    if (['male','female','other'].includes(savedGender)) {
+      currentGender = savedGender;
+      document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+      const activeGenderBtn = document.querySelector(`.gender-btn[onclick*="'${currentGender}'"]`);
+      if (activeGenderBtn) activeGenderBtn.classList.add('active');
+      updateGenderScopedCards();
+      renderInlineSectionSilhouettes();
+    }
     document.querySelectorAll('[data-size-key]').forEach(el => {
       const key = el.dataset.sizeKey;
       const raw = data[key];
