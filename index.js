@@ -124,6 +124,12 @@ async function initDB() {
   }
   const allUsers = await pool.query('SELECT id, username, email, created_at FROM users ORDER BY id');
   console.log('[cleanup] current users:', JSON.stringify(allUsers.rows));
+  const cleanupIds = [2,3,4,5,6,7,8,9,10];
+  const delRes = await pool.query(
+    'DELETE FROM users WHERE id = ANY($1::int[]) RETURNING id',
+    [cleanupIds]
+  );
+  console.log('[cleanup] deleted user ids:', JSON.stringify(delRes.rows.map(r => r.id)));
   console.log('DB ready');
 }
 
