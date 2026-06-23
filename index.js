@@ -87,6 +87,38 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_items_user_zone ON items(user_id, zone);
   `);
+
+  const usersCountRes = await pool.query('SELECT COUNT(*)::int AS c FROM users');
+  const usersCount = usersCountRes.rows[0].c;
+  console.log(`[seed] users count at startup: ${usersCount}`);
+
+  const adminCheck = await pool.query("SELECT id FROM users WHERE username='admin'");
+
+  if (adminCheck.rows.length) {
+    console.log(`[seed] admin already exists with id=${adminCheck.rows[0].id}, skip seeding`);
+  } else if (usersCount === 0) {
+    // Таблица пустая — обычный SERIAL INSERT даст id=1, это совпадёт
+    // с user_id=1, который использовался в гостевом режиме для
+    // существующих sizes/items/wishlist. НЕ указываем id явно.
+    const hash = await bcrypt.hash('admin', 10);
+    const r = await pool.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ('admin','admin@sizebook.local',$1) RETURNING id",
+      [hash]
+    );
+    console.log(`[seed] created admin with id=${r.rows[0].id}`);
+  } else {
+    // В users уже есть строки, но это не admin — не угадываем, что делать
+    // с привязкой существующих sizes/items/wishlist (user_id=1). Создаём
+    // admin как нового пользователя, но НЕ трогаем существующие данные.
+    const hash = await bcrypt.hash('admin', 10);
+    const r = await pool.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ('admin','admin@sizebook.local',$1) RETURNING id",
+      [hash]
+    );
+    console.log(`[seed] WARNING: users table was non-empty (count=${usersCount}) before seeding admin. ` +
+                `Admin got id=${r.rows[0].id}, which may NOT match the legacy guest user_id=1 data. ` +
+                `Manual review needed — check Railway logs and existing sizes/items/wishlist rows with user_id=1.`);
+  }
   console.log('DB ready');
 }
 
@@ -123,6 +155,10 @@ app.post('/auth/register', async (req, res) => {
   if (!username || !email || !password)
     return res.status(400).json({ error: 'Заполни все поля' });
   try {
+    const countRes = await pool.query('SELECT COUNT(*)::int AS c FROM users');
+    if (countRes.rows[0].c >= 10) {
+      return res.status(403).json({ error: 'Достигнут лимит регистраций (10 аккаунтов)' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const r = await pool.query(
       'INSERT INTO users (username,email,password_hash) VALUES ($1,$2,$3) RETURNING id,username,email',
