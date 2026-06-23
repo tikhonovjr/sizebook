@@ -1286,12 +1286,16 @@
     <div class="page" id="page-profile">
       <div class="page-title"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.168 18.849A4 4 0 0 1 10 16h4a4 4 0 0 1 3.834 2.855"/></svg></span> Мой профиль</div>
 
+      <div id="profile-welcome-msg" style="display:none;background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:1rem; font-size:13px; color:var(--text2);">
+        Заполни свой профиль — это поможет подобрать тебе правильные размеры.
+      </div>
+
       <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.5rem; margin-bottom:1rem;">
         <div style="display:flex; align-items:center; gap:1.25rem; margin-bottom:1.5rem;">
           <div style="width:64px; height:64px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--text3); flex-shrink:0;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span></div>
           <div>
             <div id="profile-display-name" style="font-size:18px; font-weight:600; color:var(--text);">Александр</div>
-            <div style="font-size:13px; color:var(--text3); margin-top:2px;">sizebook.app/u/alex_ivanov</div>
+            <div id="profile-public-url" style="font-size:13px; color:var(--text3); margin-top:2px;"></div>
           </div>
         </div>
 
@@ -1300,11 +1304,11 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Имя</label>
-            <input id="profile-name-input" type="text" value="Александр" oninput="debounceProfileNameSave()" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+            <input id="profile-name-input" type="text" placeholder="Имя" oninput="debounceProfileNameSave()" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
           </div>
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Фамилия (необязательно)</label>
-            <input type="text" placeholder="Иванов" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+            <input id="profile-lastname-input" type="text" placeholder="Фамилия" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
           </div>
         </div>
 
@@ -1327,24 +1331,25 @@
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Рост</label>
             <div style="display:flex; align-items:center; gap:6px;">
-              <input type="number" value="178" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+              <input id="profile-height-input" type="number" placeholder="178" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
               <span style="font-size:12px; color:var(--text3); white-space:nowrap;">см</span>
             </div>
           </div>
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Вес</label>
             <div style="display:flex; align-items:center; gap:6px;">
-              <input type="number" value="75" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+              <input id="profile-weight-input" type="number" placeholder="75" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
               <span style="font-size:12px; color:var(--text3); white-space:nowrap;">кг</span>
             </div>
           </div>
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Возраст</label>
-            <input type="number" value="28" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+            <input id="profile-age-input" type="number" placeholder="28" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
           </div>
         </div>
 
-        <button class="btn-primary" style="width:100%; justify-content:center;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span> Сохранить профиль</button>
+        <button class="btn-primary" onclick="saveProfileFields()" style="width:100%; justify-content:center;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></span> Сохранить профиль</button>
+        <div id="profile-save-msg" class="daily-save-msg" style="text-align:center;margin-top:8px;"></div>
       </div>
 
       <div style="background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:1.25rem;">
@@ -1442,7 +1447,15 @@ let currentSection = 'daily';
 let currentGender = 'male';
 const GENDER_SIZE_KEY = 'profile_gender';
 const PROFILE_NAME_KEY = 'profile_name';
+const PROFILE_FIELDS = {
+  profile_name: 'profile-name-input',
+  profile_lastname: 'profile-lastname-input',
+  profile_height: 'profile-height-input',
+  profile_weight: 'profile-weight-input',
+  profile_age: 'profile-age-input',
+};
 let _profileNameSaveTimer = null;
+let _profileWelcomeVisible = false;
 
 // ===== IDEAS =====
 const IDEAS_SEED = [
@@ -2010,6 +2023,7 @@ function updateSilPanel(section) {
 
 function showPage(name) {
   if (name === 'ideas' && currentUser?.username !== 'admin') return;
+  if (name !== 'profile') setProfileWelcomeVisible(false);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -2023,6 +2037,7 @@ function showPage(name) {
   if (SIZE_PAGES.includes(name)) loadAllSizes();
   if (SIZE_PAGES.includes(name)) loadItemCounts();
   updateSilPanel(name);
+  if (name === 'profile') setProfileWelcomeVisible(_profileWelcomeVisible);
 }
 
 // ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
@@ -2821,20 +2836,81 @@ function getDefaultProfileName() {
   return currentUser?.username || 'Александр';
 }
 
+function updateProfileHeader(name) {
+  const displayName = name && String(name).trim() ? String(name).trim() : getDefaultProfileName();
+  const display = document.getElementById('profile-display-name');
+  const publicUrl = document.getElementById('profile-public-url');
+  if (display) display.textContent = displayName;
+  if (publicUrl) publicUrl.textContent = 'sizebook.app/u/' + (currentUser?.username || '');
+}
+
 function applyProfileName(raw) {
   const name = raw && String(raw).trim() ? String(raw).trim() : getDefaultProfileName();
-  const display = document.getElementById('profile-display-name');
   const input = document.getElementById('profile-name-input');
-  if (display) display.textContent = name;
+  updateProfileHeader(name);
   if (input && input.value !== name) input.value = name;
+}
+
+function populateProfileFields(data) {
+  Object.entries(PROFILE_FIELDS).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const raw = data?.[key];
+    if (key === PROFILE_NAME_KEY) {
+      applyProfileName(raw);
+      return;
+    }
+    el.value = raw == null ? '' : String(raw);
+  });
+  if (!data || data[PROFILE_NAME_KEY] == null) applyProfileName('');
+  updateProfileHeader(document.getElementById('profile-name-input')?.value);
+}
+
+function setProfileWelcomeVisible(show) {
+  _profileWelcomeVisible = !!show;
+  const el = document.getElementById('profile-welcome-msg');
+  if (el) el.style.display = _profileWelcomeVisible ? '' : 'none';
+}
+
+function showProfileSaveMsg(text, isError) {
+  const el = document.getElementById('profile-save-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? '#c0392b' : 'var(--text3)';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.textContent = ''; }, 1500);
+}
+
+async function saveProfileFields() {
+  const patch = {};
+  Object.entries(PROFILE_FIELDS).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) patch[key] = el.value.trim();
+  });
+  updateProfileHeader(patch[PROFILE_NAME_KEY]);
+  try {
+    const r = await fetch(API + '/sizes', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(patch)
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showProfileSaveMsg('Ошибка: ' + (err.error || r.status), true);
+      return;
+    }
+    setProfileWelcomeVisible(false);
+    showProfileSaveMsg('Сохранено');
+  } catch (e) {
+    showProfileSaveMsg('Ошибка сети', true);
+  }
 }
 
 function debounceProfileNameSave() {
   const input = document.getElementById('profile-name-input');
   if (!input || !authToken) return;
   const value = input.value.trim();
-  const display = document.getElementById('profile-display-name');
-  if (display) display.textContent = value || getDefaultProfileName();
+  updateProfileHeader(value);
   clearTimeout(_profileNameSaveTimer);
   _profileNameSaveTimer = setTimeout(() => {
     const patch = { [PROFILE_NAME_KEY]: value };
@@ -2852,7 +2928,8 @@ function clearUserScopedUi() {
   document.querySelector(`.gender-btn[onclick*="'male'"]`)?.classList.add('active');
   updateGenderScopedCards();
   renderInlineSectionSilhouettes();
-  applyProfileName('');
+  populateProfileFields({});
+  setProfileWelcomeVisible(false);
 
   wlItems = [];
   renderWishlist();
@@ -3084,6 +3161,8 @@ async function doRegister() {
     localStorage.setItem('sb_token', authToken);
     localStorage.setItem('sb_user', JSON.stringify(currentUser));
     checkAuth();
+    setProfileWelcomeVisible(true);
+    showPage('profile');
   } catch(e) { showAuthError('Нет соединения с сервером'); }
 }
 
@@ -3383,7 +3462,7 @@ async function loadAllSizes() {
     const r = await fetch(API + '/sizes', { headers: apiHeaders() });
     if (!r.ok) return;
     const data = await r.json();
-    applyProfileName(data[PROFILE_NAME_KEY]);
+    populateProfileFields(data);
     const savedGender = data[GENDER_SIZE_KEY];
     if (['male','female','other'].includes(savedGender)) {
       currentGender = savedGender;
