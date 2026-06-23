@@ -3144,6 +3144,7 @@ async function doLogin() {
     localStorage.setItem('sb_token', authToken);
     localStorage.setItem('sb_user', JSON.stringify(currentUser));
     checkAuth();
+    showPage('daily');
   } catch(e) { showAuthError('Нет соединения с сервером'); }
 }
 
