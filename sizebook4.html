@@ -654,7 +654,6 @@
     <button class="btn-ghost" onclick="showPage('share')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></span> Поделиться</button>
     <button class="btn-ghost" onclick="showPage('wishlist')"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></span> Вишлист</button>
     <button class="btn-ghost" id="nav-logout-btn" style="display:none" onclick="doLogout()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Выйти</button>
-    <button class="btn-primary" onclick="openModal()"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span> Добавить</button>
   </div>
 </nav>
 
@@ -1291,7 +1290,7 @@
         <div style="display:flex; align-items:center; gap:1.25rem; margin-bottom:1.5rem;">
           <div style="width:64px; height:64px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--text3); flex-shrink:0;"><span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span></div>
           <div>
-            <div style="font-size:18px; font-weight:600; color:var(--text);">Александр</div>
+            <div id="profile-display-name" style="font-size:18px; font-weight:600; color:var(--text);">Александр</div>
             <div style="font-size:13px; color:var(--text3); margin-top:2px;">sizebook.app/u/alex_ivanov</div>
           </div>
         </div>
@@ -1301,7 +1300,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Имя</label>
-            <input type="text" value="Александр" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
+            <input id="profile-name-input" type="text" value="Александр" oninput="debounceProfileNameSave()" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
           </div>
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Фамилия (необязательно)</label>
@@ -1442,6 +1441,8 @@
 let currentSection = 'daily';
 let currentGender = 'male';
 const GENDER_SIZE_KEY = 'profile_gender';
+const PROFILE_NAME_KEY = 'profile_name';
+let _profileNameSaveTimer = null;
 
 // ===== IDEAS =====
 const IDEAS_SEED = [
@@ -1918,6 +1919,7 @@ function showInlineSilPanel(section, zone) {
 }
 
 function scheduleHideInlineSilPanel(section) {
+  if (isTouchSilMode()) return;
   _inlineSilHideTimers[section] = setTimeout(() => {
     const panel = document.getElementById(section + '-inline-panel');
     if (panel) panel.style.display = 'none';
@@ -1971,13 +1973,13 @@ function renderInteractiveSectionSilhouette(section, cfg) {
           <ellipse cx="74" cy="324" rx="16" ry="9" fill="#3B6D11"/>
           <ellipse cx="126" cy="324" rx="16" ry="9" fill="#3B6D11"/>
         </g>
-        <ellipse cx="100" cy="40" rx="30" ry="34" fill="transparent" onmouseenter="showInlineSilPanel('${section}','hats')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M38 76 L162 76 L163 178 L37 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M20 78 L58 78 L58 178 L20 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M142 78 L180 78 L180 178 L142 178 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M37 178 L163 178 L165 316 L35 316 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','bottoms')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M48 312 L102 312 L102 340 L48 340 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
-        <path d="M98 312 L152 312 L152 340 L98 340 Z" fill="transparent" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <ellipse cx="100" cy="40" rx="30" ry="34" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="hats" onmouseenter="showInlineSilPanel('${section}','hats')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M38 76 L162 76 L163 178 L37 178 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="tops" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M20 78 L58 78 L58 178 L20 178 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="tops" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M142 78 L180 78 L180 178 L142 178 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="tops" onmouseenter="showInlineSilPanel('${section}','tops')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M37 178 L163 178 L165 316 L35 316 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="bottoms" onmouseenter="showInlineSilPanel('${section}','bottoms')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M48 312 L102 312 L102 340 L48 340 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="shoes" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
+        <path d="M98 312 L152 312 L152 340 L98 340 Z" fill="transparent" class="inline-sil-zone" data-section="${section}" data-zone="shoes" onmouseenter="showInlineSilPanel('${section}','shoes')" onmouseleave="scheduleHideInlineSilPanel('${section}')" style="cursor:pointer"/>
       </svg>
       <div id="${section}-inline-panel" class="section-silhouette-panel" onmouseenter="cancelHideInlineSilPanel('${section}')" onmouseleave="scheduleHideInlineSilPanel('${section}')">
         <div class="section-silhouette-panel-head"><div id="${section}-inline-panel-title" class="section-silhouette-panel-title"></div></div>
@@ -2421,6 +2423,7 @@ async function showZonePanel(zone) {
 
 let _hideTimer = null;
 function scheduleHidePanel() {
+  if (isTouchSilMode()) return;
   _hideTimer = setTimeout(function() {
     document.getElementById("zone-panel").style.display = "none";
     ["hats","tops","bottoms","shoes"].forEach(z => {
@@ -2435,6 +2438,85 @@ function cancelHidePanel() {
 
 function hideZoneTooltip() { scheduleHidePanel(); }
 function showZoneTooltip(e, zone) { showZonePanel(zone); }
+
+let _touchOpenZone = null;
+let _touchOpenInline = null;
+let _lastSilTouchAt = 0;
+
+function isTouchSilMode() {
+  return ('ontouchstart' in window) || (window.matchMedia && window.matchMedia('(hover: none)').matches);
+}
+
+function hideZonePanelNow() {
+  const panel = document.getElementById('zone-panel');
+  if (panel) panel.style.display = 'none';
+  ['hats','tops','bottoms','shoes'].forEach(z => {
+    const el = document.getElementById('hl-' + z);
+    if (el) el.style.opacity = '0';
+  });
+  _touchOpenZone = null;
+}
+
+function hideInlineSilPanelNow(section) {
+  const panel = document.getElementById(section + '-inline-panel');
+  if (panel) panel.style.display = 'none';
+  setInlineSilHighlight(section, null, '0');
+  if (_touchOpenInline?.section === section) _touchOpenInline = null;
+}
+
+function hideAllSilTouchPanels() {
+  hideZonePanelNow();
+  document.querySelectorAll('[data-inline-sil]').forEach(el => hideInlineSilPanelNow(el.dataset.inlineSil));
+}
+
+function handleTouchSilZone(zone) {
+  if (_touchOpenZone === zone) {
+    hideZonePanelNow();
+    return;
+  }
+  if (_touchOpenInline) hideInlineSilPanelNow(_touchOpenInline.section);
+  _touchOpenZone = zone;
+  showZonePanel(zone);
+}
+
+function handleTouchInlineSilZone(section, zone) {
+  if (_touchOpenInline?.section === section && _touchOpenInline?.zone === zone) {
+    hideInlineSilPanelNow(section);
+    return;
+  }
+  hideZonePanelNow();
+  if (_touchOpenInline && _touchOpenInline.section !== section) hideInlineSilPanelNow(_touchOpenInline.section);
+  _touchOpenInline = { section, zone };
+  showInlineSilPanel(section, zone);
+}
+
+function handleSilTouchEvent(e) {
+  if (!isTouchSilMode()) return;
+  if (e.type === 'touchstart') _lastSilTouchAt = Date.now();
+  if (e.type === 'click' && Date.now() - _lastSilTouchAt < 500) return;
+
+  const normalZone = e.target.closest?.('.sil-zone[data-zone]');
+  if (normalZone) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleTouchSilZone(normalZone.dataset.zone);
+    return;
+  }
+
+  const inlineZone = e.target.closest?.('.inline-sil-zone[data-section][data-zone]');
+  if (inlineZone) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleTouchInlineSilZone(inlineZone.dataset.section, inlineZone.dataset.zone);
+    return;
+  }
+
+  if (e.target.closest?.('#zone-panel, .section-silhouette-panel')) return;
+  hideAllSilTouchPanels();
+}
+
+document.addEventListener('touchstart', handleSilTouchEvent, { passive: false });
+document.addEventListener('click', handleSilTouchEvent);
 
 let _currentItemZone = null;
 
@@ -2735,12 +2817,42 @@ function updateNavUser() {
   if (ideasBtn) ideasBtn.style.display = (currentUser?.username === 'admin') ? '' : 'none';
 }
 
+function getDefaultProfileName() {
+  return currentUser?.username || 'Александр';
+}
+
+function applyProfileName(raw) {
+  const name = raw && String(raw).trim() ? String(raw).trim() : getDefaultProfileName();
+  const display = document.getElementById('profile-display-name');
+  const input = document.getElementById('profile-name-input');
+  if (display) display.textContent = name;
+  if (input && input.value !== name) input.value = name;
+}
+
+function debounceProfileNameSave() {
+  const input = document.getElementById('profile-name-input');
+  if (!input || !authToken) return;
+  const value = input.value.trim();
+  const display = document.getElementById('profile-display-name');
+  if (display) display.textContent = value || getDefaultProfileName();
+  clearTimeout(_profileNameSaveTimer);
+  _profileNameSaveTimer = setTimeout(() => {
+    const patch = { [PROFILE_NAME_KEY]: value };
+    fetch(API + '/sizes', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(patch)
+    }).catch(() => {});
+  }, 500);
+}
+
 function clearUserScopedUi() {
   currentGender = 'male';
   document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.gender-btn[onclick*="'male'"]`)?.classList.add('active');
   updateGenderScopedCards();
   renderInlineSectionSilhouettes();
+  applyProfileName('');
 
   wlItems = [];
   renderWishlist();
@@ -3271,6 +3383,7 @@ async function loadAllSizes() {
     const r = await fetch(API + '/sizes', { headers: apiHeaders() });
     if (!r.ok) return;
     const data = await r.json();
+    applyProfileName(data[PROFILE_NAME_KEY]);
     const savedGender = data[GENDER_SIZE_KEY];
     if (['male','female','other'].includes(savedGender)) {
       currentGender = savedGender;
@@ -3292,6 +3405,8 @@ async function loadAllSizes() {
         el.textContent = brand ? val + ' · ' + brand : val;
       }
     });
+    updateGenderScopedCards();
+    renderInlineSectionSilhouettes();
   } catch (e) { /* silent */ }
 }
 
