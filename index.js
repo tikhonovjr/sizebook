@@ -501,26 +501,37 @@ async function parseWildberries(url) {
     const vol = Math.floor(id / 100000);
     const part = Math.floor(id / 1000);
 
-    const basket = (() => {
+    // Вычисляем начальный basket по таблице (может устареть для новых артикулов)
+    const startBasket = (() => {
       const t = [143,287,431,719,1007,1061,1115,1169,1313,1601,1655,1919,2045,2189,2405,
                  2621,2837,3053,3269,3485,3701,3917,4133,4349,4565,4781,4997,5213,5429,
                  5645,5861,6077,6293,6509,6725,6941,7157,7373,7589,7805];
       const i = t.findIndex(v => vol <= v);
-      return String(i === -1 ? t.length + 1 : i + 1).padStart(2, '0');
+      return i === -1 ? t.length + 1 : i + 1;
     })();
 
-    const base = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
     const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
-    console.log(`[wb] CDN запрос: ${base}/info/ru/card.json`);
 
-    const cardRes = await fetch(`${base}/info/ru/card.json`, { headers: cdnHeaders, signal: AbortSignal.timeout(8000) });
-    console.log(`[wb] CDN статус: ${cardRes.status}`);
-    if (!cardRes.ok) {
-      console.log(`[wb] CDN вернул ${cardRes.status}, пробуем Firecrawl`);
+    // Перебираем basket начиная с вычисленного (WB периодически добавляет новые)
+    let card = null;
+    let foundBasket = null;
+    for (let b = startBasket; b <= startBasket + 5; b++) {
+      const bStr = String(b).padStart(2, '0');
+      const tryUrl = `https://basket-${bStr}.wbbasket.ru/vol${vol}/part${part}/${nm}/info/ru/card.json`;
+      console.log(`[wb] пробую basket-${bStr}`);
+      try {
+        const r = await fetch(tryUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(5000) });
+        console.log(`[wb] basket-${bStr} статус: ${r.status}`);
+        if (r.ok) { card = await r.json(); foundBasket = bStr; break; }
+      } catch (e) { console.log(`[wb] basket-${bStr} ошибка: ${e.message}`); }
+    }
+
+    if (!card) {
+      console.log(`[wb] все basket не ответили, пробуем Firecrawl`);
       return await parseViaFirecrawl(url);
     }
-    const card = await cardRes.json();
-    console.log(`[wb] card.json ключи:`, Object.keys(card).slice(0, 10));
+    console.log(`[wb] нашли basket-${foundBasket}, ключи:`, Object.keys(card).slice(0, 8));
+    const base = `https://basket-${foundBasket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
     const title = card.imt_name || card.name || null;
     const image = `${base}/images/big/1.webp`;
 
