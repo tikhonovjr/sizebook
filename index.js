@@ -836,7 +836,7 @@ app.get('/debug-parse', async (req, res) => {
         L('firecrawl.og_title', ogTitle);
         L('firecrawl.og_image', ogImage);
         L('firecrawl.og_price', ogPrice);
-        L('firecrawl.html_start', body.data.html.slice(0, 800));
+        L('firecrawl.html_full', body.data.html);
       }
     }
   } catch (e) {
