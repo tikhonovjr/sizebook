@@ -536,9 +536,11 @@ async function parseViaFirecrawl(url) {
         url,
         formats: ['html'],
         onlyMainContent: false,
-        timeout: 20000,
+        timeout: 30000,
+        waitFor: 4000,
+        mobile: false,
       }),
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(40000),
     });
     if (!r.ok) {
       console.log(`[firecrawl] HTTP ${r.status}`);
@@ -778,7 +780,7 @@ app.get('/debug-parse', async (req, res) => {
       const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, formats: ['html'], onlyMainContent: false, timeout: 20000 }),
+        body: JSON.stringify({ url, formats: ['html'], onlyMainContent: false, timeout: 30000, waitFor: 4000 }),
         signal: AbortSignal.timeout(25000),
       });
       const status = r.status;
