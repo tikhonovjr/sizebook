@@ -209,9 +209,19 @@ app.post('/auth/login', async (req, res) => {
 });
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
-app.get('/admin/logs', authenticateToken, (req, res) => {
-  if (req.user?.username !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-  const n = Math.min(parseInt(req.query.n) || 100, LOG_BUFFER_SIZE);
+app.get('/admin/logs', (req, res) => {
+  const LOGS_SECRET = process.env.LOGS_SECRET;
+  const validSecret = LOGS_SECRET && req.query.secret === LOGS_SECRET;
+  if (!validSecret) {
+    // Fallback: JWT admin
+    const token = (req.headers['authorization'] || '').split(' ')[1];
+    if (!token) return res.status(403).json({ error: 'Forbidden' });
+    try {
+      const user = jwt.verify(token, JWT_SECRET);
+      if (user?.username !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    } catch { return res.status(403).json({ error: 'Forbidden' }); }
+  }
+  const n = Math.min(parseInt(req.query.n) || 200, LOG_BUFFER_SIZE);
   const filter = req.query.filter || '';
   let lines = logBuffer.slice(-n);
   if (filter) lines = lines.filter(l => l.includes(filter));
