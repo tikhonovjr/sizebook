@@ -766,12 +766,25 @@ app.get('/debug-parse', async (req, res) => {
   L('env.FIRECRAWL_API_KEY', process.env.FIRECRAWL_API_KEY ? 'SET (' + process.env.FIRECRAWL_API_KEY.slice(0,6) + '...)' : 'NOT SET');
   L('env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH', process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || 'not set');
 
-  // 2. Playwright с поимкой ошибки
+  // 2. Прямой fetch (как в реальном парсере для 12storeez)
   try {
-    const playwright = await parseViaPlaywright(url);
-    L('playwright.result', playwright);
+    const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(10000) });
+    const html = await resp.text();
+    L('direct.html_length', html.length);
+    const parsed = parseProductFromHtml(html, url);
+    L('direct.parsed', parsed);
+    if (parsed?.title) {
+      const cleaned = { ...parsed, title: parsed.title.split(',')[0].trim() };
+      L('direct.parsed_clean', cleaned);
+    }
+    // og tags из прямого fetch
+    const ogTitle = (html.match(/property="og:title"[^>]*content="([^"]+)"/) || html.match(/content="([^"]+)"[^>]*property="og:title"/) || [])[1] || null;
+    const ogImage = (html.match(/property="og:image"[^>]*content="([^"]+)"/) || html.match(/content="([^"]+)"[^>]*property="og:image"/) || [])[1] || null;
+    L('direct.og_title', ogTitle);
+    L('direct.og_image', ogImage);
+    L('direct.html_start', html.slice(0, 500));
   } catch (e) {
-    L('playwright.error', e.message);
+    L('direct.error', e.message);
   }
 
   // 3. Firecrawl напрямую с подробностями
