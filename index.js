@@ -750,6 +750,30 @@ app.post('/parse', authenticateToken, async (req, res) => {
   res.json(accumulated);
 });
 
+// ── DEBUG (временный, удалить после диагностики) ─────────────────────────────
+app.get('/debug-parse', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'Передай ?url=...' });
+  const log = [];
+  const L = (label, val) => { log.push({ label, val }); console.log(`[debug] ${label}:`, val); };
+
+  try {
+    const playwright = await parseViaPlaywright(url);
+    L('playwright', playwright);
+
+    const fc = await parseViaFirecrawl(url);
+    L('firecrawl', fc);
+
+    const merged = mergeParseResults(playwright, fc);
+    if (merged?.title) merged.title = merged.title.split(',')[0].trim();
+    L('merged+clean', merged);
+
+    res.json({ log });
+  } catch (e) {
+    res.json({ error: e.message, log });
+  }
+});
+
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
