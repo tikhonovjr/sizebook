@@ -459,7 +459,10 @@ async function parseWildberries(url) {
   try {
     // Поддерживаем URL с /detail.aspx и без trailing slash
     const nm = url.match(/\/catalog\/(\d+)/)?.[1];
-    if (!nm) return null;
+    if (!nm) {
+      console.log(`[wb] не удалось извлечь артикул из URL: ${url}`);
+      return null;
+    }
     const id = Number(nm);
     const vol = Math.floor(id / 100000);
     const part = Math.floor(id / 1000);
@@ -474,15 +477,26 @@ async function parseWildberries(url) {
 
     const base = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
     const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+    console.log(`[wb] CDN запрос: ${base}/info/ru/card.json`);
 
     const cardRes = await fetch(`${base}/info/ru/card.json`, { headers: cdnHeaders, signal: AbortSignal.timeout(8000) });
-    if (!cardRes.ok) return null;
+    console.log(`[wb] CDN статус: ${cardRes.status}`);
+    if (!cardRes.ok) {
+      console.log(`[wb] CDN вернул ${cardRes.status}, пробуем Firecrawl`);
+      return await parseViaFirecrawl(url);
+    }
     const card = await cardRes.json();
-    const title = card.imt_name || null;
+    console.log(`[wb] card.json ключи:`, Object.keys(card).slice(0, 10));
+    const title = card.imt_name || card.name || null;
     const image = `${base}/images/big/1.webp`;
 
-    // WB заблокировал price-history.json и search/catalog API с датацентровых IP.
-    // Пробуем search.wb.ru — возвращает цену когда не rate-limited.
+    if (!title) {
+      console.log(`[wb] imt_name пустой, пробуем Firecrawl для title`);
+      const fc = await parseViaFirecrawl(url);
+      return { title: fc?.title || null, price: fc?.price || null, image };
+    }
+
+    // WB блокирует price API с датацентровых IP — пробуем, но не падаем если нет.
     let price = null;
     try {
       const searchRes = await fetch(
@@ -497,16 +511,103 @@ async function parseWildberries(url) {
           signal: AbortSignal.timeout(5000),
         }
       );
+      console.log(`[wb] search.wb.ru статус: ${searchRes.status}`);
       if (searchRes.ok) {
         const sd = await searchRes.json();
         const prod = sd?.data?.products?.find(p => String(p.id) === nm);
         const kopecks = prod?.salePriceU ?? prod?.priceU;
         if (kopecks) price = `${Math.round(kopecks / 100)} ₽`;
       }
-    } catch (_) {}
+    } catch (e) {
+      console.log(`[wb] search.wb.ru ошибка: ${e.message}`);
+    }
 
     return { title, price, image };
-  } catch (_) { return null; }
+  } catch (e) {
+    console.log(`[wb] parseWildberries ошибка: ${e.message}`);
+    return null;
+  }
+}
+
+// Ozon — прямой fetch (Ozon отдаёт JSON-LD и og-теги в статическом HTML)
+async function parseOzon(url) {
+  try {
+    const nm = url.match(/\/product\/[^/?]+-(\d+)/)?.[1];
+    console.log(`[ozon] артикул: ${nm}, URL: ${url}`);
+
+    // Шаг 1: прямой fetch — Ozon часто отдаёт og-теги без JS
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          ...FETCH_HEADERS,
+          'Accept-Language': 'ru-RU,ru;q=0.9',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(15000),
+      });
+      console.log(`[ozon] прямой fetch статус: ${resp.status}`);
+      if (resp.ok) {
+        const html = await resp.text();
+        const result = parseProductFromHtml(html, url);
+        console.log(`[ozon] прямой fetch результат:`, result);
+        if (result.title || result.price || result.image) {
+          return result;
+        }
+      }
+    } catch (e) {
+      console.log(`[ozon] прямой fetch ошибка: ${e.message}`);
+    }
+
+    // Шаг 2: Ozon API (не требует авторизации для публичных карточек)
+    if (nm) {
+      try {
+        const apiResp = await fetch(
+          `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${nm}/`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+              'Accept': 'application/json',
+              'Referer': 'https://www.ozon.ru/',
+            },
+            signal: AbortSignal.timeout(10000),
+          }
+        );
+        console.log(`[ozon] API статус: ${apiResp.status}`);
+        if (apiResp.ok) {
+          const data = await apiResp.json();
+          // Ищем блок с названием и ценой в структуре ответа
+          const widgetStates = data?.widgetStates;
+          if (widgetStates) {
+            let title = null, price = null, image = null;
+            for (const key of Object.keys(widgetStates)) {
+              try {
+                const w = JSON.parse(widgetStates[key]);
+                if (w?.title && !title) title = w.title;
+                if (w?.name && !title) title = w.name;
+                if (w?.coverImage && !image) image = w.coverImage;
+                if (w?.images?.[0] && !image) image = w.images[0];
+                if (w?.price?.originalPrice?.price && !price) price = w.price.originalPrice.price;
+                if (w?.price?.price && !price) price = w.price.price;
+              } catch (_) {}
+            }
+            console.log(`[ozon] API результат:`, { title, price, image });
+            if (title || image) return { title, price, image };
+          }
+        }
+      } catch (e) {
+        console.log(`[ozon] API ошибка: ${e.message}`);
+      }
+    }
+
+    // Шаг 3: Firecrawl как последний резерв
+    console.log(`[ozon] пробуем Firecrawl`);
+    const fc = await parseViaFirecrawl(url);
+    console.log(`[ozon] Firecrawl результат:`, fc);
+    return fc;
+  } catch (e) {
+    console.log(`[ozon] parseOzon ошибка: ${e.message}`);
+    return null;
+  }
 }
 
 // Для сайтов с Cloudflare (Farfetch и др.) — внешние OG-парсеры
@@ -741,7 +842,14 @@ app.post('/parse', authenticateToken, async (req, res) => {
   // Wildberries — CDN API, без антибота
   if (host.includes('wildberries')) {
     const result = await parseWildberries(url);
-    console.log(`[parse] wildberries cdn:`, result);
+    console.log(`[parse] wildberries final:`, result);
+    return res.json(result || { title: null, price: null, image: null });
+  }
+
+  // Ozon — прямой fetch + API + Firecrawl
+  if (host.includes('ozon.ru')) {
+    const result = await parseOzon(url);
+    console.log(`[parse] ozon final:`, result);
     return res.json(result || { title: null, price: null, image: null });
   }
 
