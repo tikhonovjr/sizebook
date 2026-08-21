@@ -729,6 +729,14 @@ app.get('/debug-parse', async (req, res) => {
   }
 });
 
+// ВРЕМЕННЫЙ DEBUG — проверить что реально в БД wishlist
+app.get('/debug-wishlist', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, title, shop, image FROM wishlist WHERE user_id=1 ORDER BY id DESC LIMIT 10');
+    res.json(r.rows);
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 app.post('/parse', authenticateToken, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
