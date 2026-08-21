@@ -783,6 +783,36 @@ app.post('/parse', authenticateToken, async (req, res) => {
   res.json(accumulated);
 });
 
+// ── DEBUG (временный) ────────────────────────────────────────────────────────
+app.get('/debug-parse', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'Передай ?url=...' });
+  const log = [];
+  const L = (label, val) => log.push({ label, val });
+  try {
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, formats: ['html'], onlyMainContent: false, timeout: 15000, waitFor: 0 }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const body = await r.json();
+    const html = body.data?.html || '';
+    L('html_length', html.length);
+    const parsed = parseProductFromHtml(html, url);
+    L('parsed', parsed);
+    // Ищем img теги
+    const imgs = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(m => m[1]).slice(0, 5);
+    L('img_tags', imgs);
+    L('has_ProductSummary__title', html.includes('ProductSummary__title'));
+    L('has_TempProductMedia', html.includes('TempProductMedia'));
+  } catch (e) {
+    log.push({ label: 'error', val: e.message });
+  }
+  res.json({ log });
+});
+
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
