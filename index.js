@@ -707,35 +707,7 @@ function mergeParseResults(a, b) {
   };
 }
 
-// ВРЕМЕННЫЙ DEBUG — удалить после диагностики
-app.get('/debug-parse', async (req, res) => {
-  const url = req.query.url || 'https://12storeez.com/catalog/t-shirts2/mencollection/polo-michael-137424';
-  const log = [];
-  const origLog = console.log;
-  console.log = (...args) => { log.push(args.join(' ')); origLog(...args); };
-  try {
-    let result = await parseViaPlaywright(url);
-    log.push('[debug] playwright result: ' + JSON.stringify(result));
-    if (!result || (!result.title && !result.price && !result.image)) {
-      const fc = await parseViaFirecrawl(url);
-      log.push('[debug] firecrawl result: ' + JSON.stringify(fc));
-      result = fc;
-    }
-    res.json({ result, log });
-  } catch(e) {
-    res.json({ error: e.message, log });
-  } finally {
-    console.log = origLog;
-  }
-});
 
-// ВРЕМЕННЫЙ DEBUG — проверить что реально в БД wishlist
-app.get('/debug-wishlist', async (req, res) => {
-  try {
-    const r = await pool.query('SELECT id, title, shop, image FROM wishlist WHERE user_id=1 ORDER BY id DESC LIMIT 10');
-    res.json(r.rows);
-  } catch(e) { res.json({ error: e.message }); }
-});
 
 app.post('/parse', authenticateToken, async (req, res) => {
   const { url } = req.body;
