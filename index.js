@@ -432,6 +432,17 @@ async function parseViaPlaywright(url, locale = 'ru-RU') {
         const c = og('og:price:currency') || og('product:price:currency');
         if (p) price = c ? `${p} ${c}` : p;
       }
+      // Fallback для 12storeez — ищем картинку в DOM и в src img-тегов
+      if (!image) {
+        const imgEl = document.querySelector('.TempProductMedia img, .TempProductMediaItem__image, [class*="ProductMedia"] img, [class*="product-media"] img, [class*="Gallery"] img');
+        if (imgEl) image = imgEl.src || imgEl.dataset.src || null;
+      }
+      if (!image) {
+        // Ищем любой URL image.12storeez.com в тексте страницы
+        const html = document.documentElement.innerHTML;
+        const m = html.match(/https:\/\/image\.12storeez\.com\/images\/[^"'\s]+/);
+        if (m) image = m[0].replace(/\/\d+xP_/, '/800xP_');
+      }
       return { title, price, image };
     });
 
