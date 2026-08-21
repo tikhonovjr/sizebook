@@ -521,6 +521,41 @@ async function parseViaIframely(url) {
   } catch (_) { return null; }
 }
 
+// Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
+async function parseViaFirecrawl(url) {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url,
+        formats: ['html'],
+        onlyMainContent: false,
+        timeout: 20000,
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!r.ok) {
+      console.log(`[firecrawl] HTTP ${r.status}`);
+      return null;
+    }
+    const d = await r.json();
+    if (!d.success || !d.data?.html) return null;
+    // Парсим полученный HTML тем же универсальным парсером
+    const result = parseProductFromHtml(d.data.html, url);
+    console.log(`[firecrawl] result:`, result);
+    return result;
+  } catch (e) {
+    console.log(`[firecrawl] error:`, e.message);
+    return null;
+  }
+}
+
 // Универсальный HTML-парсер
 function parseProductFromHtml(html, url) {
   const $ = cheerio.load(html);
@@ -626,10 +661,15 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
   const host = new URL(url).hostname;
 
-  // 12storeez — JS-челлендж, сразу Playwright
+  // 12storeez — JS-челлендж, каскад: Playwright → Firecrawl
   if (host.includes('12storeez')) {
-    const result = await parseViaPlaywright(url);
+    let result = await parseViaPlaywright(url);
     console.log(`[parse] 12storeez playwright:`, result);
+    if (!result || (!result.title && !result.price && !result.image)) {
+      console.log(`[parse] 12storeez playwright failed, trying firecrawl`);
+      result = await parseViaFirecrawl(url);
+      console.log(`[parse] 12storeez firecrawl:`, result);
+    }
     return res.json(result || { title: null, price: null, image: null });
   }
 
@@ -640,7 +680,7 @@ app.post('/parse', authenticateToken, async (req, res) => {
     return res.json(result || { title: null, price: null, image: null });
   }
 
-  const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch');
+  const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch') || host.includes('sportmaster');
 
   // Шаг a: прямой fetch + HTML-парсер
   let accumulated = { title: null, price: null, image: null };
@@ -677,7 +717,14 @@ app.post('/parse', authenticateToken, async (req, res) => {
     accumulated = mergeParseResults(accumulated, playwright);
   }
 
-  // Шаг c: если после Playwright всё ещё нет title или image — дополняем через внешние OG-парсеры
+  // Шаг c: Firecrawl — обходит антибот лучше Playwright, умеет и price
+  if (!accumulated.title || !accumulated.price) {
+    const firecrawl = await parseViaFirecrawl(url);
+    console.log(`[parse] firecrawl (${host}):`, firecrawl);
+    accumulated = mergeParseResults(accumulated, firecrawl);
+  }
+
+  // Шаг d: если всё ещё нет title или image — дополняем через внешние OG-парсеры
   // (они умеют title/image, но не price — поэтому идут последними)
   if (!accumulated.title || !accumulated.image) {
     const jsonlink = await parseViaJsonlink(url);
@@ -691,7 +738,7 @@ app.post('/parse', authenticateToken, async (req, res) => {
     }
   }
 
-  // Шаг d: отдаём что есть (price может быть null — это нормально, если ни один метод не нашёл)
+  // Шаг e: отдаём что есть (price может быть null — это нормально, если ни один метод не нашёл)
   console.log(`[parse] final result (${host}):`, accumulated);
   res.json(accumulated);
 });
