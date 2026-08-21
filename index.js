@@ -707,6 +707,28 @@ function mergeParseResults(a, b) {
   };
 }
 
+// ВРЕМЕННЫЙ DEBUG — удалить после диагностики
+app.get('/debug-parse', async (req, res) => {
+  const url = req.query.url || 'https://12storeez.com/catalog/t-shirts2/mencollection/polo-michael-137424';
+  const log = [];
+  const origLog = console.log;
+  console.log = (...args) => { log.push(args.join(' ')); origLog(...args); };
+  try {
+    let result = await parseViaPlaywright(url);
+    log.push('[debug] playwright result: ' + JSON.stringify(result));
+    if (!result || (!result.title && !result.price && !result.image)) {
+      const fc = await parseViaFirecrawl(url);
+      log.push('[debug] firecrawl result: ' + JSON.stringify(fc));
+      result = fc;
+    }
+    res.json({ result, log });
+  } catch(e) {
+    res.json({ error: e.message, log });
+  } finally {
+    console.log = origLog;
+  }
+});
+
 app.post('/parse', authenticateToken, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
