@@ -632,7 +632,15 @@ function parseProductFromHtml(html, url) {
     }
   } catch (_) {}
 
-  // 4. window._site (12storeez и другие сайты с Vue/Nuxt)
+  // 4. 12storeez TempProductPage (Firecrawl возвращает статический HTML без head)
+  if (!title) title = $('.ProductSummary__title').first().text().trim() || null;
+  if (!price) {
+    const cost = $('.ProductSummary__cost').first().text().trim();
+    if (cost) price = cost.replace(/\s/g, ' ').trim() + ' ₽';
+  }
+  if (!image) image = $('.TempProductMedia img').first().attr('src') || null;
+
+  // 4b. window._site (12storeez и другие сайты с Vue/Nuxt)
   if (!title || !price || !image) {
     try {
       // Ищем Object.assign(window._site.data, {...product...})
