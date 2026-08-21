@@ -787,6 +787,18 @@ app.get('/debug-parse', async (req, res) => {
       L('firecrawl.success', body.success);
       L('firecrawl.html_length', body.data?.html?.length || 0);
       L('firecrawl.error', body.error || null);
+      if (body.data && body.data.html) {
+        const parsed = parseProductFromHtml(body.data.html, url);
+        L('firecrawl.parsed', parsed);
+        const m = body.data.html;
+        const ogTitle = (m.match(/property="og:title"[^>]*content="([^"]+)"/) || m.match(/content="([^"]+)"[^>]*property="og:title"/) || [])[1] || null;
+        const ogImage = (m.match(/property="og:image"[^>]*content="([^"]+)"/) || m.match(/content="([^"]+)"[^>]*property="og:image"/) || [])[1] || null;
+        const ogPrice = (m.match(/property="og:price:amount"[^>]*content="([^"]+)"/) || m.match(/content="([^"]+)"[^>]*property="og:price:amount"/) || [])[1] || null;
+        L('firecrawl.og_title', ogTitle);
+        L('firecrawl.og_image', ogImage);
+        L('firecrawl.og_price', ogPrice);
+        L('firecrawl.html_start', body.data.html.slice(0, 800));
+      }
     }
   } catch (e) {
     L('firecrawl.error', e.message);
