@@ -638,12 +638,17 @@ function parseProductFromHtml(html, url) {
     if (cost) price = cost.replace(/\s+/g, ' ').trim() + (cost.includes('₽') ? '' : ' ₽');
   }
   if (!image) {
-    // Пробуем src и data-src (lazy loading)
+    // Пробуем src и data-src (lazy loading), игнорируем placeholder-ы
     const imgEl = $('.TempProductMedia img, .TempProductMediaItem__image').first();
-    image = imgEl.attr('src') || imgEl.attr('data-src') || null;
-    // Если src — это URL страницы (placeholder), игнорируем
-    if (image && !image.startsWith('http')) image = null;
-    if (image && image.includes('/catalog/')) image = null;
+    const imgSrc = imgEl.attr('src') || imgEl.attr('data-src') || null;
+    if (imgSrc && imgSrc.startsWith('http') && !imgSrc.includes('/catalog/')) {
+      image = imgSrc;
+    }
+  }
+  if (!image) {
+    // Fallback: ищем любой URL image.12storeez.com в HTML и апгрейдим до 800xP
+    const m = html.match(/https:\/\/image\.12storeez\.com\/images\/[^"'\s]+/);
+    if (m) image = m[0].replace(/\/\d+xP_/, '/800xP_');
   }
 
   // 4b. window._site (12storeez и другие сайты с Vue/Nuxt)
