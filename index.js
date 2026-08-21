@@ -755,23 +755,44 @@ app.get('/debug-parse', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.json({ error: 'Передай ?url=...' });
   const log = [];
-  const L = (label, val) => { log.push({ label, val }); console.log(`[debug] ${label}:`, val); };
+  const L = (label, val) => { log.push({ label, val }); };
 
+  // 1. Проверяем env
+  L('env.FIRECRAWL_API_KEY', process.env.FIRECRAWL_API_KEY ? 'SET (' + process.env.FIRECRAWL_API_KEY.slice(0,6) + '...)' : 'NOT SET');
+  L('env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH', process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || 'not set');
+
+  // 2. Playwright с поимкой ошибки
   try {
     const playwright = await parseViaPlaywright(url);
-    L('playwright', playwright);
-
-    const fc = await parseViaFirecrawl(url);
-    L('firecrawl', fc);
-
-    const merged = mergeParseResults(playwright, fc);
-    if (merged?.title) merged.title = merged.title.split(',')[0].trim();
-    L('merged+clean', merged);
-
-    res.json({ log });
+    L('playwright.result', playwright);
   } catch (e) {
-    res.json({ error: e.message, log });
+    L('playwright.error', e.message);
   }
+
+  // 3. Firecrawl напрямую с подробностями
+  try {
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    if (!apiKey) {
+      L('firecrawl', 'SKIPPED — no API key');
+    } else {
+      const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, formats: ['html'], onlyMainContent: false, timeout: 20000 }),
+        signal: AbortSignal.timeout(25000),
+      });
+      const status = r.status;
+      const body = await r.json().catch(() => ({}));
+      L('firecrawl.http_status', status);
+      L('firecrawl.success', body.success);
+      L('firecrawl.html_length', body.data?.html?.length || 0);
+      L('firecrawl.error', body.error || null);
+    }
+  } catch (e) {
+    L('firecrawl.error', e.message);
+  }
+
+  res.json({ log });
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
