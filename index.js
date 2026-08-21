@@ -536,9 +536,8 @@ async function parseViaFirecrawl(url) {
         url,
         formats: ['html'],
         onlyMainContent: false,
-        timeout: 30000,
-        waitFor: 4000,
-        mobile: false,
+        timeout: 15000,
+        waitFor: 0,
       }),
       signal: AbortSignal.timeout(40000),
     });
