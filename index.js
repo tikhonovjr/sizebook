@@ -635,9 +635,16 @@ function parseProductFromHtml(html, url) {
   if (!title) title = $('.ProductSummary__title').first().text().trim() || null;
   if (!price) {
     const cost = $('.ProductSummary__cost').first().text().trim();
-    if (cost) price = cost.replace(/\s/g, ' ').trim() + ' ₽';
+    if (cost) price = cost.replace(/\s+/g, ' ').trim() + (cost.includes('₽') ? '' : ' ₽');
   }
-  if (!image) image = $('.TempProductMedia img').first().attr('src') || null;
+  if (!image) {
+    // Пробуем src и data-src (lazy loading)
+    const imgEl = $('.TempProductMedia img, .TempProductMediaItem__image').first();
+    image = imgEl.attr('src') || imgEl.attr('data-src') || null;
+    // Если src — это URL страницы (placeholder), игнорируем
+    if (image && !image.startsWith('http')) image = null;
+    if (image && image.includes('/catalog/')) image = null;
+  }
 
   // 4b. window._site (12storeez и другие сайты с Vue/Nuxt)
   if (!title || !price || !image) {
@@ -802,9 +809,12 @@ app.get('/debug-parse', async (req, res) => {
     L('html_length', html.length);
     const parsed = parseProductFromHtml(html, url);
     L('parsed', parsed);
-    // Ищем img теги
+    // Ищем img теги (src и data-src)
     const imgs = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map(m => m[1]).slice(0, 5);
-    L('img_tags', imgs);
+    const dataSrcs = [...html.matchAll(/<img[^>]+data-src="([^"]+)"/g)].map(m => m[1]).slice(0, 5);
+    L('img_src_tags', imgs);
+    L('img_data-src_tags', dataSrcs);
+    L('html_start_2000', html.slice(0, 2000));
     L('has_ProductSummary__title', html.includes('ProductSummary__title'));
     L('has_TempProductMedia', html.includes('TempProductMedia'));
   } catch (e) {
