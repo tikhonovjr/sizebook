@@ -661,15 +661,22 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
   const host = new URL(url).hostname;
 
-  // 12storeez — JS-челлендж, каскад: Playwright → Firecrawl
+  // 12storeez — JS-челлендж, каскад: Playwright → Firecrawl (merge оба результата)
   if (host.includes('12storeez')) {
     let result = await parseViaPlaywright(url);
     console.log(`[parse] 12storeez playwright:`, result);
-    if (!result || (!result.title && !result.price && !result.image)) {
-      console.log(`[parse] 12storeez playwright failed, trying firecrawl`);
-      result = await parseViaFirecrawl(url);
-      console.log(`[parse] 12storeez firecrawl:`, result);
+    // Firecrawl запускаем если нет картинки ИЛИ нет цены (не только если пусто)
+    if (!result?.image || !result?.price) {
+      console.log(`[parse] 12storeez missing image/price, trying firecrawl`);
+      const fc = await parseViaFirecrawl(url);
+      console.log(`[parse] 12storeez firecrawl:`, fc);
+      result = mergeParseResults(result, fc);
     }
+    // Чистим название: убираем всё после первой запятой (цвет, категория, магазин)
+    if (result?.title) {
+      result.title = result.title.split(',')[0].trim();
+    }
+    console.log(`[parse] 12storeez final:`, result);
     return res.json(result || { title: null, price: null, image: null });
   }
 
