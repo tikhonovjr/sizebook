@@ -663,23 +663,26 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
   const host = new URL(url).hostname;
 
-  // 12storeez — JS-челлендж, каскад: Playwright → Firecrawl (merge оба результата)
+  // 12storeez — прямой fetch (статический HTML содержит og:title, og:image, JSON-LD с ценой)
   if (host.includes('12storeez')) {
-    let result = await parseViaPlaywright(url);
-    console.log(`[parse] 12storeez playwright:`, result);
-    // Firecrawl запускаем если нет картинки ИЛИ нет цены (не только если пусто)
-    if (!result?.image || !result?.price) {
-      console.log(`[parse] 12storeez missing image/price, trying firecrawl`);
-      const fc = await parseViaFirecrawl(url);
-      console.log(`[parse] 12storeez firecrawl:`, fc);
-      result = mergeParseResults(result, fc);
+    try {
+      const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(10000) });
+      const html = await resp.text();
+      const result = parseProductFromHtml(html, url);
+      console.log(`[parse] 12storeez direct:`, result);
+      // Чистим название: убираем всё после первой запятой (цвет, категория, магазин)
+      if (result?.title) result.title = result.title.split(',')[0].trim();
+      if (result.title || result.price || result.image) {
+        return res.json(result);
+      }
+    } catch (e) {
+      console.log(`[parse] 12storeez direct error:`, e.message);
     }
-    // Чистим название: убираем всё после первой запятой (цвет, категория, магазин)
-    if (result?.title) {
-      result.title = result.title.split(',')[0].trim();
-    }
-    console.log(`[parse] 12storeez final:`, result);
-    return res.json(result || { title: null, price: null, image: null });
+    // Fallback: Firecrawl если прямой fetch не сработал
+    const fc = await parseViaFirecrawl(url);
+    if (fc?.title) fc.title = fc.title.split(',')[0].trim();
+    console.log(`[parse] 12storeez firecrawl fallback:`, fc);
+    return res.json(fc || { title: null, price: null, image: null });
   }
 
   // Wildberries — CDN API, без антибота
