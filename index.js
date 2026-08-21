@@ -10,6 +10,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sizebook-super-secret-2024';
 
+// ── БУФЕР ЛОГОВ ───────────────────────────────────────────────────────────────
+const LOG_BUFFER_SIZE = 500;
+const logBuffer = [];
+const _origLog = console.log.bind(console);
+const _origError = console.error.bind(console);
+function pushLog(level, args) {
+  const line = `[${new Date().toISOString()}] [${level}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}`;
+  logBuffer.push(line);
+  if (logBuffer.length > LOG_BUFFER_SIZE) logBuffer.shift();
+}
+console.log = (...args) => { _origLog(...args); pushLog('LOG', args); };
+console.error = (...args) => { _origError(...args); pushLog('ERR', args); };
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
@@ -193,6 +206,17 @@ app.post('/auth/login', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
+});
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+app.get('/admin/logs', authenticateToken, (req, res) => {
+  if (req.user?.username !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const n = Math.min(parseInt(req.query.n) || 100, LOG_BUFFER_SIZE);
+  const filter = req.query.filter || '';
+  let lines = logBuffer.slice(-n);
+  if (filter) lines = lines.filter(l => l.includes(filter));
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(lines.join('\n') + '\n');
 });
 
 // ── SIZES ─────────────────────────────────────────────────────────────────────
