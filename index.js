@@ -632,12 +632,33 @@ function parseProductFromHtml(html, url) {
     }
   } catch (_) {}
 
-  // 4. Fallback — title страницы
+  // 4. window._site (12storeez и другие сайты с Vue/Nuxt)
+  if (!title || !price || !image) {
+    try {
+      // Ищем Object.assign(window._site.data, {...product...})
+      const siteDataMatch = html.match(/Object\.assign\(window\._site\.data,\s*(\{[\s\S]*?"product"[\s\S]*?\})\s*\);/);
+      if (siteDataMatch) {
+        const siteData = JSON.parse(siteDataMatch[1]);
+        const p = siteData.product;
+        if (p) {
+          title = title || p.title || p.ecommerce?.name || null;
+          price = price || (p.price ? `${p.price} ₽` : null);
+          const imgs = p.images;
+          if (!image && Array.isArray(imgs) && imgs.length) {
+            const variant = imgs[0].variants?.find(v => v.name === 'PRODUCT_PREVIEW_PRODUCT_LIST') || imgs[0].variants?.[0];
+            image = variant?.url || null;
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 5. Fallback — title страницы
   if (!title) title = $('title').text().trim().split('|')[0].split('-')[0].trim() || null;
   if (title?.length > 120) title = title.slice(0, 120).trim();
 
   // Детект страниц-блокировок антибота — не отдаём их как валидный результат
-  const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3})/i;
+  const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni)/i;
   if (title && blockPatterns.test(title.trim())) {
     return { title: null, price: null, image: null };
   }
