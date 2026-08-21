@@ -814,7 +814,9 @@ app.get('/debug-parse', async (req, res) => {
     const dataSrcs = [...html.matchAll(/<img[^>]+data-src="([^"]+)"/g)].map(m => m[1]).slice(0, 5);
     L('img_src_tags', imgs);
     L('img_data-src_tags', dataSrcs);
-    L('html_start_2000', html.slice(0, 2000));
+    // Ищем URL картинок 12storeez
+    const imageUrls = [...html.matchAll(/https:\/\/image\.12storeez\.com[^"'\s]+/g)].map(m => m[0]).slice(0, 5);
+    L('image_urls_found', imageUrls);
     L('has_ProductSummary__title', html.includes('ProductSummary__title'));
     L('has_TempProductMedia', html.includes('TempProductMedia'));
   } catch (e) {
