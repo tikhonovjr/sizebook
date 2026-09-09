@@ -497,8 +497,9 @@ async function parseViaPlaywright(url, locale = 'ru-RU') {
         );
         for (const el of candidates) {
           const t = (el.textContent || '').trim();
-          if (t && t.length < 40 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) {
-            price = t;
+          if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) {
+            const m = t.match(/[£$€₽]\s?[\d\s.,]+|\d[\d\s.,]*\s?[£$€₽]/);
+            price = m ? m[0].trim() : t;
             break;
           }
         }
@@ -724,9 +725,11 @@ async function parseOzon(url) {
       }
     }
 
-    // Шаг 4: Firecrawl как последний резерв
-    console.log(`[ozon] пробуем Firecrawl`);
-    const fc = await parseViaFirecrawl(url);
+    // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
+    // показывает промежуточную заглушку "нет соединения" дольше 4 сек,
+    // поэтому ждём заметно дольше обычного.
+    console.log(`[ozon] пробуем Firecrawl (waitFor=8000)`);
+    const fc = await parseViaFirecrawl(url, { waitFor: 8000 });
     console.log(`[ozon] Firecrawl результат:`, fc);
     return fc;
   } catch (e) {
@@ -759,7 +762,7 @@ async function parseViaIframely(url) {
 }
 
 // Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
-async function parseViaFirecrawl(url) {
+async function parseViaFirecrawl(url, { waitFor = 4000 } = {}) {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) { console.log('[firecrawl] FIRECRAWL_API_KEY не задан в env'); return null; }
   try {
@@ -773,13 +776,10 @@ async function parseViaFirecrawl(url) {
         url,
         formats: ['html'],
         onlyMainContent: false,
-        timeout: 25000,
-        // Ждём отрисовки SPA — без этого некоторые сайты (Ozon, Farfetch)
-        // отдают промежуточную заглушку ("нет соединения") или HTML без
-        // <head>/цены, которая дорисовывается JS уже после первого рендера.
-        waitFor: 4000,
+        timeout: 30000,
+        waitFor,
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(50000),
     });
     console.log(`[firecrawl] HTTP ${r.status}`);
     if (!r.ok) {
@@ -800,8 +800,11 @@ async function parseViaFirecrawl(url) {
 
     const result = parseProductFromHtml(html, url);
     // Firecrawl иногда отдаёт HTML без <head> (нет title/og/JSON-LD в теле) —
-    // в этом случае title/image добираем из собственных metadata Firecrawl.
-    if (!result.title && meta.title) result.title = meta.title;
+    // в этом случае title/image добираем из собственных metadata Firecrawl,
+    // но не если это та же заглушка антибота/SPA-загрузки.
+    const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni|похоже,? нет соединения|нет соединения с интернетом)/i;
+    const metaTitleOk = meta.title && !blockPatterns.test(meta.title.trim());
+    if (!result.title && metaTitleOk) result.title = meta.title;
     if (!result.image && (meta.ogImage || meta.image)) result.image = meta.ogImage || meta.image;
     console.log(`[firecrawl] result:`, result);
     return result;
@@ -937,12 +940,17 @@ function parseProductFromHtml(html, url) {
     $('[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]').each((_, el) => {
       if (price) return;
       const t = $(el).text().trim();
-      if (t && t.length < 40 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) price = t;
+      if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) price = t;
     });
+  }
+  // Отрезаем текст после цены (например "£338Import duties included" → "£338")
+  if (price) {
+    const m = price.match(/[£$€₽]\s?[\d\s.,]+|\d[\d\s.,]*\s?[£$€₽]/);
+    if (m) price = m[0].trim();
   }
 
   // Детект страниц-блокировок антибота — не отдаём их как валидный результат
-  const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni)/i;
+  const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni|похоже,? нет соединения|нет соединения с интернетом)/i;
   if (title && blockPatterns.test(title.trim())) {
     return { title: null, price: null, image: null };
   }
