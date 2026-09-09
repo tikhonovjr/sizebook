@@ -659,7 +659,7 @@ async function parseOzon(url) {
         }
       }
     } catch (e) {
-      console.log(`[ozon] прямой fetch ошибка: ${e.message}`);
+      console.log(`[ozon] прямой fetch ошибка: ${e.message}${e.cause ? ' | cause: ' + (e.cause.message || e.cause.code || JSON.stringify(e.cause)) : ''}`);
     }
 
     // Шаг 2: Ozon API (не требует авторизации для публичных карточек)
@@ -699,7 +699,7 @@ async function parseOzon(url) {
           }
         }
       } catch (e) {
-        console.log(`[ozon] API ошибка: ${e.message}`);
+        console.log(`[ozon] API ошибка: ${e.message}${e.cause ? ' | cause: ' + (e.cause.message || e.cause.code || JSON.stringify(e.cause)) : ''}`);
       }
     }
 
