@@ -477,6 +477,22 @@ const FETCH_HEADERS = {
 };
 
 // Headless browser — синглтон, переиспользуется между запросами
+// Парсим RU_PROXY_URL в формат, который понимает Playwright (server/username/password)
+function getPlaywrightProxyConfig() {
+  if (!RU_PROXY_URL) return null;
+  try {
+    const u = new URL(RU_PROXY_URL);
+    return {
+      server: `${u.protocol}//${u.hostname}:${u.port}`,
+      username: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+    };
+  } catch (e) {
+    console.log('[ru-proxy] не удалось распарсить RU_PROXY_URL для Playwright:', e.message);
+    return null;
+  }
+}
+
 let _browser = null;
 async function getHeadlessBrowser() {
   if (_browser && _browser.isConnected()) return _browser;
@@ -490,15 +506,20 @@ async function getHeadlessBrowser() {
 }
 
 // Для сайтов с JS-челленджем (Servicepipe и др.)
-async function parseViaPlaywright(url, locale = 'ru-RU') {
+// useRuProxy=true — пускает headless-браузер через РФ-прокси (для WB/Ozon,
+// где блокировка идёт по гео-IP, а не только по антибот-фингерпринту).
+async function parseViaPlaywright(url, locale = 'ru-RU', useRuProxy = false) {
   try {
     const browser = await getHeadlessBrowser();
+    const proxyConfig = useRuProxy ? getPlaywrightProxyConfig() : null;
     const ctx = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       viewport: { width: 1440, height: 900 },
       locale,
       extraHTTPHeaders: { 'Accept-Language': `${locale},en;q=0.8` },
+      ...(proxyConfig ? { proxy: proxyConfig } : {}),
     });
+    console.log(`[playwright] контекст создан${proxyConfig ? ' с РФ-прокси' : ''} для ${url}`);
     const page = await ctx.newPage();
     await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
     try {
@@ -736,10 +757,22 @@ async function parseOzon(url) {
       }
     }
 
-    // Шаг 3 (Playwright к entrypoint-api.bx) убран: по данным логов Ozon
-    // всегда отвечает 403 на этот эндпоинт даже через headless-браузер —
-    // шаг ни разу не сработал и только добавлял ~2.5 сек впустую.
-    // Сразу переходим к Firecrawl.
+    // Шаг 3 (Playwright к entrypoint-api.bx без прокси) убран: по данным
+    // логов Ozon всегда отвечает 403 на этот эндпоинт даже через
+    // headless-браузер без прокси — шаг ни разу не сработал.
+    //
+    // Новый шаг 3: Playwright НА РЕАЛЬНУЮ СТРАНИЦУ ТОВАРА через РФ-прокси.
+    // Прямой fetch/API даже через прокси получает 403 (Ozon палит
+    // датацентровый прокси-IP по фингерпринту запроса) — настоящий браузер
+    // с РФ-IP выглядит иначе: свой TLS-отпечаток, автоматическая обработка
+    // cookies/редиректов, JS-рендер. Это последняя разумная попытка перед
+    // Firecrawl, который уже показал себя ненадёжным на Ozon.
+    if (RU_PROXY_URL) {
+      console.log('[ozon] пробуем Playwright через РФ-прокси на странице товара');
+      const viaProxy = await parseViaPlaywright(url, 'ru-RU', true);
+      console.log('[ozon] Playwright+RU-прокси результат:', viaProxy);
+      if (viaProxy?.title || viaProxy?.price || viaProxy?.image) return viaProxy;
+    }
 
     // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
     // показывает промежуточную заглушку "нет соединения" дольше 4 сек,
