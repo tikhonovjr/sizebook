@@ -26,6 +26,40 @@ async function ruFetch(url, opts = {}) {
   return fetch(url, opts);
 }
 
+// Ozon отдаёт 307-редирект с Set-Cookie как антибот-проверку (видно по
+// прямому curl через прокси). Обычный fetch с redirect:'follow' не хранит
+// cookie между шагами редиректа — каждый следующий запрос снова выглядит
+// "новым" для антибота, он редиректит опять, и так до "redirect count
+// exceeded". Реальный браузер (Playwright) хранит cookie автоматически —
+// поэтому там работает, а у голого fetch нет. Разруливаем вручную.
+async function fetchWithCookies(url, opts = {}, maxRedirects = 10) {
+  let currentUrl = url;
+  let cookieJar = '';
+  for (let i = 0; i <= maxRedirects; i++) {
+    const headers = { ...(opts.headers || {}) };
+    if (cookieJar) headers['Cookie'] = cookieJar;
+    const resp = await ruFetch(currentUrl, { ...opts, headers, redirect: 'manual' });
+
+    // Копим cookie из этого ответа
+    const setCookie = typeof resp.headers.getSetCookie === 'function'
+      ? resp.headers.getSetCookie()
+      : (resp.headers.get('set-cookie') ? [resp.headers.get('set-cookie')] : []);
+    if (setCookie && setCookie.length) {
+      const newPairs = setCookie.map(c => c.split(';')[0]).join('; ');
+      cookieJar = cookieJar ? `${cookieJar}; ${newPairs}` : newPairs;
+    }
+
+    if ([301, 302, 303, 307, 308].includes(resp.status)) {
+      const loc = resp.headers.get('location');
+      if (!loc) return resp;
+      currentUrl = new URL(loc, currentUrl).toString();
+      continue;
+    }
+    return resp;
+  }
+  throw new Error('redirect count exceeded (fetchWithCookies)');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sizebook-super-secret-2024';
@@ -641,12 +675,11 @@ async function parseOzon(url) {
     // Через ruFetch пойдёт через РФ-прокси, если он настроен — без него
     // Ozon блокирует датацентровые IP на уровне сети ("fetch failed").
     try {
-      const resp = await ruFetch(url, {
+      const resp = await fetchWithCookies(url, {
         headers: {
           ...FETCH_HEADERS,
           'Accept-Language': 'ru-RU,ru;q=0.9',
         },
-        redirect: 'follow',
         signal: AbortSignal.timeout(15000),
       });
       console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
@@ -665,7 +698,7 @@ async function parseOzon(url) {
     // Шаг 2: Ozon API (не требует авторизации для публичных карточек)
     if (nm) {
       try {
-        const apiResp = await ruFetch(
+        const apiResp = await fetchWithCookies(
           `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${nm}/`,
           {
             headers: {
