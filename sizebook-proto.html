@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SizeBook</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f8f7f5;
+  --surface: #ffffff;
+  --surface2: #f2f1ef;
+  --border: rgba(0,0,0,0.09);
+  --border2: rgba(0,0,0,0.16);
+  --text: #1a1a18;
+  --text2: #6b6b68;
+  --text3: #9e9e9b;
+  --accent: #1a1a18;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --nav-h: 68px;
+  --top-h: 52px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Phone shell ── */
+.phone {
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.06), 0 0 0 11px #1c1c1e, 0 0 0 13px #3a3a3c, 0 40px 100px rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Topnav ── */
+.topnav {
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  height: var(--top-h);
+  flex-shrink: 0;
+  gap: 10px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.logo-mark {
+  width: 26px; height: 26px;
+  background: var(--text);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.topnav-right { margin-left: auto; display: flex; gap: 8px; }
+.icon-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2);
+  border-radius: 20px;
+  padding: 6px 12px 6px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+}
+.icon-pill svg { flex-shrink: 0; }
+
+/* ── Screens ── */
+.screens { flex: 1; position: relative; overflow: hidden; }
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  display: none;
+  flex-direction: column;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.active { display: flex; }
+
+/* ── Bottom nav ── */
+.bottom-nav {
+  background: var(--surface);
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  height: var(--nav-h);
+  padding: 8px 0 14px;
+  flex-shrink: 0;
+}
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-label { font-size: 10px; color: var(--text3); font-weight: 500; transition: color 0.15s; }
+.nav-icon { color: var(--text3); transition: color 0.15s; }
+.nav-tab.active .nav-label { color: var(--text); }
+.nav-tab.active .nav-icon { color: var(--text); }
+
+/* ── Common ── */
+.page-pad { padding: 20px 16px; }
+.section-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 10px;
+}
+.card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+/* ── SIZES SCREEN ── */
+.cat-scroll {
+  display: flex; gap: 8px;
+  overflow-x: auto; padding: 0 16px 2px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cat-scroll::-webkit-scrollbar { display: none; }
+.cat-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 20px;
+  border: 0.5px solid var(--border2);
+  background: var(--surface);
+  white-space: nowrap; font-size: 13px;
+  color: var(--text2); cursor: pointer;
+  flex-shrink: 0; font-weight: 500;
+  transition: all 0.12s;
+}
+.cat-chip.active {
+  background: var(--text); color: #fff;
+  border-color: var(--text);
+}
+.size-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.size-icon {
+  width: 32px; height: 32px;
+  background: var(--surface2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.size-card-title { font-size: 14px; font-weight: 550; color: var(--text); }
+.size-card-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.edit-btn {
+  margin-left: auto;
+  width: 30px; height: 30px;
+  background: var(--surface2);
+  border-radius: 50%;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.size-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.size-cell {
+  padding: 10px 14px;
+  border-right: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+}
+.size-cell:nth-child(2n) { border-right: none; }
+.size-cell:last-child, .size-cell:nth-last-child(2):nth-child(2n+1) { border-bottom: none; }
+.size-cell:nth-last-child(-n+2) { border-bottom: none; }
+.sc-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+.sc-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; letter-spacing: -0.5px; }
+.sc-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.add-cat-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px; border-radius: var(--radius-sm);
+  border: 0.5px dashed var(--border2);
+  background: transparent; color: var(--text3);
+  font-size: 13px; cursor: pointer; width: 100%;
+  margin-top: 4px;
+}
+
+/* ── WISHLIST SCREEN ── */
+.add-link-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  border: 0.5px dashed var(--border2);
+  background: var(--surface); color: var(--text2);
+  font-size: 14px; cursor: pointer; width: 100%;
+  margin-bottom: 16px; font-weight: 500;
+  transition: background 0.12s;
+}
+.add-link-btn:active { background: var(--surface2); }
+.wish-item {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px; display: flex; align-items: flex-start;
+  gap: 12px; margin-bottom: 8px;
+}
+.wish-thumb {
+  width: 60px; height: 60px; border-radius: 8px;
+  flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.wish-info { flex: 1; min-width: 0; }
+.wish-name { font-size: 14px; font-weight: 550; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wish-shop { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+.wish-size-tag {
+  display: inline-flex; align-items: center;
+  background: var(--surface2); border-radius: 5px;
+  padding: 2px 8px; font-size: 12px;
+  color: var(--text2); font-weight: 500;
+}
+.wish-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.wish-price { font-size: 15px; font-weight: 650; color: var(--text); white-space: nowrap; letter-spacing: -0.3px; }
+.del-btn {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface2); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+.empty-state {
+  text-align: center; padding: 48px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.empty-icon {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+}
+.empty-title { font-size: 16px; font-weight: 550; color: var(--text2); }
+.empty-sub { font-size: 13px; color: var(--text3); line-height: 1.5; }
+
+/* ── SHARE SCREEN ── */
+.share-hero {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 12px;
+}
+.share-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+}
+.share-name { font-size: 20px; font-weight: 650; color: var(--text); letter-spacing: -0.4px; }
+.share-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.share-url-box {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text2);
+  word-break: break-all;
+  width: 100%;
+  text-align: left;
+  border: 0.5px solid var(--border);
+}
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--text); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  padding: 12px 20px; font-size: 14px; font-weight: 550;
+  cursor: pointer; width: 100%;
+  transition: opacity 0.12s;
+}
+.btn-primary:active { opacity: 0.8; }
+.btn-ghost {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--surface); color: var(--text);
+  border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+  padding: 12px 20px; font-size: 14px; font-weight: 500;
+  cursor: pointer; width: 100%;
+  transition: background 0.12s;
+}
+.btn-ghost:active { background: var(--surface2); }
+.share-settings {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.settings-title { font-size: 13px; font-weight: 550; color: var(--text); margin-bottom: 14px; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+.toggle-label { font-size: 14px; color: var(--text); }
+.toggle {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: #34C759; border: none; cursor: pointer;
+  position: relative; transition: background 0.2s;
+}
+.toggle.off { background: var(--surface2); border: 0.5px solid var(--border2); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; top: 2px; left: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: left 0.2s;
+}
+.toggle.off::after { left: 2px; }
+
+/* ── PROFILE SCREEN ── */
+.profile-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin-bottom: 16px; text-align: center;
+}
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, #e0dcd8 0%, #ccc9c5 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 600; color: var(--text2);
+}
+.profile-username { font-size: 20px; font-weight: 650; color: var(--text); letter-spacing: -0.4px; }
+.profile-email { font-size: 13px; color: var(--text3); }
+.menu-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 8px;
+}
+.menu-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer; font-size: 14px; color: var(--text);
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row:active { background: var(--surface2); }
+.menu-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.menu-chevron { margin-left: auto; color: var(--text3); }
+.logout-btn {
+  display: flex; align-items: center; justify-content: center;
+  padding: 14px; border-radius: var(--radius);
+  border: 0.5px solid var(--border);
+  background: var(--surface); color: #c0392b;
+  font-size: 14px; font-weight: 500; cursor: pointer; width: 100%;
+  margin-top: 4px;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: none; align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  width: 100%; padding: 0 0 32px;
+  max-height: 88%;
+  display: flex; flex-direction: column;
+  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: var(--border2);
+  margin: 12px auto 0;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px;
+}
+.modal-title { font-size: 17px; font-weight: 600; color: var(--text); }
+.modal-close {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--surface2); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.modal-body { flex: 1; overflow-y: auto; padding: 0 18px; scrollbar-width: none; }
+.modal-body::-webkit-scrollbar { display: none; }
+.input-group { margin-bottom: 14px; }
+.input-label { font-size: 12px; font-weight: 550; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.input-field {
+  width: 100%; padding: 11px 14px;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 15px; color: var(--text);
+  outline: none; transition: border-color 0.12s;
+  font-family: inherit;
+}
+.input-field:focus { border-color: var(--text); }
+.autofill-note { font-size: 12px; color: var(--text3); margin-top: 4px; min-height: 16px; }
+.autofill-note.ok { color: #2d7d32; }
+.spinner {
+  display: none; width: 16px; height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--text2);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.url-row { display: flex; align-items: center; gap: 8px; }
+.modal-footer { padding: 14px 18px 0; }
+
+/* ── Toast ── */
+.toast {
+  position: absolute; bottom: calc(var(--nav-h) + 12px); left: 16px; right: 16px;
+  background: var(--text); color: #fff;
+  border-radius: 10px; padding: 11px 16px;
+  font-size: 14px; font-weight: 500;
+  z-index: 300; display: none;
+  animation: toastIn 0.2s ease;
+  text-align: center;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ── Topnav ── -->
+  <div class="topnav">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/>
+        </svg>
+      </div>
+      SizeBook
+    </div>
+    <div class="topnav-right">
+      <button class="icon-pill" onclick="showScreen('share')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg>
+        Поделиться
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Screens ── -->
+  <div class="screens">
+
+    <!-- SIZES -->
+    <div class="screen active" id="screen-sizes">
+      <div style="padding:16px 0 8px;">
+        <div class="cat-scroll">
+          <div class="cat-chip active" onclick="selectCat(this)">Верх</div>
+          <div class="cat-chip" onclick="selectCat(this)">Низ</div>
+          <div class="cat-chip" onclick="selectCat(this)">Обувь</div>
+          <div class="cat-chip" onclick="selectCat(this)">Нижнее</div>
+          <div class="cat-chip" onclick="selectCat(this)">Верхняя</div>
+          <div class="cat-chip" onclick="selectCat(this)">Спорт</div>
+        </div>
+      </div>
+      <div class="page-pad" style="padding-top:12px; flex:1;">
+        <!-- Card 1 -->
+        <div class="card">
+          <div class="size-card-head">
+            <div class="size-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6b68" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg>
+            </div>
+            <div>
+              <div class="size-card-title">Верхняя одежда</div>
+              <div class="size-card-sub">Свитеры, рубашки, футболки</div>
+            </div>
+            <button class="edit-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b6b68" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+          <div class="size-grid">
+            <div class="size-cell"><div class="sc-label">Международный</div><div class="sc-value">S</div><div class="sc-sub">EU 36–38</div></div>
+            <div class="size-cell"><div class="sc-label">Zara</div><div class="sc-value">XS</div><div class="sc-sub">особый крой</div></div>
+            <div class="size-cell"><div class="sc-label">H&amp;M</div><div class="sc-value">S</div><div class="sc-sub"></div></div>
+            <div class="size-cell"><div class="sc-label">Обхват груди</div><div class="sc-value">88</div><div class="sc-sub">см</div></div>
+          </div>
+        </div>
+        <!-- Card 2 -->
+        <div class="card">
+          <div class="size-card-head">
+            <div class="size-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b6b68" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s1-3 5-3 6 4 10 4 5-2 5-2"/><path d="M2 17c1.5.5 3 .8 5 .8 4 0 6-2 9-2 1.5 0 3 .3 5.5 1.2"/></svg>
+            </div>
+            <div>
+              <div class="size-card-title">Обувь</div>
+              <div class="size-card-sub">Кроссовки, туфли, сапоги</div>
+            </div>
+            <button class="edit-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b6b68" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+          <div class="size-grid">
+            <div class="size-cell"><div class="sc-label">EU</div><div class="sc-value">38</div><div class="sc-sub">Nike — 38.5</div></div>
+            <div class="size-cell"><div class="sc-label">US</div><div class="sc-value">7.5</div><div class="sc-sub"></div></div>
+            <div class="size-cell"><div class="sc-label">Стопа</div><div class="sc-value">24</div><div class="sc-sub">см</div></div>
+            <div class="size-cell"><div class="sc-label">UK</div><div class="sc-value">5</div><div class="sc-sub"></div></div>
+          </div>
+        </div>
+        <button class="add-cat-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Добавить категорию
+        </button>
+      </div>
+    </div>
+
+    <!-- WISHLIST -->
+    <div class="screen" id="screen-wishlist">
+      <div class="page-pad" style="flex:1;">
+        <div class="section-label" style="margin-bottom:12px;">Хочу получить в подарок</div>
+        <button class="add-link-btn" onclick="openModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Добавить по ссылке
+        </button>
+        <div id="wl-list">
+          <div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Загрузка…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHARE -->
+    <div class="screen" id="screen-share">
+      <div class="page-pad" style="flex:1;">
+        <div class="share-hero">
+          <div class="share-avatar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9e9e9b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          </div>
+          <div class="share-name">Мои размеры</div>
+          <div class="share-desc">Поделись ссылкой — друзья выберут подарок нужного размера, не спрашивая</div>
+          <div id="share-url-box" class="share-url-box" style="display:none"></div>
+          <div style="display:flex;gap:8px;width:100%;">
+            <button class="btn-primary" id="share-create-btn" onclick="createShareLink()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg>
+              Создать ссылку
+            </button>
+            <button class="btn-ghost" id="share-copy-btn" style="display:none" onclick="copyLink()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>
+              Копировать
+            </button>
+          </div>
+        </div>
+        <div class="share-settings">
+          <div class="settings-title">Что показывать</div>
+          <div class="toggle-row">
+            <span class="toggle-label">Размеры одежды</span>
+            <button class="toggle" onclick="this.classList.toggle('off')"></button>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Вишлист</span>
+            <button class="toggle" onclick="this.classList.toggle('off')"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen" id="screen-profile">
+      <div class="page-pad" style="flex:1;">
+        <div class="profile-card">
+          <div class="profile-avatar">А</div>
+          <div class="profile-username">admin</div>
+          <div class="profile-email">admin@sizebook.local</div>
+        </div>
+        <div class="menu-card">
+          <div class="menu-row">
+            <div class="menu-icon" style="background:#EAF3DE;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3B6D11" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </div>
+            Профиль
+            <div class="menu-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+          <div class="menu-row">
+            <div class="menu-icon" style="background:#E6F1FB;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+            Безопасность
+            <div class="menu-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+          <div class="menu-row">
+            <div class="menu-icon" style="background:#EEEDFE;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3C3489" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M19.07 19.07A10 10 0 0 0 4.93 4.93"/></svg>
+            </div>
+            Настройки
+            <div class="menu-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg></div>
+          </div>
+        </div>
+        <button class="logout-btn">Выйти из аккаунта</button>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <!-- ── Bottom nav ── -->
+  <div class="bottom-nav">
+    <button class="nav-tab active" id="tab-sizes" onclick="showScreen('sizes')">
+      <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg></div>
+      <span class="nav-label">Размеры</span>
+    </button>
+    <button class="nav-tab" id="tab-wishlist" onclick="showScreen('wishlist')">
+      <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></div>
+      <span class="nav-label">Вишлист</span>
+    </button>
+    <button class="nav-tab" id="tab-share" onclick="showScreen('share')">
+      <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 11.5l8-4M8 12.5l8 4"/></svg></div>
+      <span class="nav-label">Поделиться</span>
+    </button>
+    <button class="nav-tab" id="tab-profile" onclick="showScreen('profile')">
+      <div class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+      <span class="nav-label">Профиль</span>
+    </button>
+  </div>
+
+  <!-- ── Add Wishlist Modal ── -->
+  <div class="modal-overlay" id="wl-modal" onclick="closeModal(event)">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-head">
+        <div class="modal-title">Добавить в вишлист</div>
+        <button class="modal-close" onclick="closeModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b6b68" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <div class="input-label">Ссылка на товар</div>
+          <div class="url-row">
+            <input class="input-field" id="wl-url" type="url" placeholder="https://..." oninput="onUrlInput(this)">
+            <div class="spinner" id="wl-spinner"></div>
+          </div>
+          <div class="autofill-note" id="wl-note"></div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Название</div>
+          <input class="input-field" id="wl-title" type="text" placeholder="Например: Nike Air Max 97">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Цена</div>
+          <input class="input-field" id="wl-price" type="text" placeholder="12 490 ₽">
+        </div>
+        <div class="input-group">
+          <div class="input-label">Мой размер</div>
+          <input class="input-field" id="wl-size" type="text" placeholder="EU 38, S, XS...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="saveItem()">Добавить в список</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div class="toast" id="toast"></div>
+
+</div><!-- /phone -->
+
+<script>
+const API = 'https://desirable-cat-production-6c28.up.railway.app';
+const DEL_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9e9e9b" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+const COLORS = ['#e8f0e8','#f0eae8','#eaeaf0','#e8eef4','#f4ede8'];
+
+// ── Navigation ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('active');
+  if (name === 'wishlist') loadWishlist();
+  if (name === 'share') loadShareLink();
+}
+
+// ── Category chips ──
+function selectCat(el) {
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Wishlist: load from API ──
+async function loadWishlist() {
+  const list = document.getElementById('wl-list');
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Загрузка…</div>';
+  try {
+    const r = await fetch(`${API}/wishlist`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const items = await r.json();
+    renderWishlist(items);
+  } catch(e) {
+    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Ошибка загрузки: ${e.message}</div>`;
+  }
+}
+
+function renderWishlist(items) {
+  const list = document.getElementById('wl-list');
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9e9e9b" stroke-width="1.5" stroke-linecap="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg></div>
+        <div class="empty-title">Вишлист пуст</div>
+        <div class="empty-sub">Добавь ссылку на товар — друзья купят нужный размер</div>
+      </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  items.forEach(item => list.appendChild(buildWishItem(item)));
+}
+
+function buildWishItem(item) {
+  const color = COLORS[item.id % COLORS.length] || COLORS[0];
+  const host = (() => { try { return new URL(item.url || '').hostname.replace('www.',''); } catch(e) { return item.shop || ''; } })();
+  const el = document.createElement('div');
+  el.className = 'wish-item';
+  el.dataset.id = item.id;
+  const thumb = item.image
+    ? `<img src="${item.image}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" onerror="this.parentElement.style.background='${color}';this.remove();">`
+    : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9e9e9b" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg>`;
+  const nameHtml = item.url
+    ? `<a href="${item.url}" target="_blank" style="text-decoration:none;color:inherit;" class="wish-name">${item.title}</a>`
+    : `<div class="wish-name">${item.title}</div>`;
+  el.innerHTML = `
+    <div class="wish-thumb" style="background:${color};">${thumb}</div>
+    <div class="wish-info">
+      ${nameHtml}
+      <div class="wish-shop">${host}</div>
+      ${item.size ? `<div class="wish-size-tag">${item.size}</div>` : ''}
+    </div>
+    <div class="wish-right">
+      <button class="del-btn" onclick="deleteItem(this)">${DEL_SVG}</button>
+      ${item.price ? `<div class="wish-price">${item.price}</div>` : ''}
+    </div>`;
+  return el;
+}
+
+// ── Wishlist modal ──
+let _parseTimer = null;
+let _lastParsedImage = null;
+
+function openModal() {
+  document.getElementById('wl-modal').classList.add('open');
+  document.getElementById('wl-url').value = '';
+  document.getElementById('wl-title').value = '';
+  document.getElementById('wl-price').value = '';
+  document.getElementById('wl-size').value = '';
+  document.getElementById('wl-note').textContent = '';
+  document.getElementById('wl-note').className = 'autofill-note';
+  _lastParsedImage = null;
+  setTimeout(() => document.getElementById('wl-url').focus(), 100);
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('wl-modal')) {
+    document.getElementById('wl-modal').classList.remove('open');
+  }
+}
+
+function onUrlInput(input) {
+  clearTimeout(_parseTimer);
+  const url = input.value.trim();
+  if (!url.startsWith('http')) return;
+  document.getElementById('wl-spinner').style.display = 'block';
+  document.getElementById('wl-note').textContent = 'Загружаю данные…';
+  document.getElementById('wl-note').className = 'autofill-note';
+  _parseTimer = setTimeout(() => realParse(url), 800);
+}
+
+async function realParse(url) {
+  try {
+    const r = await fetch(`${API}/parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    document.getElementById('wl-spinner').style.display = 'none';
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    let filled = [];
+    if (d.title && !document.getElementById('wl-title').value) {
+      document.getElementById('wl-title').value = d.title;
+      filled.push('название');
+    }
+    if (d.price && !document.getElementById('wl-price').value) {
+      document.getElementById('wl-price').value = d.price;
+      filled.push('цена');
+    }
+    if (d.image) _lastParsedImage = d.image;
+    if (filled.length) {
+      document.getElementById('wl-note').textContent = '✓ Заполнено: ' + filled.join(', ');
+      document.getElementById('wl-note').className = 'autofill-note ok';
+    } else {
+      document.getElementById('wl-note').textContent = 'Заполни название вручную';
+    }
+  } catch(e) {
+    document.getElementById('wl-spinner').style.display = 'none';
+    document.getElementById('wl-note').textContent = 'Не удалось загрузить — заполни вручную';
+  }
+}
+
+async function saveItem() {
+  const url = document.getElementById('wl-url').value.trim();
+  const title = document.getElementById('wl-title').value.trim();
+  const price = document.getElementById('wl-price').value.trim();
+  const size = document.getElementById('wl-size').value.trim();
+  if (!title) { document.getElementById('wl-title').focus(); return; }
+  let host = '';
+  try { host = new URL(url).hostname.replace('www.',''); } catch(e) {}
+
+  const btn = document.querySelector('#wl-modal .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Сохраняю…';
+
+  try {
+    const r = await fetch(`${API}/wishlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, shop: host || null, url: url || null, price: price || null, size: size || null, image: _lastParsedImage || null })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const saved = await r.json();
+    document.getElementById('wl-list').innerHTML === '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;">Загрузка…</div>'
+      ? null
+      : document.getElementById('wl-list').querySelector('.empty-state')?.remove();
+    // Remove empty state if present
+    const emptyEl = document.getElementById('wl-list').querySelector('.empty-state');
+    if (emptyEl) emptyEl.closest('#wl-list').innerHTML = '';
+    document.getElementById('wl-list').prepend(buildWishItem(saved));
+    closeModal();
+    showToast('Добавлено в вишлист');
+  } catch(e) {
+    showToast('Ошибка сохранения: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Добавить в список';
+  }
+}
+
+async function deleteItem(btn) {
+  const item = btn.closest('.wish-item');
+  const id = item?.dataset.id;
+  if (id) {
+    item.style.opacity = '0.4';
+    try {
+      await fetch(`${API}/wishlist/${id}`, { method: 'DELETE' });
+    } catch(e) {}
+  }
+  item?.remove();
+}
+
+// ── Share ──
+let _shareUrl = null;
+
+async function loadShareLink() {
+  try {
+    const r = await fetch(`${API}/share`);
+    if (!r.ok) return;
+    const link = await r.json();
+    if (link?.token) {
+      _shareUrl = `${location.origin.includes('claude.ai') ? 'https://desirable-cat-production-6c28.up.railway.app' : ''}/s/${link.token}`;
+      document.getElementById('share-url-box').textContent = _shareUrl;
+      document.getElementById('share-url-box').style.display = 'block';
+      document.getElementById('share-create-btn').style.display = 'none';
+      document.getElementById('share-copy-btn').style.display = 'flex';
+    }
+  } catch(e) {}
+}
+
+async function createShareLink() {
+  try {
+    const r = await fetch(`${API}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sections: { sizes: true, wishlist: true } })
+    });
+    if (!r.ok) throw new Error();
+    const link = await r.json();
+    _shareUrl = `https://desirable-cat-production-6c28.up.railway.app/s/${link.token}`;
+    document.getElementById('share-url-box').textContent = _shareUrl;
+    document.getElementById('share-url-box').style.display = 'block';
+    document.getElementById('share-create-btn').style.display = 'none';
+    document.getElementById('share-copy-btn').style.display = 'flex';
+    showToast('Ссылка создана');
+  } catch(e) {
+    showToast('Ошибка создания ссылки');
+  }
+}
+
+function copyLink() {
+  if (_shareUrl) navigator.clipboard.writeText(_shareUrl).catch(() => {});
+  showToast('Ссылка скопирована');
+}
+
+// ── Toast ──
+let _toastTimer = null;
+function showToast(msg) {
+  clearTimeout(_toastTimer);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  _toastTimer = setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ── Init ──
+loadWishlist();
+</script>
+</body>
+</html>
