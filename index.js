@@ -962,6 +962,7 @@ app.post('/parse', authenticateToken, async (req, res) => {
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
+app.get('/proto', (req, res) => res.sendFile(__dirname + '/sizebook-proto.html'));
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 
