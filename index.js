@@ -680,50 +680,10 @@ async function parseOzon(url) {
       }
     }
 
-    // Шаг 3: тот же API-эндпоинт, но через headless-браузер — обходит
-    // антибот-челлендж, который блокирует прямой fetch к entrypoint-api.bx
-    if (nm) {
-      try {
-        const browser = await getHeadlessBrowser();
-        const ctx = await browser.newContext({
-          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          locale: 'ru-RU',
-          extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' },
-        });
-        const page = await ctx.newPage();
-        await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
-        const apiUrl = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${nm}/`;
-        const resp = await page.goto(apiUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null);
-        const text = resp ? await resp.text().catch(() => null) : null;
-        await ctx.close();
-        console.log(`[ozon] playwright-api статус: ${resp?.status()}, получил ${text ? text.length : 0} байт`);
-        if (text && !text.trim().startsWith('{')) {
-          console.log(`[ozon] playwright-api не JSON, начало ответа:`, text.slice(0, 300));
-        }
-        if (text) {
-          const data = JSON.parse(text);
-          const widgetStates = data?.widgetStates;
-          if (widgetStates) {
-            let title = null, price = null, image = null;
-            for (const key of Object.keys(widgetStates)) {
-              try {
-                const w = JSON.parse(widgetStates[key]);
-                if (w?.title && !title) title = w.title;
-                if (w?.name && !title) title = w.name;
-                if (w?.coverImage && !image) image = w.coverImage;
-                if (w?.images?.[0] && !image) image = w.images[0];
-                if (w?.price?.originalPrice?.price && !price) price = w.price.originalPrice.price;
-                if (w?.price?.price && !price) price = w.price.price;
-              } catch (_) {}
-            }
-            console.log(`[ozon] playwright-api результат:`, { title, price, image });
-            if (title || price || image) return { title, price, image };
-          }
-        }
-      } catch (e) {
-        console.log(`[ozon] playwright-api ошибка: ${e.message}`);
-      }
-    }
+    // Шаг 3 (Playwright к entrypoint-api.bx) убран: по данным логов Ozon
+    // всегда отвечает 403 на этот эндпоинт даже через headless-браузер —
+    // шаг ни разу не сработал и только добавлял ~2.5 сек впустую.
+    // Сразу переходим к Firecrawl.
 
     // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
     // показывает промежуточную заглушку "нет соединения" дольше 4 сек,
@@ -1046,16 +1006,22 @@ app.post('/parse', authenticateToken, async (req, res) => {
     return res.json(withTiming(accumulated));
   }
 
-  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price/DOM)
-  if (!accumulated.title || !accumulated.price) {
+  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price/DOM).
+  // Для Farfetch этот шаг по опыту всегда возвращает пусто (антибот на уровне
+  // рендера через headless Chromium) — пропускаем его и экономим ~2.5 сек,
+  // сразу переходя к Firecrawl, который реально справляется с Farfetch.
+  const skipPlaywright = host.includes('farfetch');
+  if (!skipPlaywright && (!accumulated.title || !accumulated.price)) {
     const playwright = await parseViaPlaywright(url);
     t.mark('playwright', { title: !!playwright?.title, price: !!playwright?.price, image: !!playwright?.image });
     accumulated = mergeParseResults(accumulated, playwright);
+  } else if (skipPlaywright) {
+    t.mark('playwright:skipped-known-dead-for-farfetch');
   }
 
   // Шаг c: Firecrawl — обходит антибот лучше Playwright, умеет и price
   if (!accumulated.title || !accumulated.price) {
-    const firecrawl = await parseViaFirecrawl(url);
+    const firecrawl = await parseViaFirecrawl(url, { waitFor: host.includes('farfetch') ? 3000 : 4000 });
     t.mark('firecrawl', { title: !!firecrawl?.title, price: !!firecrawl?.price, image: !!firecrawl?.image });
     accumulated = mergeParseResults(accumulated, firecrawl);
   }
