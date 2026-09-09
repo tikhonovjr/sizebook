@@ -773,10 +773,13 @@ async function parseViaFirecrawl(url) {
         url,
         formats: ['html'],
         onlyMainContent: false,
-        timeout: 15000,
-        waitFor: 0,
+        timeout: 25000,
+        // Ждём отрисовки SPA — без этого некоторые сайты (Ozon, Farfetch)
+        // отдают промежуточную заглушку ("нет соединения") или HTML без
+        // <head>/цены, которая дорисовывается JS уже после первого рендера.
+        waitFor: 4000,
       }),
-      signal: AbortSignal.timeout(40000),
+      signal: AbortSignal.timeout(45000),
     });
     console.log(`[firecrawl] HTTP ${r.status}`);
     if (!r.ok) {
@@ -790,11 +793,16 @@ async function parseViaFirecrawl(url) {
       return null;
     }
     const html = d.data?.html;
-    console.log(`[firecrawl] получено HTML: ${html ? html.length : 0} байт${d.data?.metadata ? ', title=' + d.data.metadata.title : ''}`);
+    const meta = d.data?.metadata || {};
+    console.log(`[firecrawl] получено HTML: ${html ? html.length : 0} байт, metadata.title=${meta.title || '—'}`);
     if (!html) return null;
-    if (html.length < 500) console.log(`[firecrawl] подозрительно короткий HTML:`, html.slice(0, 500));
-    // Парсим полученный HTML тем же универсальным парсером
+    if (html.length < 3000) console.log(`[firecrawl] короткий HTML (возможно заглушка):`, html.slice(0, 500));
+
     const result = parseProductFromHtml(html, url);
+    // Firecrawl иногда отдаёт HTML без <head> (нет title/og/JSON-LD в теле) —
+    // в этом случае title/image добираем из собственных metadata Firecrawl.
+    if (!result.title && meta.title) result.title = meta.title;
+    if (!result.image && (meta.ogImage || meta.image)) result.image = meta.ogImage || meta.image;
     console.log(`[firecrawl] result:`, result);
     return result;
   } catch (e) {
@@ -921,6 +929,17 @@ function parseProductFromHtml(html, url) {
   // 5. Fallback — title страницы
   if (!title) title = $('title').text().trim().split('|')[0].split('-')[0].trim() || null;
   if (title?.length > 120) title = title.slice(0, 120).trim();
+
+  // 6. Фолбэк цены по видимому тексту DOM — на случай если HTML пришёл
+  // без <head> (JSON-LD/OG недоступны), но тело страницы уже отрендерено
+  // JS (актуально для Firecrawl с waitFor)
+  if (!price) {
+    $('[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]').each((_, el) => {
+      if (price) return;
+      const t = $(el).text().trim();
+      if (t && t.length < 40 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) price = t;
+    });
+  }
 
   // Детект страниц-блокировок антибота — не отдаём их как валидный результат
   const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni)/i;
