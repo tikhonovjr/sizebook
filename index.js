@@ -403,6 +403,18 @@ app.delete('/items/:id', authenticateToken, async (req, res) => {
 });
 
 // ── ПАРСЕР ────────────────────────────────────────────────────────────────────
+// Утилита таймингов: обёртка засекает мс на каждый шаг парсинга.
+// Используется для диагностики скорости (см. /parse ответ: _ms, _steps).
+function timer() {
+  const start = Date.now();
+  const steps = [];
+  return {
+    mark(label, extra) { steps.push({ label, ms: Date.now() - start, ...(extra || {}) }); },
+    total() { return Date.now() - start; },
+    steps() { return steps; },
+  };
+}
+
 const FETCH_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -476,6 +488,20 @@ async function parseViaPlaywright(url, locale = 'ru-RU') {
         const html = document.documentElement.innerHTML;
         const m = html.match(/https:\/\/image\.12storeez\.com\/images\/[^"'\s]+/);
         if (m) image = m[0].replace(/\/\d+xP_/, '/800xP_');
+      }
+      // Фолбэк цены по видимому DOM (Farfetch и похожие SPA, где og:price/JSON-LD
+      // не содержат актуальную цену со скидкой)
+      if (!price) {
+        const candidates = document.querySelectorAll(
+          '[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]'
+        );
+        for (const el of candidates) {
+          const t = (el.textContent || '').trim();
+          if (t && t.length < 40 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) {
+            price = t;
+            break;
+          }
+        }
       }
       return { title, price, image };
     });
@@ -644,7 +670,49 @@ async function parseOzon(url) {
       }
     }
 
-    // Шаг 3: Firecrawl как последний резерв
+    // Шаг 3: тот же API-эндпоинт, но через headless-браузер — обходит
+    // антибот-челлендж, который блокирует прямой fetch к entrypoint-api.bx
+    if (nm) {
+      try {
+        const browser = await getHeadlessBrowser();
+        const ctx = await browser.newContext({
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          locale: 'ru-RU',
+          extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' },
+        });
+        const page = await ctx.newPage();
+        await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
+        const apiUrl = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${nm}/`;
+        const resp = await page.goto(apiUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null);
+        const text = resp ? await resp.text().catch(() => null) : null;
+        await ctx.close();
+        console.log(`[ozon] playwright-api получил ${text ? text.length : 0} байт`);
+        if (text) {
+          const data = JSON.parse(text);
+          const widgetStates = data?.widgetStates;
+          if (widgetStates) {
+            let title = null, price = null, image = null;
+            for (const key of Object.keys(widgetStates)) {
+              try {
+                const w = JSON.parse(widgetStates[key]);
+                if (w?.title && !title) title = w.title;
+                if (w?.name && !title) title = w.name;
+                if (w?.coverImage && !image) image = w.coverImage;
+                if (w?.images?.[0] && !image) image = w.images[0];
+                if (w?.price?.originalPrice?.price && !price) price = w.price.originalPrice.price;
+                if (w?.price?.price && !price) price = w.price.price;
+              } catch (_) {}
+            }
+            console.log(`[ozon] playwright-api результат:`, { title, price, image });
+            if (title || price || image) return { title, price, image };
+          }
+        }
+      } catch (e) {
+        console.log(`[ozon] playwright-api ошибка: ${e.message}`);
+      }
+    }
+
+    // Шаг 4: Firecrawl как последний резерв
     console.log(`[ozon] пробуем Firecrawl`);
     const fc = await parseViaFirecrawl(url);
     console.log(`[ozon] Firecrawl результат:`, fc);
@@ -861,6 +929,8 @@ app.post('/parse', authenticateToken, async (req, res) => {
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
 
   const host = new URL(url).hostname;
+  const t = timer();
+  const withTiming = (obj) => ({ ...(obj || { title: null, price: null, image: null }), _ms: t.total(), _steps: t.steps() });
 
   // 12storeez — прямой fetch (статический HTML содержит og:title, og:image, JSON-LD с ценой)
   if (host.includes('12storeez')) {
@@ -868,34 +938,34 @@ app.post('/parse', authenticateToken, async (req, res) => {
       const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(10000) });
       const html = await resp.text();
       const result = parseProductFromHtml(html, url);
-      console.log(`[parse] 12storeez direct:`, result);
+      t.mark('12storeez:direct-fetch', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
       // Чистим название: убираем всё после первой запятой (цвет, категория, магазин)
       if (result?.title) result.title = result.title.split(',')[0].trim();
       if (result.title || result.price || result.image) {
-        return res.json(result);
+        return res.json(withTiming(result));
       }
     } catch (e) {
-      console.log(`[parse] 12storeez direct error:`, e.message);
+      t.mark('12storeez:direct-fetch:error', { err: e.message });
     }
     // Fallback: Firecrawl если прямой fetch не сработал
     const fc = await parseViaFirecrawl(url);
+    t.mark('12storeez:firecrawl', { title: !!fc?.title, price: !!fc?.price, image: !!fc?.image });
     if (fc?.title) fc.title = fc.title.split(',')[0].trim();
-    console.log(`[parse] 12storeez firecrawl fallback:`, fc);
-    return res.json(fc || { title: null, price: null, image: null });
+    return res.json(withTiming(fc));
   }
 
   // Wildberries — CDN API, без антибота
   if (host.includes('wildberries')) {
     const result = await parseWildberries(url);
-    console.log(`[parse] wildberries final:`, result);
-    return res.json(result || { title: null, price: null, image: null });
+    t.mark('wildberries:done', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
+    return res.json(withTiming(result));
   }
 
-  // Ozon — прямой fetch + API + Firecrawl
+  // Ozon — прямой fetch + API + Playwright + Firecrawl
   if (host.includes('ozon.ru')) {
     const result = await parseOzon(url);
-    console.log(`[parse] ozon final:`, result);
-    return res.json(result || { title: null, price: null, image: null });
+    t.mark('ozon:done', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
+    return res.json(withTiming(result));
   }
 
   const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch') || host.includes('sportmaster');
@@ -910,35 +980,35 @@ app.post('/parse', authenticateToken, async (req, res) => {
     });
     const html = await response.text();
     const direct = parseProductFromHtml(html, url);
-    console.log(`[parse] direct fetch (${host}):`, direct);
+    t.mark('direct-fetch', { title: !!direct.title, price: !!direct.price, image: !!direct.image });
     accumulated = mergeParseResults(accumulated, direct);
 
     // Для обычных сайтов — если что-то нашли, сразу отдаём
     if (!BOT_PROTECTED && (accumulated.title || accumulated.price || accumulated.image)) {
-      return res.json(accumulated);
+      return res.json(withTiming(accumulated));
     }
   } catch (e) {
-    console.log(`[parse] direct fetch error (${host}):`, e.message);
+    t.mark('direct-fetch:error', { err: e.message });
     if (e.name === 'TimeoutError' && !BOT_PROTECTED)
-      return res.status(504).json({ error: 'Сайт не ответил' });
+      return res.status(504).json({ error: 'Сайт не ответил', _ms: t.total(), _steps: t.steps() });
   }
 
   // Для обычных сайтов без результата — возвращаем null
   if (!BOT_PROTECTED) {
-    return res.json(accumulated);
+    return res.json(withTiming(accumulated));
   }
 
-  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price)
+  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price/DOM)
   if (!accumulated.title || !accumulated.price) {
     const playwright = await parseViaPlaywright(url);
-    console.log(`[parse] playwright (${host}):`, playwright);
+    t.mark('playwright', { title: !!playwright?.title, price: !!playwright?.price, image: !!playwright?.image });
     accumulated = mergeParseResults(accumulated, playwright);
   }
 
   // Шаг c: Firecrawl — обходит антибот лучше Playwright, умеет и price
   if (!accumulated.title || !accumulated.price) {
     const firecrawl = await parseViaFirecrawl(url);
-    console.log(`[parse] firecrawl (${host}):`, firecrawl);
+    t.mark('firecrawl', { title: !!firecrawl?.title, price: !!firecrawl?.price, image: !!firecrawl?.image });
     accumulated = mergeParseResults(accumulated, firecrawl);
   }
 
@@ -946,19 +1016,20 @@ app.post('/parse', authenticateToken, async (req, res) => {
   // (они умеют title/image, но не price — поэтому идут последними)
   if (!accumulated.title || !accumulated.image) {
     const jsonlink = await parseViaJsonlink(url);
-    console.log(`[parse] jsonlink (${host}):`, jsonlink);
+    t.mark('jsonlink', { title: !!jsonlink?.title, image: !!jsonlink?.image });
     accumulated = mergeParseResults(accumulated, jsonlink);
 
     if (!accumulated.title || !accumulated.image) {
       const iframely = await parseViaIframely(url);
-      console.log(`[parse] iframely (${host}):`, iframely);
+      t.mark('iframely', { title: !!iframely?.title, image: !!iframely?.image });
       accumulated = mergeParseResults(accumulated, iframely);
     }
   }
 
   // Шаг e: отдаём что есть (price может быть null — это нормально, если ни один метод не нашёл)
-  console.log(`[parse] final result (${host}):`, accumulated);
-  res.json(accumulated);
+  t.mark('done');
+  console.log(`[parse] final result (${host}) за ${t.total()}ms:`, accumulated, t.steps());
+  res.json(withTiming(accumulated));
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
