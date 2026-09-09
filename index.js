@@ -538,18 +538,27 @@ async function parseWildberries(url) {
 
     const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
 
-    // Перебираем basket начиная с вычисленного (WB периодически добавляет новые)
+    // Параллельный перебор basket-01..basket-60: не зависим от устаревшей
+    // таблицы порогов (WB регулярно добавляет новые basket-сервера, из-за
+    // чего фиксированная таблица стабильно устаревает для новых артикулов).
+    // Все запросы летят одновременно — быстрее и надёжнее последовательного перебора.
     let card = null;
     let foundBasket = null;
-    for (let b = startBasket; b <= startBasket + 5; b++) {
-      const bStr = String(b).padStart(2, '0');
-      const tryUrl = `https://basket-${bStr}.wbbasket.ru/vol${vol}/part${part}/${nm}/info/ru/card.json`;
-      console.log(`[wb] пробую basket-${bStr}`);
-      try {
-        const r = await fetch(tryUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(5000) });
-        console.log(`[wb] basket-${bStr} статус: ${r.status}`);
-        if (r.ok) { card = await r.json(); foundBasket = bStr; break; }
-      } catch (e) { console.log(`[wb] basket-${bStr} ошибка: ${e.message}`); }
+    try {
+      const BASKET_MAX = 60;
+      const attempts = Array.from({ length: BASKET_MAX }, (_, i) => {
+        const bStr = String(i + 1).padStart(2, '0');
+        const tryUrl = `https://basket-${bStr}.wbbasket.ru/vol${vol}/part${part}/${nm}/info/ru/card.json`;
+        return fetch(tryUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(6000) })
+          .then(r => (r.ok ? r.json().then(json => ({ bStr, json })) : Promise.reject(new Error(`status ${r.status}`))))
+          .catch(() => null);
+      });
+      const results = await Promise.all(attempts);
+      const found = results.find(r => r && r.json);
+      if (found) { card = found.json; foundBasket = found.bStr; }
+      console.log(`[wb] параллельный перебор basket-01..${BASKET_MAX}: найден ${foundBasket || 'ничего'}`);
+    } catch (e) {
+      console.log(`[wb] параллельный перебор ошибка: ${e.message}`);
     }
 
     if (!card) {
@@ -686,7 +695,10 @@ async function parseOzon(url) {
         const resp = await page.goto(apiUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null);
         const text = resp ? await resp.text().catch(() => null) : null;
         await ctx.close();
-        console.log(`[ozon] playwright-api получил ${text ? text.length : 0} байт`);
+        console.log(`[ozon] playwright-api статус: ${resp?.status()}, получил ${text ? text.length : 0} байт`);
+        if (text && !text.trim().startsWith('{')) {
+          console.log(`[ozon] playwright-api не JSON, начало ответа:`, text.slice(0, 300));
+        }
         if (text) {
           const data = JSON.parse(text);
           const widgetStates = data?.widgetStates;
@@ -749,7 +761,7 @@ async function parseViaIframely(url) {
 // Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
 async function parseViaFirecrawl(url) {
   const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) { console.log('[firecrawl] FIRECRAWL_API_KEY не задан в env'); return null; }
   try {
     const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -766,14 +778,23 @@ async function parseViaFirecrawl(url) {
       }),
       signal: AbortSignal.timeout(40000),
     });
+    console.log(`[firecrawl] HTTP ${r.status}`);
     if (!r.ok) {
-      console.log(`[firecrawl] HTTP ${r.status}`);
+      const errBody = await r.text().catch(() => '');
+      console.log(`[firecrawl] error body: ${errBody.slice(0, 500)}`);
       return null;
     }
     const d = await r.json();
-    if (!d.success || !d.data?.html) return null;
+    if (!d.success) {
+      console.log(`[firecrawl] success=false, ответ:`, JSON.stringify(d).slice(0, 500));
+      return null;
+    }
+    const html = d.data?.html;
+    console.log(`[firecrawl] получено HTML: ${html ? html.length : 0} байт${d.data?.metadata ? ', title=' + d.data.metadata.title : ''}`);
+    if (!html) return null;
+    if (html.length < 500) console.log(`[firecrawl] подозрительно короткий HTML:`, html.slice(0, 500));
     // Парсим полученный HTML тем же универсальным парсером
-    const result = parseProductFromHtml(d.data.html, url);
+    const result = parseProductFromHtml(html, url);
     console.log(`[firecrawl] result:`, result);
     return result;
   } catch (e) {
