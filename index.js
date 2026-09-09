@@ -5,6 +5,26 @@ const jwt = require('jsonwebtoken');
 const cheerio = require('cheerio');
 const { chromium } = require('playwright-core');
 const crypto = require('crypto');
+const { ProxyAgent, fetch: undiciFetch } = require('undici');
+
+// ── РФ-ПРОКСИ ──────────────────────────────────────────────────────────────
+// WB и Ozon блокируют по геолокации IP (не по антибот-фингерпринту), поэтому
+// Playwright/Firecrawl с обычных дата-центровых IP не решают задачу быстро —
+// они просто дольше пытаются достучаться до заблокированного ресурса.
+// Решение: РФ-прокси. Задаётся в Railway Variables как RU_PROXY_URL, формат:
+//   http://user:pass@host:port  (датацентровый РФ-IP, резидентский не нужен)
+// Без переменной ruFetch() ведёт себя как обычный fetch — ничего не ломается.
+const RU_PROXY_URL = process.env.RU_PROXY_URL || null;
+const ruProxyAgent = RU_PROXY_URL ? new ProxyAgent(RU_PROXY_URL) : null;
+if (ruProxyAgent) console.log('[ru-proxy] включён, будет использоваться для wildberries.ru и ozon.ru');
+else console.log('[ru-proxy] RU_PROXY_URL не задан — WB/Ozon идут напрямую (геоблок ожидаем)');
+
+async function ruFetch(url, opts = {}) {
+  if (ruProxyAgent) {
+    return undiciFetch(url, { ...opts, dispatcher: ruProxyAgent });
+  }
+  return fetch(url, opts);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -577,10 +597,11 @@ async function parseWildberries(url) {
       return { title: fc?.title || null, price: fc?.price || null, image };
     }
 
-    // WB блокирует price API с датацентровых IP — пробуем, но не падаем если нет.
+    // WB блокирует price API с датацентровых IP — через ruFetch пойдёт
+    // через РФ-прокси, если он настроен (RU_PROXY_URL), иначе как раньше.
     let price = null;
     try {
-      const searchRes = await fetch(
+      const searchRes = await ruFetch(
         `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
         {
           headers: {
@@ -589,10 +610,10 @@ async function parseWildberries(url) {
             'Referer': 'https://www.wildberries.ru/',
             'Origin': 'https://www.wildberries.ru',
           },
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(8000),
         }
       );
-      console.log(`[wb] search.wb.ru статус: ${searchRes.status}`);
+      console.log(`[wb] search.wb.ru статус: ${searchRes.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
       if (searchRes.ok) {
         const sd = await searchRes.json();
         const prod = sd?.data?.products?.find(p => String(p.id) === nm);
@@ -616,9 +637,11 @@ async function parseOzon(url) {
     const nm = url.match(/\/product\/[^/?]+-(\d+)/)?.[1];
     console.log(`[ozon] артикул: ${nm}, URL: ${url}`);
 
-    // Шаг 1: прямой fetch — Ozon часто отдаёт og-теги без JS
+    // Шаг 1: прямой fetch — Ozon часто отдаёт og-теги без JS.
+    // Через ruFetch пойдёт через РФ-прокси, если он настроен — без него
+    // Ozon блокирует датацентровые IP на уровне сети ("fetch failed").
     try {
-      const resp = await fetch(url, {
+      const resp = await ruFetch(url, {
         headers: {
           ...FETCH_HEADERS,
           'Accept-Language': 'ru-RU,ru;q=0.9',
@@ -626,7 +649,7 @@ async function parseOzon(url) {
         redirect: 'follow',
         signal: AbortSignal.timeout(15000),
       });
-      console.log(`[ozon] прямой fetch статус: ${resp.status}`);
+      console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
       if (resp.ok) {
         const html = await resp.text();
         const result = parseProductFromHtml(html, url);
@@ -642,7 +665,7 @@ async function parseOzon(url) {
     // Шаг 2: Ozon API (не требует авторизации для публичных карточек)
     if (nm) {
       try {
-        const apiResp = await fetch(
+        const apiResp = await ruFetch(
           `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${nm}/`,
           {
             headers: {
@@ -653,7 +676,7 @@ async function parseOzon(url) {
             signal: AbortSignal.timeout(10000),
           }
         );
-        console.log(`[ozon] API статус: ${apiResp.status}`);
+        console.log(`[ozon] API статус: ${apiResp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
         if (apiResp.ok) {
           const data = await apiResp.json();
           // Ищем блок с названием и ценой в структуре ответа
