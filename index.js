@@ -652,10 +652,23 @@ async function parseWildberries(url) {
       return { title: fc?.title || null, price: fc?.price || null, image };
     }
 
-    // WB блокирует price API с датацентровых IP — через ruFetch пойдёт
-    // через РФ-прокси, если он настроен (RU_PROXY_URL), иначе как раньше.
+    // WB price: сначала card.wb.ru (не геоблокирован), затем search.wb.ru через РФ-прокси.
     let price = null;
     try {
+      const priceRes = await fetch(
+        `https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`,
+        { headers: { ...cdnHeaders, Referer: "https://www.wildberries.ru/" }, signal: AbortSignal.timeout(5000) }
+      );
+      console.log(`[wb] card.wb.ru статус: ${priceRes.status}`);
+      if (priceRes.ok) {
+        const pd = await priceRes.json();
+        const prod = pd?.data?.products?.find(p => String(p.id) === nm);
+        const kopecks = prod?.salePriceU ?? prod?.priceU;
+        if (kopecks) { price = `${Math.round(kopecks / 100)} ₽`; console.log(`[wb] card.wb.ru цена: ${price}`); }
+      }
+    } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
+
+    if (!price) try {
       const searchRes = await ruFetch(
         `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
         {
@@ -716,7 +729,50 @@ async function parseOzon(url) {
       console.log(`[ozon] прямой fetch ошибка: ${e.message}${e.cause ? ' | cause: ' + (e.cause.message || e.cause.code || JSON.stringify(e.cause)) : ''}`);
     }
 
-    // Шаг 2: Ozon API (не требует авторизации для публичных карточек)
+    // Шаг 2a: Ozon мобильный API — слабее защищён, чем веб-эндпоинт
+    if (nm) {
+      try {
+        const mobileApiResp = await ruFetch(
+          `https://api.ozon.ru/composer-api.bx/page/json/v2?url=/product/${nm}/`,
+          {
+            headers: {
+              'User-Agent': 'ozonapp_android/17.90 (Android 13; ru_RU; SDK 33)',
+              'x-o3-app-name': 'ozonapp_android',
+              'x-o3-app-version': '17.90',
+              'x-o3-device-type': 'mobile',
+              'Accept': 'application/json',
+              'Accept-Language': 'ru-RU',
+            },
+            signal: AbortSignal.timeout(8000),
+          }
+        );
+        console.log(`[ozon] mobile API статус: ${mobileApiResp.status}`);
+        if (mobileApiResp.ok) {
+          const mdata = await mobileApiResp.json();
+          const ws = mdata?.widgetStates;
+          if (ws) {
+            let title = null, price = null, image = null;
+            for (const key of Object.keys(ws)) {
+              try {
+                const w = JSON.parse(ws[key]);
+                if (w?.title && !title) title = w.title;
+                if (w?.name && !title) title = w.name;
+                if (w?.coverImage && !image) image = w.coverImage;
+                if (w?.images?.[0] && !image) image = w.images[0];
+                if (w?.price?.originalPrice?.price && !price) price = w.price.originalPrice.price;
+                if (w?.price?.price && !price) price = w.price.price;
+              } catch (_) {}
+            }
+            console.log(`[ozon] mobile API результат:`, { title, price, image });
+            if (title || image) return { title, price, image };
+          }
+        }
+      } catch (e) {
+        console.log(`[ozon] mobile API ошибка: ${e.message}`);
+      }
+    }
+
+    // Шаг 2b: Ozon веб-API (не требует авторизации для публичных карточек)
     if (nm) {
       try {
         const apiResp = await fetchWithCookies(
