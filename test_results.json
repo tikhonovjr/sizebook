@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-10T20:44:49Z",
+  "timestamp": "2026-09-10T20:51:52Z",
   "scorecard": {
     "ozon": {
       "title": false,
@@ -8,7 +8,7 @@
       "steps": [
         {
           "label": "ozon:done",
-          "ms": 8848,
+          "ms": 8699,
           "title": false,
           "price": false,
           "image": false,
@@ -34,7 +34,7 @@
       ],
       "title_val": "",
       "price_val": "",
-      "ms": 8848
+      "ms": 8699
     },
     "wildberries": {
       "title": true,
@@ -43,16 +43,21 @@
       "steps": [
         {
           "label": "wildberries:done",
-          "ms": 13319,
+          "ms": 12694,
           "title": true,
           "price": false,
           "image": true,
-          "price_source": "unknown"
+          "price_source": "unknown",
+          "from_firecrawl": true
+        },
+        {
+          "label": "wildberries:firecrawl_fallback",
+          "ms": 12694
         }
       ],
       "title_val": "Интернет‑магазин Wildberries: широкий ассортимент товаров - скидки каждый день!",
       "price_val": "",
-      "ms": 13319
+      "ms": 12694
     },
     "farfetch": {
       "title": true,
@@ -61,30 +66,30 @@
       "steps": [
         {
           "label": "direct-fetch",
-          "ms": 42,
+          "ms": 30,
           "title": false,
           "price": false,
           "image": false
         },
         {
           "label": "playwright:skipped-known-dead-for-farfetch",
-          "ms": 42
+          "ms": 30
         },
         {
           "label": "firecrawl",
-          "ms": 533,
+          "ms": 604,
           "title": true,
           "price": true,
           "image": true
         },
         {
           "label": "done",
-          "ms": 533
+          "ms": 604
         }
       ],
       "title_val": "Salomon XT-6 Sneakers | White | FARFETCH UK",
       "price_val": "£272",
-      "ms": 534
+      "ms": 604
     },
     "12storeez": {
       "title": true,
@@ -93,7 +98,7 @@
       "steps": [
         {
           "label": "12storeez:direct-fetch",
-          "ms": 439,
+          "ms": 671,
           "title": false,
           "price": false,
           "image": false,
@@ -101,7 +106,7 @@
         },
         {
           "label": "12storeez:firecrawl",
-          "ms": 13377,
+          "ms": 10699,
           "title": true,
           "price": false,
           "image": true
@@ -109,7 +114,7 @@
       ],
       "title_val": "Страница не найдена",
       "price_val": "",
-      "ms": 13377
+      "ms": 10699
     }
   }
 }
