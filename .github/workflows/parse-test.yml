@@ -17,67 +17,78 @@ jobs:
       - name: Wait for Railway deploy
         run: sleep 150
 
-      - name: Test and save results
+      - name: Run curl tests
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
-          COMMIT="${{ github.sha }}"
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          test_site() {
-            NAME=$1; URL=$2
-            T0=$(date +%s%3N)
-            RESULT=$(curl -sf --max-time 55 -X POST "$BASE/parse" \
-              -H "Content-Type: application/json" \
-              -d "{\"url\":\"$URL\"}" 2>&1) || RESULT='{"error":"curl_failed"}'
-            T1=$(date +%s%3N)
-            MS=$((T1-T0))
-            echo "{\"site\":\"$NAME\",\"ms\":$MS,\"r\":$RESULT}"
-          }
+          curl -sf --max-time 55 -X POST "$BASE/parse" \
+            -H "Content-Type: application/json" \
+            -d '{"url":"https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"}' \
+            > /tmp/ozon.json 2>/tmp/ozon.err || echo '{"error":"failed"}' > /tmp/ozon.json
 
-          O=$(test_site "ozon"         "https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/")
-          W=$(test_site "wildberries"  "https://www.wildberries.ru/catalog/1510075000/detail.aspx")
-          F=$(test_site "farfetch"     "https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx")
-          S=$(test_site "12storeez"    "https://12storeez.com/catalog/platya/letnee-plate-iz-viskoza/")
+          curl -sf --max-time 55 -X POST "$BASE/parse" \
+            -H "Content-Type: application/json" \
+            -d '{"url":"https://www.wildberries.ru/catalog/1510075000/detail.aspx"}' \
+            > /tmp/wb.json 2>/tmp/wb.err || echo '{"error":"failed"}' > /tmp/wb.json
 
-          python3 - "$COMMIT" "$TIMESTAMP" <<PYEOF
-          import sys, json
+          curl -sf --max-time 55 -X POST "$BASE/parse" \
+            -H "Content-Type: application/json" \
+            -d '{"url":"https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx"}' \
+            > /tmp/ff.json 2>/tmp/ff.err || echo '{"error":"failed"}' > /tmp/ff.json
 
-          commit = sys.argv[1][:7]
-          ts     = sys.argv[2]
+          curl -sf --max-time 55 -X POST "$BASE/parse" \
+            -H "Content-Type: application/json" \
+            -d '{"url":"https://12storeez.com/catalog/platya/letnee-plate-iz-viskoza/"}' \
+            > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"failed"}' > /tmp/s12.json
 
-          raw = [
-            $O,
-            $W,
-            $F,
-            $S,
+          echo "Raw results:"
+          echo "OZON:"; cat /tmp/ozon.json
+          echo "WB:"; cat /tmp/wb.json
+          echo "FF:"; cat /tmp/ff.json
+          echo "12S:"; cat /tmp/s12.json
+
+      - name: Build scorecard
+        run: |
+          python3 - << 'PYEOF'
+          import json
+          from datetime import datetime
+
+          sites = [
+            ("ozon",        "/tmp/ozon.json"),
+            ("wildberries", "/tmp/wb.json"),
+            ("farfetch",    "/tmp/ff.json"),
+            ("12storeez",   "/tmp/s12.json"),
           ]
 
-          def score(r):
-              res = r.get("r", {})
-              if not isinstance(res, dict):
-                  return {"ok": False, "error": str(res)[:200]}
-              return {
-                  "title": bool(res.get("title")),
-                  "price": bool(res.get("price")),
-                  "image": bool(res.get("image")),
-                  "ms":    r["ms"],
-                  "steps": res.get("_steps", []),
-                  "title_val": res.get("title","")[:80],
-                  "price_val": res.get("price",""),
-              }
+          scorecard = {}
+          for name, path in sites:
+              try:
+                  with open(path) as f:
+                      r = json.load(f)
+              except Exception as e:
+                  r = {"error": str(e)}
+              if isinstance(r, dict) and "error" not in r:
+                  scorecard[name] = {
+                      "title":     bool(r.get("title")),
+                      "price":     bool(r.get("price")),
+                      "image":     bool(r.get("image")),
+                      "steps":     r.get("_steps", []),
+                      "title_val": (r.get("title") or "")[:80],
+                      "price_val": r.get("price") or "",
+                  }
+              else:
+                  scorecard[name] = {"error": r.get("error", "unknown") if isinstance(r, dict) else str(r)}
+              s = scorecard[name]
+              print(f"[{name}] title={s.get('title')} price={s.get('price')} image={s.get('image')}")
 
           out = {
-              "commit": commit,
-              "timestamp": ts,
-              "scorecard": {r["site"]: score(r) for r in raw}
+              "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "scorecard": scorecard
           }
-
-          with open("test_results.json","w") as f:
+          with open("test_results.json", "w") as f:
               json.dump(out, f, ensure_ascii=False, indent=2)
 
-          for site, s in out["scorecard"].items():
-              ok = all([s.get("title"), s.get("image")])
-              print(f"[{site}] title={s.get('title')} price={s.get('price')} image={s.get('image')} {s.get('ms')}ms {'✓' if ok else '✗'}")
+          print("Saved test_results.json")
           PYEOF
 
       - name: Commit results
@@ -86,4 +97,4 @@ jobs:
           git config user.name "Parse Test Bot"
           git add test_results.json
           git diff --staged --quiet && echo "No changes" || \
-            git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]" && git push
+            (git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]" && git push)
