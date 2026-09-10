@@ -633,14 +633,17 @@ async function parseWildberries(url) {
       const results = await Promise.all(attempts);
       const found = results.find(r => r && r.json);
       if (found) { card = found.json; foundBasket = found.bStr; }
-      console.log(`[wb] параллельный перебор basket-01..${BASKET_MAX}: найден ${foundBasket || 'ничего'}`);
+      const successCount = results.filter(r => r && r.json).length;
+      const errCount = results.filter(r => r === null).length;
+      console.log(`[wb] basket scan: найден basket-${foundBasket || 'NONE'}, ok=${successCount}, err=${errCount}, nm=${nm}`);
     } catch (e) {
       console.log(`[wb] параллельный перебор ошибка: ${e.message}`);
     }
 
     if (!card) {
-      console.log(`[wb] все basket не ответили, пробуем Firecrawl`);
-      return await parseViaFirecrawl(url);
+      console.log(`[wb] basket-01..60 не нашли card.json для nm=${nm} (vol=${vol}, part=${part}). Пробуем Firecrawl`);
+      const fc = await parseViaFirecrawl(url);
+      return { title: fc?.title || null, price: fc?.price || null, image: fc?.image || null, _wb_from_firecrawl: true };
     }
     console.log(`[wb] нашли basket-${foundBasket}, ключи:`, Object.keys(card).slice(0, 8));
     const base = `https://basket-${foundBasket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
@@ -1147,9 +1150,11 @@ app.post('/parse', authenticateToken, async (req, res) => {
     const result = await parseWildberries(url);
     t.mark('wildberries:done', {
       title: !!result?.title, price: !!result?.price, image: !!result?.image,
-      price_source: result?._wb_price_source || 'unknown'
+      price_source: result?._wb_price_source || 'unknown',
+      from_firecrawl: !!result?._wb_from_firecrawl,
     });
     const clean = { title: result?.title||null, price: result?.price||null, image: result?.image||null };
+    if (result?._wb_from_firecrawl) t.mark('wildberries:firecrawl_fallback', {});
     return res.json(withTiming(clean));
   }
 
