@@ -663,6 +663,8 @@ async function parseWildberries(url) {
       if (priceRes.ok) {
         const pd = await priceRes.json();
         const prod = pd?.data?.products?.find(p => String(p.id) === nm);
+        console.log(`[wb] card.wb.ru product keys:`, prod ? Object.keys(prod).join(',') : 'not found');
+        console.log(`[wb] card.wb.ru salePriceU=${prod?.salePriceU} priceU=${prod?.priceU}`);
         const kopecks = prod?.salePriceU ?? prod?.priceU;
         if (kopecks) { price = `${Math.round(kopecks / 100)} ₽`; console.log(`[wb] card.wb.ru цена: ${price}`); }
       }
@@ -716,7 +718,7 @@ async function parseOzon(url) {
         },
         signal: AbortSignal.timeout(15000),
       });
-      console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
+      console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}, url=${resp.url}`);
       if (resp.ok) {
         const html = await resp.text();
         const result = parseProductFromHtml(html, url);
@@ -732,6 +734,7 @@ async function parseOzon(url) {
     // Шаг 2a: Ozon мобильный API — слабее защищён, чем веб-эндпоинт
     if (nm) {
       try {
+        console.log(`[ozon] mobile API запрос: артикул=${nm} proxy=${!!ruProxyAgent}`);
         const mobileApiResp = await ruFetch(
           `https://api.ozon.ru/composer-api.bx/page/json/v2?url=/product/${nm}/`,
           {
