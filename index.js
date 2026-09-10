@@ -1135,6 +1135,16 @@ app.post('/parse', authenticateToken, async (req, res) => {
   res.json(withTiming(accumulated));
 });
 
+
+// ── HEALTHLOG (просмотр логов из чата) ───────────────────────────────────────
+app.get('/healthlog', (req, res) => {
+  const secret = process.env.LOG_SECRET || 'sizebook-log-2024';
+  if (req.query.secret !== secret) return res.status(403).json({ error: 'forbidden' });
+  const n = parseInt(req.query.n) || 200;
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.send(logBuffer.slice(-n).join('\n'));
+});
+
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
 app.get('/proto', (req, res) => res.sendFile(__dirname + '/sizebook-proto.html'));
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
