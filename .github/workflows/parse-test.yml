@@ -38,7 +38,7 @@ jobs:
 
           curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
-            -d '{"url":"https://12storeez.com/catalog/platya/plate-mid-dliny-iz-khlopka/"}' \
+            -d '{"url":"https://12storeez.com/catalog/futbolki/futbolka-iz-khlopka-s-korotkim-rukavom-belaya/"}' \
             > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"curl_failed"}' > /tmp/s12.json
 
           echo "=== OZON ==="; cat /tmp/ozon.json
