@@ -21,31 +21,30 @@ jobs:
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
 
-          curl -sf --max-time 55 -X POST "$BASE/parse" \
+          curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"}' \
-            > /tmp/ozon.json 2>/tmp/ozon.err || echo '{"error":"failed"}' > /tmp/ozon.json
+            > /tmp/ozon.json 2>/tmp/ozon.err || echo '{"error":"curl_failed"}' > /tmp/ozon.json
 
-          curl -sf --max-time 55 -X POST "$BASE/parse" \
+          curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://www.wildberries.ru/catalog/1510075000/detail.aspx"}' \
-            > /tmp/wb.json 2>/tmp/wb.err || echo '{"error":"failed"}' > /tmp/wb.json
+            > /tmp/wb.json 2>/tmp/wb.err || echo '{"error":"curl_failed"}' > /tmp/wb.json
 
-          curl -sf --max-time 55 -X POST "$BASE/parse" \
+          curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx"}' \
-            > /tmp/ff.json 2>/tmp/ff.err || echo '{"error":"failed"}' > /tmp/ff.json
+            > /tmp/ff.json 2>/tmp/ff.err || echo '{"error":"curl_failed"}' > /tmp/ff.json
 
-          curl -sf --max-time 55 -X POST "$BASE/parse" \
+          curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
-            -d '{"url":"https://12storeez.com/catalog/platya/letnee-plate-iz-viskoza/"}' \
-            > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"failed"}' > /tmp/s12.json
+            -d '{"url":"https://12storeez.com/catalog/platya/plate-mid-dliny-iz-khlopka/"}' \
+            > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"curl_failed"}' > /tmp/s12.json
 
-          echo "Raw results:"
-          echo "OZON:"; cat /tmp/ozon.json
-          echo "WB:"; cat /tmp/wb.json
-          echo "FF:"; cat /tmp/ff.json
-          echo "12S:"; cat /tmp/s12.json
+          echo "=== OZON ==="; cat /tmp/ozon.json
+          echo "=== WB ==="; cat /tmp/wb.json
+          echo "=== FARFETCH ==="; cat /tmp/ff.json
+          echo "=== 12STOREEZ ==="; cat /tmp/s12.json
 
       - name: Build scorecard
         run: |
@@ -75,11 +74,16 @@ jobs:
                       "steps":     r.get("_steps", []),
                       "title_val": (r.get("title") or "")[:80],
                       "price_val": r.get("price") or "",
+                      "ms":        r.get("_ms", 0),
                   }
               else:
-                  scorecard[name] = {"error": r.get("error", "unknown") if isinstance(r, dict) else str(r)}
+                  scorecard[name] = {"error": (r.get("error", "unknown") if isinstance(r, dict) else str(r))[:200]}
               s = scorecard[name]
-              print(f"[{name}] title={s.get('title')} price={s.get('price')} image={s.get('image')}")
+              t = "✓" if s.get("title") else "✗"
+              p = "✓" if s.get("price") else "✗"
+              i = "✓" if s.get("image") else "✗"
+              ms = s.get("ms", "?")
+              print(f"[{name:12}] title{t} price{p} image{i}  {ms}ms  {s.get('title_val','')[:40]}")
 
           out = {
               "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -87,7 +91,6 @@ jobs:
           }
           with open("test_results.json", "w") as f:
               json.dump(out, f, ensure_ascii=False, indent=2)
-
           print("Saved test_results.json")
           PYEOF
 
