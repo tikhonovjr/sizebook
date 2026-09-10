@@ -599,6 +599,7 @@ async function parseWildberries(url) {
       console.log(`[wb] не удалось извлечь артикул из URL: ${url}`);
       return null;
     }
+    console.log(`[wb] артикул: ${nm}, id=${Number(nm)}`);
     const id = Number(nm);
     const vol = Math.floor(id / 100000);
     const part = Math.floor(id / 1000);
@@ -854,11 +855,18 @@ async function parseOzon(url) {
       console.log('[ozon] Playwright пропущен — все предыдущие шаги дали 403 (прокси забанен)');
     }
 
-    // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
-    // показывает промежуточную заглушку "нет соединения" дольше 4 сек,
-    // поэтому ждём заметно дольше обычного.
-    console.log(`[ozon] пробуем Firecrawl (waitFor=8000)`);
-    const fc = await parseViaFirecrawl(url, { waitFor: 5000 }); // уменьшено: IP-бан не лечится временем
+    // Шаг 4: Firecrawl — работает со своих серверов (другой IP), может обойти геоблок.
+    // НО: если Ozon заблокировал весь диапазон датацентровых IP — Firecrawl тоже не пройдёт.
+    // По данным логов: когда direct_fetch и web_api оба 403, Firecrawl тоже даёт пусто.
+    // Пропускаем если оба первых шага дали 403 (IP-бан подтверждён).
+    const ipBanConfirmed = ozonSteps.filter(s => s.status === 403).length >= 2;
+    if (ipBanConfirmed) {
+      ozonSteps.push({ step: 'firecrawl', skipped: 'ip_ban_confirmed' });
+      console.log('[ozon] Firecrawl пропущен — IP-бан подтверждён (2+ шага дали 403). Итого:', ozonSteps);
+      return { title: null, price: null, image: null, _ozon_steps: ozonSteps };
+    }
+    console.log(`[ozon] пробуем Firecrawl (waitFor=5000)`);
+    const fc = await parseViaFirecrawl(url, { waitFor: 5000 });
     ozonSteps.push({ step: 'firecrawl', found: !!(fc?.title || fc?.image) });
     console.log(`[ozon] Firecrawl результат:`, fc);
     const fcResult = fc || { title: null, price: null, image: null };
