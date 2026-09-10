@@ -663,10 +663,20 @@ async function parseWildberries(url) {
       if (priceRes.ok) {
         const pd = await priceRes.json();
         const prod = pd?.data?.products?.find(p => String(p.id) === nm);
-        console.log(`[wb] card.wb.ru product keys:`, prod ? Object.keys(prod).join(',') : 'not found');
-        console.log(`[wb] card.wb.ru salePriceU=${prod?.salePriceU} priceU=${prod?.priceU}`);
-        const kopecks = prod?.salePriceU ?? prod?.priceU;
-        if (kopecks) { price = `${Math.round(kopecks / 100)} ₽`; console.log(`[wb] card.wb.ru цена: ${price}`); }
+        if (prod) {
+          const keys = Object.keys(prod).join(',');
+          const sizes = prod?.sizes || [];
+          const sp = sizes[0]?.price;
+          console.log(`[wb] card.wb.ru keys: ${keys}`);
+          console.log(`[wb] card.wb.ru salePriceU=${prod?.salePriceU} priceU=${prod?.priceU} sizes[0].price=${JSON.stringify(sp)}`);
+          const kopecks = prod?.salePriceU ?? prod?.priceU ?? sp?.total ?? sp?.basic;
+          if (kopecks) {
+            price = `${Math.round(kopecks / 100)} ₽`;
+            console.log(`[wb] card.wb.ru цена: ${price}`);
+          }
+        } else {
+          console.log(`[wb] card.wb.ru: nm=${nm} not found, total=${pd?.data?.products?.length}`);
+        }
       }
     } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
 
@@ -703,9 +713,10 @@ async function parseWildberries(url) {
 
 // Ozon — прямой fetch (Ozon отдаёт JSON-LD и og-теги в статическом HTML)
 async function parseOzon(url) {
+  const ozonSteps = [];
   try {
     const nm = url.match(/\/product\/[^/?]+-(\d+)/)?.[1];
-    console.log(`[ozon] артикул: ${nm}, URL: ${url}`);
+    console.log(`[ozon] артикул: ${nm}, URL: ${url}, proxy: ${!!ruProxyAgent}`);
 
     // Шаг 1: прямой fetch — Ozon часто отдаёт og-теги без JS.
     // Через ruFetch пойдёт через РФ-прокси, если он настроен — без него
@@ -718,6 +729,7 @@ async function parseOzon(url) {
         },
         signal: AbortSignal.timeout(15000),
       });
+      ozonSteps.push({ step: 'direct_fetch', status: resp.status });
       console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}, url=${resp.url}`);
       if (resp.ok) {
         const html = await resp.text();
@@ -749,6 +761,7 @@ async function parseOzon(url) {
             signal: AbortSignal.timeout(8000),
           }
         );
+        ozonSteps.push({ step: 'mobile_api', status: mobileApiResp.status });
         console.log(`[ozon] mobile API статус: ${mobileApiResp.status}`);
         if (mobileApiResp.ok) {
           const mdata = await mobileApiResp.json();
@@ -789,7 +802,8 @@ async function parseOzon(url) {
             signal: AbortSignal.timeout(10000),
           }
         );
-        console.log(`[ozon] API статус: ${apiResp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
+        ozonSteps.push({ step: 'web_api', status: apiResp.status });
+        console.log(`[ozon] web API статус: ${apiResp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
         if (apiResp.ok) {
           const data = await apiResp.json();
           // Ищем блок с названием и ценой в структуре ответа
@@ -829,8 +843,9 @@ async function parseOzon(url) {
     if (RU_PROXY_URL) {
       console.log('[ozon] пробуем Playwright через РФ-прокси на странице товара');
       const viaProxy = await parseViaPlaywright(url, 'ru-RU', true);
+      ozonSteps.push({ step: 'playwright_proxy', found: !!(viaProxy?.title || viaProxy?.image) });
       console.log('[ozon] Playwright+RU-прокси результат:', viaProxy);
-      if (viaProxy?.title || viaProxy?.price || viaProxy?.image) return viaProxy;
+      if (viaProxy?.title || viaProxy?.price || viaProxy?.image) return { ...viaProxy, _ozon_steps: ozonSteps };
     }
 
     // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
@@ -838,11 +853,13 @@ async function parseOzon(url) {
     // поэтому ждём заметно дольше обычного.
     console.log(`[ozon] пробуем Firecrawl (waitFor=8000)`);
     const fc = await parseViaFirecrawl(url, { waitFor: 8000 });
+    ozonSteps.push({ step: 'firecrawl', found: !!(fc?.title || fc?.image) });
     console.log(`[ozon] Firecrawl результат:`, fc);
-    return fc;
+    const fcResult = fc || { title: null, price: null, image: null };
+    return { ...fcResult, _ozon_steps: ozonSteps };
   } catch (e) {
     console.log(`[ozon] parseOzon ошибка: ${e.message}`);
-    return null;
+    return { title: null, price: null, image: null, _ozon_steps: ozonSteps, _ozon_error: e.message };
   }
 }
 
@@ -1120,8 +1137,11 @@ app.post('/parse', authenticateToken, async (req, res) => {
   // Ozon — прямой fetch + API + Playwright + Firecrawl
   if (host.includes('ozon.ru')) {
     const result = await parseOzon(url);
-    t.mark('ozon:done', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
-    return res.json(withTiming(result));
+    const ozonMeta = { title: !!result?.title, price: !!result?.price, image: !!result?.image };
+    if (result?._ozon_steps) ozonMeta.ozon_steps = result._ozon_steps;
+    t.mark('ozon:done', ozonMeta);
+    const clean = { title: result?.title || null, price: result?.price || null, image: result?.image || null };
+    return res.json(withTiming(clean));
   }
 
   const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch') || host.includes('sportmaster');
