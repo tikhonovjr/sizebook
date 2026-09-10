@@ -28,7 +28,7 @@ jobs:
 
           curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
-            -d '{"url":"https://www.wildberries.ru/catalog/15974027/detail.aspx"}' \
+            -d '{"url":"https://www.wildberries.ru/catalog/1510075000/detail.aspx"}' \
             > /tmp/wb.json 2>/tmp/wb.err || echo '{"error":"curl_failed"}' > /tmp/wb.json
 
           curl -sf --max-time 60 -X POST "$BASE/parse" \
@@ -38,7 +38,7 @@ jobs:
 
           curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
-            -d '{"url":"https://12storeez.com/catalog/platya/"}' \
+            -d '{"url":"https://12storeez.com/catalog/platya/plate-iz-shelka-molochno-belyy/"}' \
             > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"curl_failed"}' > /tmp/s12.json
 
           echo "=== OZON ==="; cat /tmp/ozon.json
