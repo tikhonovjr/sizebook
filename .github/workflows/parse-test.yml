@@ -8,13 +8,11 @@ on:
 jobs:
   test-parser:
     runs-on: ubuntu-latest
-    # Ждём Railway деплой (обычно 2-3 минуты)
     steps:
       - name: Wait for Railway deploy
         run: sleep 150
 
       - name: Run parse tests
-        id: tests
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
           
@@ -27,78 +25,119 @@ jobs:
               -d "{\"url\":\"$url\"}" 2>&1)
             local end=$(date +%s%3N)
             local elapsed=$((end - start))
-            echo "{\"site\":\"$name\",\"url\":\"$url\",\"elapsed_ms\":$elapsed,\"result\":$result}"
+            echo "{\"site\":\"$name\",\"elapsed_ms\":$elapsed,\"result\":$result}"
           }
           
-          echo "[" > /tmp/results.json
+          {
+            echo "["
+            run_test "ozon" "https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"
+            echo ","
+            run_test "wildberries" "https://www.wildberries.ru/catalog/1510075000/detail.aspx"
+            echo ","
+            run_test "farfetch" "https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx"
+            echo "]"
+          } > /tmp/raw.json
           
-          r1=$(run_test "ozon" "https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/")
-          echo "$r1," >> /tmp/results.json
-          
-          r2=$(run_test "wildberries" "https://www.wildberries.ru/catalog/1510075000/detail.aspx")
-          echo "$r2," >> /tmp/results.json
-          
-          r3=$(run_test "farfetch" "https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx")
-          echo "$r3," >> /tmp/results.json
-          
-          r4=$(run_test "12storeez" "https://12storeez.com/catalog/1234/")
-          echo "$r4" >> /tmp/results.json
-          
-          echo "]" >> /tmp/results.json
-          
-          # Добавляем метаданные
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          COMMIT="${{ github.sha }}"
-          python3 -c "
+          python3 << 'PYEOF'
           import json, sys
-          with open(\"/tmp/results.json\") as f:
+          from datetime import datetime
+          
+          with open("/tmp/raw.json") as f:
               raw = f.read()
-          # Убираем trailing comma перед ]
-          raw = raw.replace(\",
-]\", \"
-]\")
-          try:
-              results = json.loads(raw)
-          except:
-              results = [{\"parse_error\": raw[:500]}]
+          
+          results = json.loads(raw)
           
           summary = {
-              \"commit\": \"${COMMIT}\"[:7],
-              \"timestamp\": \"${TIMESTAMP}\",
-              \"results\": results,
-              \"scorecard\": {}
+              "commit": "${{ github.sha }}"[:7],
+              "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "scorecard": {}
           }
           
           for r in results:
-              site = r.get(\"site\", \"?\")
-              res = r.get(\"result\", {})
+              site = r["site"]
+              res = r.get("result", {})
               if isinstance(res, dict):
-                  summary[\"scorecard\"][site] = {
-                      \"title\": bool(res.get(\"title\")),
-                      \"price\": bool(res.get(\"price\")),
-                      \"image\": bool(res.get(\"image\")),
-                      \"ms\": r.get(\"elapsed_ms\"),
-                      \"steps\": res.get(\"_steps\", [])
+                  summary["scorecard"][site] = {
+                      "title": bool(res.get("title")),
+                      "price": bool(res.get("price")),
+                      "image": bool(res.get("image")),
+                      "ms": r["elapsed_ms"],
+                      "steps": res.get("_steps", [])
                   }
               else:
-                  summary[\"scorecard\"][site] = {\"error\": str(res)[:200]}
+                  summary["scorecard"][site] = {"error": str(res)[:300]}
           
           print(json.dumps(summary, ensure_ascii=False, indent=2))
-          " > /tmp/summary.json
-          
-          cat /tmp/summary.json
+          PYEOF
 
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit test results
+      - name: Save results
         run: |
+          python3 << 'PYEOF'
+          import json
+          from datetime import datetime
+          import subprocess, os
+          
+          BASE="https://desirable-cat-production-6c28.up.railway.app"
+          
+          import urllib.request
+          
+          def test_site(name, url):
+              import json as j, time
+              data = json.dumps({"url": url}).encode()
+              req = urllib.request.Request(
+                  BASE + "/parse",
+                  data=data,
+                  headers={"Content-Type": "application/json"},
+                  method="POST"
+              )
+              t0 = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      result = j.loads(resp.read())
+              except Exception as e:
+                  result = {"error": str(e)}
+              elapsed = int((time.time() - t0) * 1000)
+              return {"site": name, "elapsed_ms": elapsed, "result": result}
+          
+          sites = [
+              ("ozon", "https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"),
+              ("wildberries", "https://www.wildberries.ru/catalog/1510075000/detail.aspx"),
+              ("farfetch", "https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx"),
+              ("12storeez", "https://12storeez.com/catalog/dress-1234/"),
+          ]
+          
+          summary = {
+              "commit": "${{ github.sha }}"[:7],
+              "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "scorecard": {}
+          }
+          
+          for name, url in sites:
+              r = test_site(name, url)
+              res = r["result"]
+              summary["scorecard"][name] = {
+                  "title": bool(res.get("title")) if isinstance(res, dict) else False,
+                  "price": bool(res.get("price")) if isinstance(res, dict) else False,
+                  "image": bool(res.get("image")) if isinstance(res, dict) else False,
+                  "ms": r["elapsed_ms"],
+                  "steps": res.get("_steps", []) if isinstance(res, dict) else [],
+                  "error": res.get("error") if isinstance(res, dict) else str(res)
+              }
+              print(f"[{name}] title={summary[\"scorecard\"][name][\"title\"]} price={summary[\"scorecard\"][name][\"price\"]} image={summary[\"scorecard\"][name][\"image\"]} {r[\"elapsed_ms\"]}ms")
+          
+          with open("test_results.json", "w") as f:
+              json.dump(summary, f, ensure_ascii=False, indent=2)
+          
+          print("Done:", json.dumps(summary["scorecard"], indent=2))
+          PYEOF
+          
           git config user.email "parse-bot@sizebook.local"
           git config user.name "Parse Test Bot"
-          cp /tmp/summary.json test_results.json
           git add test_results.json
-          git diff --staged --quiet || git commit -m "test: parse results $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git diff --staged --quiet || git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]"
           git push
-
