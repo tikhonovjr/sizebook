@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-09-10T20:10:49Z",
+  "scorecard": {
+    "ozon": {
+      "title": false,
+      "price": false,
+      "image": false,
+      "steps": [
+        {
+          "label": "ozon:done",
+          "ms": 12660,
+          "title": false,
+          "price": false,
+          "image": false
+        }
+      ],
+      "title_val": "",
+      "price_val": ""
+    },
+    "wildberries": {
+      "title": true,
+      "price": false,
+      "image": true,
+      "steps": [
+        {
+          "label": "wildberries:done",
+          "ms": 6988,
+          "title": true,
+          "price": false,
+          "image": true
+        }
+      ],
+      "title_val": "Треккинговые кроссовки мужские демисезонные",
+      "price_val": ""
+    },
+    "farfetch": {
+      "title": true,
+      "price": true,
+      "image": true,
+      "steps": [
+        {
+          "label": "direct-fetch",
+          "ms": 74,
+          "title": false,
+          "price": false,
+          "image": false
+        },
+        {
+          "label": "playwright:skipped-known-dead-for-farfetch",
+          "ms": 74
+        },
+        {
+          "label": "firecrawl",
+          "ms": 679,
+          "title": true,
+          "price": true,
+          "image": true
+        },
+        {
+          "label": "done",
+          "ms": 679
+        }
+      ],
+      "title_val": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "price_val": "£272"
+    },
+    "12storeez": {
+      "title": true,
+      "price": false,
+      "image": true,
+      "steps": [
+        {
+          "label": "12storeez:direct-fetch",
+          "ms": 706,
+          "title": false,
+          "price": false,
+          "image": false
+        },
+        {
+          "label": "12storeez:firecrawl",
+          "ms": 1041,
+          "title": true,
+          "price": false,
+          "image": true
+        }
+      ],
+      "title_val": "Страница не найдена",
+      "price_val": ""
+    }
+  }
+}
