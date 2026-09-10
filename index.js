@@ -704,7 +704,7 @@ async function parseWildberries(url) {
       console.log(`[wb] search.wb.ru ошибка: ${e.message}`);
     }
 
-    return { title, price, image };
+    return { title, price, image, _wb_price_source: price ? 'found' : (ruProxyAgent ? 'proxy_failed' : 'no_proxy') };
   } catch (e) {
     console.log(`[wb] parseWildberries ошибка: ${e.message}`);
     return null;
@@ -840,19 +840,25 @@ async function parseOzon(url) {
     // с РФ-IP выглядит иначе: свой TLS-отпечаток, автоматическая обработка
     // cookies/редиректов, JS-рендер. Это последняя разумная попытка перед
     // Firecrawl, который уже показал себя ненадёжным на Ozon.
-    if (RU_PROXY_URL) {
+    // Playwright через прокси запускаем только если предыдущие шаги не дали 403
+    // (403 = прокси-IP забанен Ozon, браузер через тот же IP тоже не пройдёт)
+    const allFailed403 = ozonSteps.every(s => s.status === 403 || s.found === false);
+    if (RU_PROXY_URL && !allFailed403) {
       console.log('[ozon] пробуем Playwright через РФ-прокси на странице товара');
       const viaProxy = await parseViaPlaywright(url, 'ru-RU', true);
       ozonSteps.push({ step: 'playwright_proxy', found: !!(viaProxy?.title || viaProxy?.image) });
       console.log('[ozon] Playwright+RU-прокси результат:', viaProxy);
       if (viaProxy?.title || viaProxy?.price || viaProxy?.image) return { ...viaProxy, _ozon_steps: ozonSteps };
+    } else if (RU_PROXY_URL) {
+      ozonSteps.push({ step: 'playwright_proxy', skipped: 'all_403' });
+      console.log('[ozon] Playwright пропущен — все предыдущие шаги дали 403 (прокси забанен)');
     }
 
     // Шаг 4: Firecrawl как последний резерв. Ozon — тяжёлый SPA, антибот
     // показывает промежуточную заглушку "нет соединения" дольше 4 сек,
     // поэтому ждём заметно дольше обычного.
     console.log(`[ozon] пробуем Firecrawl (waitFor=8000)`);
-    const fc = await parseViaFirecrawl(url, { waitFor: 8000 });
+    const fc = await parseViaFirecrawl(url, { waitFor: 5000 }); // уменьшено: IP-бан не лечится временем
     ozonSteps.push({ step: 'firecrawl', found: !!(fc?.title || fc?.image) });
     console.log(`[ozon] Firecrawl результат:`, fc);
     const fcResult = fc || { title: null, price: null, image: null };
@@ -1110,8 +1116,9 @@ app.post('/parse', authenticateToken, async (req, res) => {
     try {
       const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(10000) });
       const html = await resp.text();
+      console.log(`[12storeez] direct fetch status=${resp.status} html_len=${html.length} url=${resp.url}`);
       const result = parseProductFromHtml(html, url);
-      t.mark('12storeez:direct-fetch', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
+      t.mark('12storeez:direct-fetch', { title: !!result?.title, price: !!result?.price, image: !!result?.image, status: resp.status });
       // Чистим название: убираем всё после первой запятой (цвет, категория, магазин)
       if (result?.title) result.title = result.title.split(',')[0].trim();
       if (result.title || result.price || result.image) {
@@ -1130,8 +1137,12 @@ app.post('/parse', authenticateToken, async (req, res) => {
   // Wildberries — CDN API, без антибота
   if (host.includes('wildberries')) {
     const result = await parseWildberries(url);
-    t.mark('wildberries:done', { title: !!result?.title, price: !!result?.price, image: !!result?.image });
-    return res.json(withTiming(result));
+    t.mark('wildberries:done', {
+      title: !!result?.title, price: !!result?.price, image: !!result?.image,
+      price_source: result?._wb_price_source || 'unknown'
+    });
+    const clean = { title: result?.title||null, price: result?.price||null, image: result?.image||null };
+    return res.json(withTiming(clean));
   }
 
   // Ozon — прямой fetch + API + Playwright + Firecrawl
