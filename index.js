@@ -1269,6 +1269,62 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE V3: Firecrawl с location:RU и proxy:stealth ───────────────────────
+app.get('/debug/probe3', async (req, res) => {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
+
+  const wbUrl = req.query.wb || 'https://www.wildberries.ru/catalog/1510075000/detail.aspx';
+  const ozUrl = req.query.ozon || 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/';
+  const out = {};
+
+  async function fc(label, url, body) {
+    const t0 = Date.now();
+    try {
+      const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ url, formats: ['html'], onlyMainContent: false, timeout: 45000 }, body)),
+        signal: AbortSignal.timeout(70000),
+      });
+      const e = { http: r.status, ms: Date.now() - t0 };
+      if (!r.ok) { e.body = (await r.text()).slice(0, 200); return e; }
+      const d = await r.json();
+      e.success = !!d.success;
+      const html = d.data && d.data.html;
+      const meta = (d.data && d.data.metadata) || {};
+      e.html_len = html ? html.length : 0;
+      e.meta_title = meta.title ? String(meta.title).slice(0, 50) : null;
+      e.meta_status = meta.statusCode;
+      if (html) {
+        const p = parseProductFromHtml(html, url);
+        e.title = p.title ? p.title.slice(0, 50) : null;
+        e.price = p.price;
+        e.image = !!p.image;
+        // ищем цену грубым поиском по рублёвым паттернам
+        const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+        e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+      }
+      return e;
+    } catch (err) {
+      return { error: err.message.slice(0, 70), ms: Date.now() - t0 };
+    }
+  }
+
+  // WB варианты
+  out.wb_plain      = await fc('wb_plain', wbUrl, { waitFor: 5000 });
+  out.wb_loc_ru     = await fc('wb_loc_ru', wbUrl, { waitFor: 6000, location: { country: 'RU' } });
+  out.wb_stealth_ru = await fc('wb_stealth_ru', wbUrl, { waitFor: 6000, proxy: 'stealth', location: { country: 'RU' } });
+
+  // Ozon варианты
+  out.oz_plain      = await fc('oz_plain', ozUrl, { waitFor: 6000 });
+  out.oz_loc_ru     = await fc('oz_loc_ru', ozUrl, { waitFor: 8000, location: { country: 'RU' } });
+  out.oz_stealth_ru = await fc('oz_stealth_ru', ozUrl, { waitFor: 8000, proxy: 'stealth', location: { country: 'RU' } });
+
+  res.json(out);
+});
+
 // ── PROBE V2: последовательно, с паузами, cookie-цепочка и Playwright ──────
 app.get('/debug/probe2', async (req, res) => {
   const nm = req.query.nm || '1510075000';
