@@ -15,10 +15,10 @@ jobs:
       - name: Wait for deploy
         run: sleep 150
 
-      - name: Run deep probe
+      - name: Run probe2
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
-          curl -sf --max-time 120 "$BASE/debug/deep-probe?nm=1510075000&ozon=3148849655" \
+          curl -sf --max-time 180 "$BASE/debug/probe2?nm=1510075000" \
             > deep_probe.json 2>/dev/null || echo '{"error":"probe_failed"}' > deep_probe.json
           echo "--- RESULT ---"
           cat deep_probe.json
@@ -32,8 +32,8 @@ jobs:
             git reset --soft origin/main
             git add -f deep_probe.json
             git diff --staged --quiet && { echo "no changes"; exit 0; }
-            git commit -m "probe: deep probe results [skip ci]"
+            git commit -m "probe: probe2 results [skip ci]"
             git push origin HEAD:main && { echo "pushed"; exit 0; }
-            echo "retry $i"; sleep 5
+            sleep 5
           done
-          echo "push failed after retries"; exit 1
+          exit 1
