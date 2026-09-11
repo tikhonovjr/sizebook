@@ -1,56 +1,78 @@
 {
- "v0": {
-  "variant": "direct_fetch",
+ "v1": {
+  "variant": "cookie_chain",
   "status": 401,
-  "ms": 70,
-  "html_len": 10673,
+  "ms": 461,
+  "len": 10673,
+  "title": "Спортмастер",
+  "price": null,
+  "image": false,
+  "price_regex": null,
+  "home_status": 401,
+  "cookies_got": 1
+ },
+ "v2": {
+  "variant": "ajax_headers",
+  "status": 401,
+  "ms": 8,
+  "len": 10673,
   "title": "Спортмастер",
   "price": null,
   "image": false,
   "price_regex": null
  },
- "v1": {
-  "variant": "fc_plain",
-  "http": 200,
-  "ms": 6724,
-  "html_len": 5808,
-  "meta_title": " Спортмастер ",
-  "meta_status": 401,
-  "title": null,
-  "price": null,
-  "image": false,
-  "price_regex": null
- },
- "v2": {
-  "variant": "fc_loc_ru",
-  "http": 200,
-  "ms": 7943,
-  "html_len": 5808,
-  "meta_title": " Спортмастер ",
-  "meta_status": 401,
-  "title": null,
-  "price": null,
-  "image": false,
-  "price_regex": null
- },
  "v3": {
-  "variant": "fc_stealth_ru",
-  "http": 200,
-  "ms": 10331,
-  "html_len": 5807,
-  "meta_title": " Спортмастер ",
-  "meta_status": 401,
-  "title": null,
-  "price": null,
-  "image": false,
-  "price_regex": null
+  "variant": "api_endpoints",
+  "ms": 38,
+  "results": {
+   "/product/api/product/37250110299": {
+    "status": 401,
+    "len": 10673,
+    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
+   },
+   "/api/product/37250110299": {
+    "status": 403,
+    "len": 238,
+    "head": "{\r\n\"incidentId\" : \"1fea07e1eb6a4c473a6f9a80f61c5b97\",\r\n\"hostName\" : \"www.sportmaster.ru\",\r\n\"request\": \"GET /api/product/"
+   },
+   "/product/37250110299/api/": {
+    "status": 401,
+    "len": 10673,
+    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
+   },
+   "/api/v1/product/37250110299": {
+    "status": 403,
+    "len": 241,
+    "head": "{\r\n\"incidentId\" : \"b021cdd22dd7bf64eafe8978e484c738\",\r\n\"hostName\" : \"www.sportmaster.ru\",\r\n\"request\": \"GET /api/v1/produ"
+   },
+   "/catalogapi/product/37250110299": {
+    "status": 401,
+    "len": 10673,
+    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
+   }
+  }
  },
  "v4": {
-  "variant": "playwright",
-  "ms": 3229,
+  "variant": "playwright_deep",
+  "ms": 7093,
+  "navStatus": 401,
+  "title": "Спортмастер",
+  "og_title": null,
+  "og_image": null,
+  "price": null,
+  "bodyText": "8-800-777-777-1\nВаши действия признаны автоматическими\n\nПожалуйста, повторите действие еще раз, или воспользуйтесь другим браузером.\n\nВ случае повторного возникновения ошибки, свяжитесь с нами по номеру\n8-800-777-777-1 (звонок по России бесплатный) или по адресу E-commerce@sportmaster.ru и сообщите "
+ },
+ "v5": {
+  "variant": "fc_actions",
+  "http": 200,
+  "ms": 11732,
+  "meta_status": 401,
+  "meta_title": " Спортмастер ",
+  "html_len": 5805,
   "title": null,
   "price": null,
-  "image": false
+  "image": false,
+  "price_regex": null
  },
  "done": true
 }
