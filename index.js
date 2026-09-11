@@ -1254,6 +1254,27 @@ app.post('/parse', authenticateToken, async (req, res) => {
 });
 
 
+// ── DEBUG: получить реальные URL товаров 12storeez ──────────────────────────
+app.get('/debug/12storeez-links', async (req, res) => {
+  const secret = process.env.LOG_SECRET;
+  if (!secret || req.query.secret !== secret) return res.status(403).json({ error: 'forbidden' });
+  try {
+    const resp = await fetch('https://12storeez.com/catalog/platya/', { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10000) });
+    const html = await resp.text();
+    const $ = require('cheerio').load(html);
+    const links = [];
+    $('a[href*="/catalog/"]').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href && href.match(/\/catalog\/[^/]+\/[^/]+\/$/) && !links.includes(href)) {
+        links.push(href);
+      }
+    });
+    res.json({ status: resp.status, links: links.slice(0, 20) });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 // ── HEALTHLOG (просмотр логов из чата) ───────────────────────────────────────
 app.get('/healthlog', (req, res) => {
   const secret = process.env.LOG_SECRET;
