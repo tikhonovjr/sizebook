@@ -1268,6 +1268,126 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE V2: последовательно, с паузами, cookie-цепочка и Playwright ──────
+app.get('/debug/probe2', async (req, res) => {
+  const nm = req.query.nm || '1510075000';
+  const ozonUrl = req.query.ozonUrl || 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/';
+  const ozonId = (ozonUrl.match(/-(\d+)\/?$/) || [])[1] || '3148849655';
+  const out = { nm, ozonId, proxy: !!ruProxyAgent, wb: {}, ozon: {} };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  const wbH = {
+    'User-Agent': UA,
+    'Accept': '*/*',
+    'Accept-Language': 'ru-RU,ru;q=0.9',
+    'Origin': 'https://www.wildberries.ru',
+    'Referer': 'https://www.wildberries.ru/',
+  };
+
+  function wbPrice(p) {
+    if (!p) return null;
+    const s0 = p.sizes && p.sizes[0];
+    const c = [p.salePriceU, p.priceU, s0 && s0.price && s0.price.total, s0 && s0.price && s0.price.product,
+               s0 && s0.price && s0.price.basic].filter(v => typeof v === 'number' && v > 0);
+    return c.length ? Math.round(c[0] / 100) + ' RUB' : null;
+  }
+
+  // ── WB: СТРОГО последовательно, пауза 2500ms между запросами ─────────────
+  const wbSeq = [
+    ['search_v9_query', `https://search.wb.ru/exactmatch/ru/common/v9/search?appType=1&curr=rub&dest=-1257786&query=${nm}&resultset=catalog&limit=10`, true],
+    ['search_v5_query', `https://search.wb.ru/exactmatch/ru/common/v5/search?appType=1&curr=rub&dest=-1257786&query=${nm}&resultset=catalog&limit=10`, true],
+    ['card_v2_plain',   `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, true],
+    ['card_v2_noref',   `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, true],
+    ['card_v1_direct',  `https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, false],
+  ];
+
+  for (const [label, url, useProxy] of wbSeq) {
+    try {
+      const f = useProxy ? ruFetch : fetch;
+      const headers = label === 'card_v2_noref'
+        ? { 'User-Agent': UA, 'Accept': '*/*' }
+        : wbH;
+      const r = await f(url, { headers, signal: AbortSignal.timeout(8000) });
+      const e = { status: r.status };
+      if (r.ok) {
+        const txt = await r.text();
+        e.len = txt.length;
+        try {
+          const d = JSON.parse(txt);
+          const prods = (d.data && d.data.products) || d.products || [];
+          e.count = prods.length;
+          const p = prods.find(x => String(x.id) === String(nm)) || prods[0];
+          if (p) { e.price = wbPrice(p); e.name = (p.name || '').slice(0, 40); }
+        } catch (_) { e.head = txt.slice(0, 100); }
+      }
+      out.wb[label] = e;
+    } catch (err) {
+      out.wb[label] = { error: err.message.slice(0, 50) };
+    }
+    await sleep(2500);
+  }
+
+  // ── OZON A: fetchWithCookies с большим лимитом редиректов ────────────────
+  for (const [label, url] of [
+    ['cookies_page', ozonUrl],
+    ['cookies_api',  `https://www.ozon.ru/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`],
+  ]) {
+    try {
+      const r = await fetchWithCookies(url, {
+        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/json', 'Accept-Language': 'ru-RU,ru;q=0.9' },
+        signal: AbortSignal.timeout(20000),
+      }, 25);
+      const e = { status: r.status, finalUrl: (r.url || '').slice(0, 80) };
+      if (r.ok) {
+        const txt = await r.text();
+        e.len = txt.length;
+        if (txt.trim().startsWith('{')) {
+          try {
+            const d = JSON.parse(txt);
+            const ws = d.widgetStates || {};
+            e.widgets = Object.keys(ws).length;
+            let t = null, pr = null;
+            for (const k of Object.keys(ws)) {
+              try {
+                const w = JSON.parse(ws[k]);
+                if (!t) t = w.title || w.name || null;
+                if (!pr && w.price) pr = typeof w.price === 'object' ? (w.price.price || w.price.cardPrice) : w.price;
+              } catch (_) {}
+            }
+            e.title = t && String(t).slice(0, 40);
+            e.price = pr && String(pr).slice(0, 25);
+          } catch (_) {}
+        } else {
+          const parsed = parseProductFromHtml(txt, ozonUrl);
+          e.html_title = parsed.title && parsed.title.slice(0, 40);
+          e.html_price = parsed.price;
+        }
+      }
+      out.ozon[label] = e;
+    } catch (err) {
+      out.ozon[label] = { error: err.message.slice(0, 60), cause: String((err.cause && (err.cause.code || err.cause.message)) || '').slice(0, 40) };
+    }
+  }
+
+  // ── OZON B: Playwright через прокси, реальная страница ───────────────────
+  try {
+    const t0 = Date.now();
+    const pw = await parseViaPlaywright(ozonUrl, 'ru-RU', true);
+    out.ozon.playwright_proxy = { ms: Date.now() - t0, title: pw && pw.title && pw.title.slice(0, 50), price: pw && pw.price, image: !!(pw && pw.image) };
+  } catch (e) { out.ozon.playwright_proxy = { error: e.message.slice(0, 60) }; }
+
+  // ── OZON C: Playwright БЕЗ прокси ────────────────────────────────────────
+  try {
+    const t0 = Date.now();
+    const pw = await parseViaPlaywright(ozonUrl, 'ru-RU', false);
+    out.ozon.playwright_direct = { ms: Date.now() - t0, title: pw && pw.title && pw.title.slice(0, 50), price: pw && pw.price, image: !!(pw && pw.image) };
+  } catch (e) { out.ozon.playwright_direct = { error: e.message.slice(0, 60) }; }
+
+  res.json(out);
+});
+
 // ── DEEP PROBE: перебор всех точек входа WB и Ozon ──────────────────────────
 app.get('/debug/deep-probe', async (req, res) => {
   const nm = req.query.nm || '1510075000';
