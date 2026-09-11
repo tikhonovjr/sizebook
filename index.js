@@ -1076,6 +1076,153 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE: Спортмастер — обход 401 ──────────────────────────────────────────
+app.get('/debug/smprobe', async (req, res) => {
+  const productId = req.query.pid || '37250110299';
+  const skuId = req.query.sku || '83264660299';
+  const pageUrl = `https://www.sportmaster.ru/product/${productId}/?skuId=${skuId}`;
+  const v = String(req.query.v || '1');
+  const t0 = Date.now();
+  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  function summarize(txt, label, status) {
+    const e = { variant: label, status, ms: Date.now() - t0, len: txt.length };
+    if (txt.trim().startsWith('{') || txt.trim().startsWith('[')) {
+      try {
+        const d = JSON.parse(txt);
+        e.json_keys = Object.keys(d).slice(0, 15).join(',');
+        e.sample = JSON.stringify(d).slice(0, 400);
+      } catch (_) { e.head = txt.slice(0, 200); }
+    } else {
+      const p = parseProductFromHtml(txt, pageUrl);
+      e.title = p.title ? p.title.slice(0, 60) : null;
+      e.price = p.price;
+      e.image = !!p.image;
+      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+      if (!e.title) e.head = txt.slice(0, 200);
+    }
+    return e;
+  }
+
+  try {
+    // v1: cookie-цепочка — сначала главная, потом товар с накопленными куками
+    if (v === '1') {
+      const home = await fetch('https://www.sportmaster.ru/', {
+        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9' },
+        signal: AbortSignal.timeout(15000),
+      });
+      const raw = home.headers.getSetCookie ? home.headers.getSetCookie() : [];
+      const cookie = raw.map(s => s.split(';')[0]).join('; ');
+      const r = await fetch(pageUrl, {
+        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9',
+                   'Referer': 'https://www.sportmaster.ru/', Cookie: cookie },
+        signal: AbortSignal.timeout(15000),
+      });
+      const txt = await r.text();
+      const e = summarize(txt, 'cookie_chain', r.status);
+      e.home_status = home.status;
+      e.cookies_got = raw.length;
+      return res.json(e);
+    }
+
+    // v2: AJAX-заголовки
+    if (v === '2') {
+      const r = await fetch(pageUrl, {
+        headers: { 'User-Agent': UA, 'Accept': 'application/json, text/plain, */*',
+                   'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://www.sportmaster.ru/',
+                   'Accept-Language': 'ru-RU,ru;q=0.9', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin' },
+        signal: AbortSignal.timeout(15000),
+      });
+      return res.json(summarize(await r.text(), 'ajax_headers', r.status));
+    }
+
+    // v3: внутренние API-эндпоинты
+    if (v === '3') {
+      const candidates = [
+        `https://www.sportmaster.ru/product/api/product/${productId}`,
+        `https://www.sportmaster.ru/api/product/${productId}`,
+        `https://www.sportmaster.ru/product/${productId}/api/`,
+        `https://www.sportmaster.ru/api/v1/product/${productId}`,
+        `https://www.sportmaster.ru/catalogapi/product/${productId}`,
+      ];
+      const results = {};
+      for (const u of candidates) {
+        try {
+          const r = await fetch(u, {
+            headers: { 'User-Agent': UA, Accept: 'application/json', 'Referer': pageUrl,
+                       'X-Requested-With': 'XMLHttpRequest' },
+            signal: AbortSignal.timeout(8000),
+          });
+          const txt = await r.text();
+          results[u.replace('https://www.sportmaster.ru', '')] = {
+            status: r.status, len: txt.length, head: txt.slice(0, 120),
+          };
+        } catch (e) { results[u.replace('https://www.sportmaster.ru', '')] = { error: e.message.slice(0, 50) }; }
+      }
+      return res.json({ variant: 'api_endpoints', ms: Date.now() - t0, results });
+    }
+
+    // v4: Playwright — реальный браузер, ждём рендер цены
+    if (v === '4') {
+      const browser = await getHeadlessBrowser();
+      const ctx = await browser.newContext({ userAgent: UA, viewport: { width: 1440, height: 900 },
+        locale: 'ru-RU', extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' } });
+      const page = await ctx.newPage();
+      await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
+      let navStatus = null;
+      try {
+        const resp = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        navStatus = resp && resp.status();
+      } catch (_) {}
+      await page.waitForTimeout(6000);
+      const data = await page.evaluate(() => {
+        const og = k => { const el = document.querySelector(`meta[property="${k}"]`); return el && el.content; };
+        const bodyText = document.body ? document.body.innerText.slice(0, 300) : '';
+        let price = null;
+        const sel = document.querySelector('[class*="price"],[data-test*="price"],[itemprop="price"]');
+        if (sel) price = (sel.getAttribute('content') || sel.textContent || '').trim().slice(0, 40);
+        return { title: document.title, og_title: og('og:title'), og_image: og('og:image'), price, bodyText };
+      });
+      await ctx.close();
+      return res.json({ variant: 'playwright_deep', ms: Date.now() - t0, navStatus, ...data });
+    }
+
+    // v5: Firecrawl с actions (ожидание + скролл)
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: pageUrl, formats: ['html'], onlyMainContent: false, timeout: 50000,
+        location: { country: 'RU' },
+        actions: [{ type: 'wait', milliseconds: 5000 }, { type: 'scroll', direction: 'down' }, { type: 'wait', milliseconds: 4000 }],
+      }),
+      signal: AbortSignal.timeout(75000),
+    });
+    const e = { variant: 'fc_actions', http: r.status, ms: Date.now() - t0 };
+    if (!r.ok) { e.body = (await r.text()).slice(0, 200); return res.json(e); }
+    const d = await r.json();
+    const html = d.data && d.data.html;
+    const meta = (d.data && d.data.metadata) || {};
+    e.meta_status = meta.statusCode;
+    e.meta_title = meta.title && String(meta.title).slice(0, 50);
+    e.html_len = html ? html.length : 0;
+    if (html) {
+      const p = parseProductFromHtml(html, pageUrl);
+      e.title = p.title && p.title.slice(0, 60);
+      e.price = p.price;
+      e.image = !!p.image;
+      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+    }
+    res.json(e);
+  } catch (err) {
+    res.json({ v, error: err.message.slice(0, 100), ms: Date.now() - t0 });
+  }
+});
+
 // ── PROBE: универсальный тест вариантов Firecrawl для любого URL ────────────
 app.get('/debug/fcprobe', async (req, res) => {
   const apiKey = process.env.FIRECRAWL_API_KEY;
