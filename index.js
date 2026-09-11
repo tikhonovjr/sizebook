@@ -1075,6 +1075,70 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE: универсальный тест вариантов Firecrawl для любого URL ────────────
+app.get('/debug/fcprobe', async (req, res) => {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'url required' });
+  const v = String(req.query.v || '0');
+
+  const variants = {
+    '0': { label: 'direct_fetch', direct: true },
+    '1': { label: 'fc_plain',     body: { waitFor: 5000 } },
+    '2': { label: 'fc_loc_ru',    body: { waitFor: 6000, location: { country: 'RU' } } },
+    '3': { label: 'fc_stealth_ru',body: { waitFor: 8000, proxy: 'stealth', location: { country: 'RU' } } },
+    '4': { label: 'playwright',   playwright: true },
+  };
+  const variant = variants[v] || variants['1'];
+  const t0 = Date.now();
+
+  try {
+    if (variant.direct) {
+      const r = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(15000) });
+      const html = await r.text();
+      const p = parseProductFromHtml(html, url);
+      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      return res.json({ variant: variant.label, status: r.status, ms: Date.now() - t0, html_len: html.length,
+        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
+        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null });
+    }
+
+    if (variant.playwright) {
+      const p = await parseViaPlaywright(url, 'ru-RU', false);
+      return res.json({ variant: variant.label, ms: Date.now() - t0,
+        title: p && p.title && p.title.slice(0, 60), price: p && p.price, image: !!(p && p.image) });
+    }
+
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ url, formats: ['html'], onlyMainContent: false, timeout: 45000 }, variant.body)),
+      signal: AbortSignal.timeout(70000),
+    });
+    const e = { variant: variant.label, http: r.status, ms: Date.now() - t0 };
+    if (!r.ok) { e.body = (await r.text()).slice(0, 180); return res.json(e); }
+    const d = await r.json();
+    const html = d.data && d.data.html;
+    const meta = (d.data && d.data.metadata) || {};
+    e.html_len = html ? html.length : 0;
+    e.meta_title = meta.title ? String(meta.title).slice(0, 60) : null;
+    e.meta_status = meta.statusCode;
+    if (html) {
+      const p = parseProductFromHtml(html, url);
+      e.title = p.title ? p.title.slice(0, 60) : null;
+      e.price = p.price;
+      e.image = !!p.image;
+      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+    }
+    res.json(e);
+  } catch (err) {
+    res.json({ variant: variant.label, error: err.message.slice(0, 90), ms: Date.now() - t0 });
+  }
+});
+
 // ── DEBUG: диагностика прокси ────────────────────────────────────────────────
 app.get('/debug/proxy-check', async (req, res) => {
   const result = {
