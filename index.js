@@ -1077,6 +1077,81 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE: Спортмастер через РФ-прокси ──────────────────────────────────────
+app.get('/debug/smproxy', async (req, res) => {
+  const pid = req.query.pid || '37250110299';
+  const sku = req.query.sku || '83264660299';
+  const pageUrl = `https://www.sportmaster.ru/product/${pid}/?skuId=${sku}`;
+  const v = String(req.query.v || '1');
+  const t0 = Date.now();
+  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  try {
+    // v1: ruFetch (Timeweb РФ-прокси) прямо на страницу товара
+    if (v === '1') {
+      const r = await ruFetch(pageUrl, {
+        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                   'Accept-Language': 'ru-RU,ru;q=0.9', 'Referer': 'https://www.sportmaster.ru/' },
+        signal: AbortSignal.timeout(20000),
+      });
+      const txt = await r.text();
+      const p = parseProductFromHtml(txt, pageUrl);
+      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      return res.json({ variant: 'ruFetch_proxy', status: r.status, ms: Date.now() - t0, len: txt.length,
+        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
+        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null,
+        head: p.title ? undefined : txt.slice(0, 200) });
+    }
+
+    // v2: cookie-цепочка через РФ-прокси (главная → товар)
+    if (v === '2') {
+      const r = await fetchWithCookies(pageUrl, {
+        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml',
+                   'Accept-Language': 'ru-RU,ru;q=0.9' },
+        signal: AbortSignal.timeout(25000),
+      }, 20);
+      const txt = await r.text();
+      const p = parseProductFromHtml(txt, pageUrl);
+      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      return res.json({ variant: 'cookies_via_proxy', status: r.status, ms: Date.now() - t0, len: txt.length,
+        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
+        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null,
+        head: p.title ? undefined : txt.slice(0, 200) });
+    }
+
+    // v3: Playwright через РФ-прокси — настоящий браузер + российский IP
+    const browser = await getHeadlessBrowser();
+    const proxyCfg = getPlaywrightProxyConfig();
+    const ctx = await browser.newContext(Object.assign({
+      userAgent: UA, viewport: { width: 1440, height: 900 }, locale: 'ru-RU',
+      extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' },
+    }, proxyCfg ? { proxy: proxyCfg } : {}));
+    const page = await ctx.newPage();
+    await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
+    let navStatus = null;
+    try {
+      const resp = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 35000 });
+      navStatus = resp && resp.status();
+    } catch (_) {}
+    await page.waitForTimeout(7000);
+    const data = await page.evaluate(() => {
+      const og = k => { const el = document.querySelector(`meta[property="${k}"]`); return el && el.content; };
+      let price = null;
+      for (const sel of ['[itemprop="price"]', '[data-test*="price"]', '[class*="price"]']) {
+        const el = document.querySelector(sel);
+        if (el) { price = (el.getAttribute('content') || el.textContent || '').trim().slice(0, 40); if (price) break; }
+      }
+      return { title: document.title, og_title: og('og:title'), og_image: !!og('og:image'), price,
+               body: document.body ? document.body.innerText.slice(0, 200) : '' };
+    });
+    await ctx.close();
+    res.json({ variant: 'playwright_ru_proxy', ms: Date.now() - t0, navStatus, proxyUsed: !!proxyCfg, ...data });
+  } catch (err) {
+    res.json({ v, error: err.message.slice(0, 100), ms: Date.now() - t0 });
+  }
+});
+
 // ── PROBE: Спортмастер — обход 401 ──────────────────────────────────────────
 app.get('/debug/smprobe', async (req, res) => {
   const productId = req.query.pid || '37250110299';
