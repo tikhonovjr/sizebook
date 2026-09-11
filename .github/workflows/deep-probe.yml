@@ -13,34 +13,25 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for deploy
         run: sleep 150
-      - name: Sportmaster variants
+      - name: Sportmaster bypass variants
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
-          U="https%3A%2F%2Fwww.sportmaster.ru%2Fproduct%2F37250110299%2F%3FskuId%3D83264660299"
           echo "{" > deep_probe.json
-          for v in 0 1 2 3 4; do
-            echo "--- variant $v ---"
-            R=$(curl -sf --max-time 110 "$BASE/debug/fcprobe?v=$v&url=$U" 2>/dev/null || echo '{"error":"call_failed"}')
-            echo "$R"
+          for v in 1 2 3 4 5; do
+            echo "--- v$v ---"
+            R=$(curl -sf --max-time 110 "$BASE/debug/smprobe?v=$v" 2>/dev/null || echo '{"error":"call_failed"}')
+            echo "$R" | head -c 600; echo
             echo "\"v$v\": $R," >> deep_probe.json
-            sleep 12
+            sleep 8
           done
           echo "\"done\": true }" >> deep_probe.json
           python3 -c "
           import json
           raw=open('deep_probe.json').read()
           try: d=json.loads(raw)
-          except Exception as e: d={'parse_error':str(e),'raw':raw[:2000]}
+          except Exception as e: d={'parse_error':str(e),'raw':raw[:3000]}
           json.dump(d, open('deep_probe.json','w'), ensure_ascii=False, indent=1)
-          print(json.dumps(d, ensure_ascii=False, indent=1)[:1800])
           "
-      - name: Also run live parse
-        run: |
-          BASE="https://desirable-cat-production-6c28.up.railway.app"
-          curl -sf --max-time 90 -X POST "$BASE/parse" -H "Content-Type: application/json" \
-            -d '{"url":"https://www.sportmaster.ru/product/37250110299/?skuId=83264660299"}' \
-            > sm_live.json 2>/dev/null || echo '{"error":"failed"}' > sm_live.json
-          cat sm_live.json
       - name: Commit
         run: |
           git config user.email "parse-bot@sizebook.local"
@@ -48,9 +39,9 @@ jobs:
           for i in 1 2 3; do
             git fetch origin main
             git reset --soft origin/main
-            git add -f deep_probe.json sm_live.json
+            git add -f deep_probe.json
             git diff --staged --quiet && { echo "no changes"; exit 0; }
-            git commit -m "probe: sportmaster [skip ci]"
+            git commit -m "probe: sportmaster bypass [skip ci]"
             git push origin HEAD:main && { echo pushed; exit 0; }
             sleep 5
           done
