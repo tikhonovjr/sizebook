@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T08:15:01Z",
+  "timestamp": "2026-09-11T08:27:37Z",
   "scorecard": {
     "ozon": {
       "title": false,
@@ -8,30 +8,33 @@
       "steps": [
         {
           "label": "ozon:done",
-          "ms": 4278,
+          "ms": 8350,
           "title": false,
           "price": false,
           "image": false,
           "ozon_steps": [
             {
               "step": "direct_fetch",
-              "error": "fetch failed",
-              "cause": "Request was cancelled."
+              "status": 403
+            },
+            {
+              "step": "web_api",
+              "status": 403
             },
             {
               "step": "playwright_proxy",
-              "found": false
+              "skipped": "all_403"
             },
             {
               "step": "firecrawl",
-              "found": false
+              "skipped": "ip_ban_confirmed"
             }
           ]
         }
       ],
       "title_val": "",
       "price_val": "",
-      "ms": 4278
+      "ms": 8350
     },
     "wildberries": {
       "title": true,
@@ -40,7 +43,7 @@
       "steps": [
         {
           "label": "wildberries:done",
-          "ms": 15463,
+          "ms": 16167,
           "title": true,
           "price": false,
           "image": true,
@@ -50,7 +53,7 @@
       ],
       "title_val": "Треккинговые кроссовки мужские демисезонные",
       "price_val": "",
-      "ms": 15463
+      "ms": 16167
     },
     "farfetch": {
       "title": true,
@@ -59,30 +62,30 @@
       "steps": [
         {
           "label": "direct-fetch",
-          "ms": 47,
+          "ms": 52,
           "title": false,
           "price": false,
           "image": false
         },
         {
           "label": "playwright:skipped-known-dead-for-farfetch",
-          "ms": 47
+          "ms": 52
         },
         {
           "label": "firecrawl",
-          "ms": 802,
+          "ms": 810,
           "title": true,
           "price": true,
           "image": true
         },
         {
           "label": "done",
-          "ms": 802
+          "ms": 810
         }
       ],
       "title_val": "Salomon XT-6 Sneakers | White | FARFETCH UK",
       "price_val": "£272",
-      "ms": 802
+      "ms": 811
     },
     "12storeez": {
       "title": true,
@@ -91,7 +94,7 @@
       "steps": [
         {
           "label": "12storeez:direct-fetch",
-          "ms": 666,
+          "ms": 644,
           "title": false,
           "price": false,
           "image": false,
@@ -99,7 +102,7 @@
         },
         {
           "label": "12storeez:firecrawl",
-          "ms": 1156,
+          "ms": 1489,
           "title": true,
           "price": false,
           "image": true
@@ -107,7 +110,7 @@
       ],
       "title_val": "Страница не найдена",
       "price_val": "",
-      "ms": 1156
+      "ms": 1489
     }
   }
 }
