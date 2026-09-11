@@ -17,16 +17,16 @@ jobs:
       - name: Wait for Railway deploy
         run: sleep 180
 
-      - name: Get real 12storeez links and run parse tests
+      - name: Proxy diagnostics + parse tests
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
 
-          # Получаем реальные ссылки на товары 12storeez через debug endpoint
-          echo "=== 12storeez real links ==="
-          curl -sf --max-time 15 "$BASE/debug/12storeez-links" \
-            > /tmp/12s_links.json 2>/dev/null && cat /tmp/12s_links.json || echo "debug endpoint unavailable"
+          echo "=== PROXY CHECK ==="
+          curl -sf --max-time 20 "$BASE/debug/proxy-check" \
+            > /tmp/proxy_check.json 2>/dev/null && cat /tmp/proxy_check.json || echo '{"error":"endpoint_failed"}' > /tmp/proxy_check.json
 
-          # Основные тесты
+          echo ""
+          echo "=== PARSE TESTS ==="
           curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"}' \
@@ -42,7 +42,7 @@ jobs:
             -d '{"url":"https://www.farfetch.com/uk/shopping/women/salomon-xt-6-item-33433630.aspx"}' \
             > /tmp/ff.json 2>/tmp/ff.err || echo '{"error":"curl_failed"}' > /tmp/ff.json
 
-          curl -sf --max-time 60 -X POST "$BASE/parse" \
+          curl -sf --max-time 30 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://12storeez.com/catalog/platya/plate-midi-iz-shelka/"}' \
             > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"curl_failed"}' > /tmp/s12.json
@@ -53,15 +53,15 @@ jobs:
           import json
           from datetime import datetime
 
-          # Сохраняем 12storeez links если есть
+          # Сохраняем proxy check
           try:
-              with open('/tmp/12s_links.json') as f:
-                  links_data = json.load(f)
-              with open('12storeez_links.json', 'w') as f:
-                  json.dump(links_data, f, ensure_ascii=False, indent=2)
-              print("12storeez links:", links_data.get('links', [])[:5])
-          except:
-              pass
+              with open('/tmp/proxy_check.json') as f:
+                  pc = json.load(f)
+              with open('proxy_check.json', 'w') as f:
+                  json.dump(pc, f, ensure_ascii=False, indent=2)
+              print("PROXY:", json.dumps(pc, ensure_ascii=False))
+          except Exception as e:
+              print("proxy_check error:", e)
 
           sites = [
             ("ozon",        "/tmp/ozon.json"),
@@ -101,6 +101,6 @@ jobs:
         run: |
           git config user.email "parse-bot@sizebook.local"
           git config user.name "Parse Test Bot"
-          git add test_results.json 12storeez_links.json || git add test_results.json
+          git add test_results.json proxy_check.json 2>/dev/null || git add test_results.json
           git diff --staged --quiet && echo "No changes" || \
             (git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]" && git push)
