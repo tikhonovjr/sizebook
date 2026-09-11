@@ -1,55 +1,56 @@
 {
+ "v0": {
+  "variant": "direct_fetch",
+  "status": 401,
+  "ms": 70,
+  "html_len": 10673,
+  "title": "Спортмастер",
+  "price": null,
+  "image": false,
+  "price_regex": null
+ },
  "v1": {
-  "variant": "stealth_ru_w12",
+  "variant": "fc_plain",
   "http": 200,
-  "ms": 527,
-  "html_len": 2075,
-  "meta_title": "Antibot Captcha",
-  "meta_status": 403,
+  "ms": 6724,
+  "html_len": 5808,
+  "meta_title": " Спортмастер ",
+  "meta_status": 401,
   "title": null,
   "price": null,
   "image": false,
-  "price_regex": null,
-  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+  "price_regex": null
  },
  "v2": {
-  "variant": "stealth_only_w12",
+  "variant": "fc_loc_ru",
   "http": 200,
-  "ms": 14959,
-  "html_len": 2101,
-  "meta_title": "Antibot Captcha",
-  "meta_status": 403,
+  "ms": 7943,
+  "html_len": 5808,
+  "meta_title": " Спортмастер ",
+  "meta_status": 401,
   "title": null,
   "price": null,
   "image": false,
-  "price_regex": null,
-  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+  "price_regex": null
  },
  "v3": {
-  "variant": "loc_ru_w20",
+  "variant": "fc_stealth_ru",
   "http": 200,
-  "ms": 22434,
-  "html_len": 1416,
-  "meta_title": "Похоже, нет соединения",
-  "meta_status": 403,
+  "ms": 10331,
+  "html_len": 5807,
+  "meta_title": " Спортмастер ",
+  "meta_status": 401,
   "title": null,
   "price": null,
   "image": false,
-  "price_regex": null,
-  "head": "<!DOCTYPE html><html lang=\"ru\"><body><main><div class=\"sec bl\"><div class=\"cnt\"><img class=\"img\" src=\"https://cdn2.ozone.ru/s3/abt-challenge/incidents"
+  "price_regex": null
  },
  "v4": {
-  "variant": "stealth_ru_w25",
-  "http": 200,
-  "ms": 29499,
-  "html_len": 2074,
-  "meta_title": "Antibot Captcha",
-  "meta_status": 403,
+  "variant": "playwright",
+  "ms": 3229,
   "title": null,
   "price": null,
-  "image": false,
-  "price_regex": null,
-  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+  "image": false
  },
  "done": true
 }
