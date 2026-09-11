@@ -1,20 +1,18 @@
 {
  "v1": {
-  "variant": "cookie_chain",
+  "variant": "ruFetch_proxy",
   "status": 401,
-  "ms": 461,
+  "ms": 1166,
   "len": 10673,
   "title": "Спортмастер",
   "price": null,
   "image": false,
-  "price_regex": null,
-  "home_status": 401,
-  "cookies_got": 1
+  "price_regex": null
  },
  "v2": {
-  "variant": "ajax_headers",
+  "variant": "cookies_via_proxy",
   "status": 401,
-  "ms": 8,
+  "ms": 386,
   "len": 10673,
   "title": "Спортмастер",
   "price": null,
@@ -22,57 +20,15 @@
   "price_regex": null
  },
  "v3": {
-  "variant": "api_endpoints",
-  "ms": 38,
-  "results": {
-   "/product/api/product/37250110299": {
-    "status": 401,
-    "len": 10673,
-    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
-   },
-   "/api/product/37250110299": {
-    "status": 403,
-    "len": 238,
-    "head": "{\r\n\"incidentId\" : \"1fea07e1eb6a4c473a6f9a80f61c5b97\",\r\n\"hostName\" : \"www.sportmaster.ru\",\r\n\"request\": \"GET /api/product/"
-   },
-   "/product/37250110299/api/": {
-    "status": 401,
-    "len": 10673,
-    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
-   },
-   "/api/v1/product/37250110299": {
-    "status": 403,
-    "len": 241,
-    "head": "{\r\n\"incidentId\" : \"b021cdd22dd7bf64eafe8978e484c738\",\r\n\"hostName\" : \"www.sportmaster.ru\",\r\n\"request\": \"GET /api/v1/produ"
-   },
-   "/catalogapi/product/37250110299": {
-    "status": 401,
-    "len": 10673,
-    "head": "<!DOCTYPE html>\n<html lang=\"ru\">\n<head>\n\n  <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"/><meta nam"
-   }
-  }
- },
- "v4": {
-  "variant": "playwright_deep",
-  "ms": 7093,
+  "variant": "playwright_ru_proxy",
+  "ms": 9349,
   "navStatus": 401,
+  "proxyUsed": true,
   "title": "Спортмастер",
   "og_title": null,
-  "og_image": null,
+  "og_image": false,
   "price": null,
-  "bodyText": "8-800-777-777-1\nВаши действия признаны автоматическими\n\nПожалуйста, повторите действие еще раз, или воспользуйтесь другим браузером.\n\nВ случае повторного возникновения ошибки, свяжитесь с нами по номеру\n8-800-777-777-1 (звонок по России бесплатный) или по адресу E-commerce@sportmaster.ru и сообщите "
- },
- "v5": {
-  "variant": "fc_actions",
-  "http": 200,
-  "ms": 11732,
-  "meta_status": 401,
-  "meta_title": " Спортмастер ",
-  "html_len": 5805,
-  "title": null,
-  "price": null,
-  "image": false,
-  "price_regex": null
+  "body": "8-800-777-777-1\nВаши действия признаны автоматическими\n\nПожалуйста, повторите действие еще раз, или воспользуйтесь другим браузером.\n\nВ случае повторного возникновения ошибки, свяжитесь с нами по номе"
  },
  "done": true
 }
