@@ -13,19 +13,28 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for deploy
         run: sleep 150
-      - name: Ozon probe4
+      - name: Ozon variants (separate calls, paced)
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
-          curl -sf --max-time 400 "$BASE/debug/probe4" \
-            > deep_probe.json 2>/dev/null || echo '{"error":"probe_failed"}' > deep_probe.json
-          cat deep_probe.json
-      - name: Live parse test
-        run: |
-          BASE="https://desirable-cat-production-6c28.up.railway.app"
-          curl -sf --max-time 90 -X POST "$BASE/parse" -H "Content-Type: application/json" \
-            -d '{"url":"https://www.wildberries.ru/catalog/1510075000/detail.aspx"}' \
-            > wb_live.json 2>/dev/null || echo '{"error":"failed"}' > wb_live.json
-          cat wb_live.json
+          echo "{" > deep_probe.json
+          for v in 1 2 3 4; do
+            echo "--- variant $v ---"
+            R=$(curl -sf --max-time 120 "$BASE/debug/probe5?v=$v" 2>/dev/null || echo '{"error":"call_failed"}')
+            echo "$R"
+            echo "\"v$v\": $R," >> deep_probe.json
+            sleep 20
+          done
+          echo "\"done\": true }" >> deep_probe.json
+          python3 -c "
+          import json
+          raw = open('deep_probe.json').read()
+          try:
+              d = json.loads(raw)
+          except Exception as e:
+              d = {'parse_error': str(e), 'raw': raw[:2000]}
+          json.dump(d, open('deep_probe.json','w'), ensure_ascii=False, indent=1)
+          print(json.dumps(d, ensure_ascii=False, indent=1)[:1500])
+          "
       - name: Commit with retry
         run: |
           git config user.email "parse-bot@sizebook.local"
@@ -33,9 +42,9 @@ jobs:
           for i in 1 2 3; do
             git fetch origin main
             git reset --soft origin/main
-            git add -f deep_probe.json wb_live.json
+            git add -f deep_probe.json
             git diff --staged --quiet && { echo "no changes"; exit 0; }
-            git commit -m "probe: probe4 ozon + wb live [skip ci]"
+            git commit -m "probe: ozon variants [skip ci]"
             git push origin HEAD:main && { echo pushed; exit 0; }
             sleep 5
           done
