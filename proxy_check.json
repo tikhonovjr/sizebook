@@ -3,7 +3,7 @@
   "RU_PROXY_URL_preview": "http:***@95.181.157.14:8000",
   "ruProxyAgent_created": true,
   "tests": {
-    "direct_ip": "152.55.178.97",
+    "direct_ip": "162.220.232.75",
     "proxy_ip": "95.181.157.14",
     "proxy_works": true,
     "wb_search_status": 429,
