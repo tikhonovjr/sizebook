@@ -13,12 +13,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for deploy
         run: sleep 150
-      - name: Run probe3
+      - name: Ozon probe4
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
-          curl -sf --max-time 400 "$BASE/debug/probe3" \
+          curl -sf --max-time 400 "$BASE/debug/probe4" \
             > deep_probe.json 2>/dev/null || echo '{"error":"probe_failed"}' > deep_probe.json
           cat deep_probe.json
+      - name: Live parse test
+        run: |
+          BASE="https://desirable-cat-production-6c28.up.railway.app"
+          curl -sf --max-time 90 -X POST "$BASE/parse" -H "Content-Type: application/json" \
+            -d '{"url":"https://www.wildberries.ru/catalog/1510075000/detail.aspx"}' \
+            > wb_live.json 2>/dev/null || echo '{"error":"failed"}' > wb_live.json
+          cat wb_live.json
       - name: Commit with retry
         run: |
           git config user.email "parse-bot@sizebook.local"
@@ -26,9 +33,9 @@ jobs:
           for i in 1 2 3; do
             git fetch origin main
             git reset --soft origin/main
-            git add -f deep_probe.json
+            git add -f deep_probe.json wb_live.json
             git diff --staged --quiet && { echo "no changes"; exit 0; }
-            git commit -m "probe: probe3 firecrawl results [skip ci]"
+            git commit -m "probe: probe4 ozon + wb live [skip ci]"
             git push origin HEAD:main && { echo pushed; exit 0; }
             sleep 5
           done
