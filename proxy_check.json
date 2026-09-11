@@ -3,11 +3,12 @@
   "RU_PROXY_URL_preview": "http://201.24.49.174:3128",
   "ruProxyAgent_created": true,
   "tests": {
-    "direct_ip": "152.55.176.49",
+    "direct_ip": "152.55.178.49",
     "proxy_ip": "201.24.49.174",
     "proxy_works": true,
     "wb_search_status": 200,
-    "wb_search_price": "not found",
+    "wb_products_count": 0,
+    "wb_search_price": "no products",
     "ozon_main_error": "fetch failed",
     "ozon_api_error": "fetch failed",
     "ozon_cdn": 403
