@@ -14,18 +14,46 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Probe 12storeez URLs
+      - name: Probe 12storeez + write to file
         run: |
-          # Ищем рабочий URL товара 12storeez
-          for url in \
-            "https://12storeez.com/catalog/platya/plate-iz-shelka-molochno-belyy/" \
-            "https://12storeez.com/catalog/futbolki/futbolka-s-printom/" \
-            "https://12storeez.com/catalog/dzhempery-i-kardigany/dzhemper-iz-shelka/" \
-            "https://12storeez.com/catalog/bryuki/bryuki-iz-sherti-klassicheskie/"; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url")
-            TITLE=$(curl -s --max-time 5 "$url" | grep -o '<title>[^<]*</title>' | head -1)
-            echo "[$STATUS] $url -> $TITLE"
-          done
+          python3 - << 'PYEOF'
+          import urllib.request, json
+
+          candidates = [
+            "https://12storeez.com/catalog/platya/plate-iz-shelka-molochno-belyy/",
+            "https://12storeez.com/catalog/futbolki/futbolka-s-printom-iz-khlopka/",
+            "https://12storeez.com/catalog/dzhempery-i-kardigany/dzhemper-iz-shelkovoy-tkani/",
+            "https://12storeez.com/catalog/bryuki/bryuki-iz-shelkovoy-tkani-klassicheskie/",
+            "https://12storeez.com/catalog/platya/platye-midi-iz-naturalnyh-materialov/",
+          ]
+
+          results = []
+          for url in candidates:
+              try:
+                  req = urllib.request.Request(url, headers={
+                      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                      'Accept': 'text/html',
+                  })
+                  with urllib.request.urlopen(req, timeout=8) as r:
+                      html = r.read(4000).decode('utf-8', errors='ignore')
+                      status = r.status
+                      # Ищем og:title
+                      import re
+                      og = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)', html)
+                      title = og.group(1) if og else None
+                      # Ищем цену в JSON-LD
+                      price_m = re.search(r'"price"\s*:\s*"?(\d+(?:\.\d+)?)"?', html)
+                      price = price_m.group(1) if price_m else None
+                      results.append({'url': url, 'status': status, 'og_title': title, 'price_found': bool(price)})
+              except Exception as e:
+                  results.append({'url': url, 'error': str(e)[:100]})
+
+          with open('probe_12storeez.json', 'w') as f:
+              json.dump(results, f, ensure_ascii=False, indent=2)
+
+          for r in results:
+              print(f"[{r.get('status','ERR')}] {r['url'][-50:]} -> {r.get('og_title','?')[:50]} price={r.get('price_found')}")
+          PYEOF
 
       - name: Wait for Railway deploy
         run: sleep 150
@@ -53,11 +81,6 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"url":"https://12storeez.com/catalog/platya/plate-iz-shelka-molochno-belyy/"}' \
             > /tmp/s12.json 2>/tmp/s12.err || echo '{"error":"curl_failed"}' > /tmp/s12.json
-
-          echo "=== OZON ==="; cat /tmp/ozon.json
-          echo "=== WB ==="; cat /tmp/wb.json
-          echo "=== FF ==="; cat /tmp/ff.json
-          echo "=== 12S ==="; cat /tmp/s12.json
 
       - name: Build scorecard
         run: |
@@ -90,26 +113,19 @@ jobs:
                       "ms":        r.get("_ms", 0),
                   }
               else:
-                  scorecard[name] = {"error": (r.get("error", "unknown") if isinstance(r, dict) else str(r))[:200]}
+                  scorecard[name] = {"error": (r.get("error","unknown") if isinstance(r,dict) else str(r))[:200]}
               s = scorecard[name]
-              t = "✓" if s.get("title") else "✗"
-              p = "✓" if s.get("price") else "✗"
-              i = "✓" if s.get("image") else "✗"
-              print(f"[{name:12}] title{t} price{p} image{i}  {s.get('ms','?')}ms  {s.get('title_val','')[:50]}")
+              print(f"[{name:12}] title={'✓' if s.get('title') else '✗'} price={'✓' if s.get('price') else '✗'} image={'✓' if s.get('image') else '✗'}  {s.get('ms','?')}ms")
 
-          out = {
-              "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-              "scorecard": scorecard
-          }
+          out = {"timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "scorecard": scorecard}
           with open("test_results.json", "w") as f:
               json.dump(out, f, ensure_ascii=False, indent=2)
-          print("Saved.")
           PYEOF
 
       - name: Commit results
         run: |
           git config user.email "parse-bot@sizebook.local"
           git config user.name "Parse Test Bot"
-          git add test_results.json
+          git add test_results.json probe_12storeez.json
           git diff --staged --quiet && echo "No changes" || \
             (git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]" && git push)
