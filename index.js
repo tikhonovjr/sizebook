@@ -683,10 +683,9 @@ async function parseWildberries(url) {
         const pd = await priceRes.json();
         const prod = pd?.data?.products?.find(p => String(p.id) === nm);
         if (prod) {
-          const keys = Object.keys(prod).join(',');
           const sizes = prod?.sizes || [];
           const sp = sizes[0]?.price;
-          console.log(`[wb] card.wb.ru keys: ${keys}`);
+          console.log(`[wb] card.wb.ru keys: ${Object.keys(prod).join(',')}`);
           console.log(`[wb] card.wb.ru salePriceU=${prod?.salePriceU} priceU=${prod?.priceU} sizes[0].price=${JSON.stringify(sp)}`);
           const kopecks = prod?.salePriceU ?? prod?.priceU ?? sp?.total ?? sp?.basic;
           if (kopecks) {
@@ -694,7 +693,7 @@ async function parseWildberries(url) {
             console.log(`[wb] card.wb.ru цена: ${price}`);
           }
         } else {
-          console.log(`[wb] card.wb.ru: nm=${nm} not found, total=${pd?.data?.products?.length}`);
+          console.log(`[wb] card.wb.ru: not found, total=${pd?.data?.products?.length}, raw=${JSON.stringify(pd?.data?.products?.[0]).slice(0,200)}`);
         }
       }
     } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
@@ -1315,8 +1314,19 @@ app.get('/debug/proxy-check', async (req, res) => {
       result.tests.wb_search_status = r.status;
       if (r.ok) {
         const d = await r.json();
-        const prod = d?.data?.products?.[0];
-        result.tests.wb_search_price = prod?.salePriceU ? Math.round(prod.salePriceU / 100) + ' ₽' : 'not found';
+        const prods = d?.data?.products || [];
+        result.tests.wb_products_count = prods.length;
+        const prod = prods[0];
+        if (prod) {
+          result.tests.wb_search_keys = Object.keys(prod).join(',');
+          result.tests.wb_salePriceU = prod?.salePriceU;
+          result.tests.wb_priceU = prod?.priceU;
+          result.tests.wb_sizes_price = prod?.sizes?.[0]?.price;
+          const kopecks = prod?.salePriceU ?? prod?.priceU ?? prod?.sizes?.[0]?.price?.total ?? prod?.sizes?.[0]?.price?.basic;
+          result.tests.wb_search_price = kopecks ? Math.round(kopecks / 100) + ' ₽' : 'no price field';
+        } else {
+          result.tests.wb_search_price = 'no products';
+        }
       }
     } catch(e) { result.tests.wb_search_error = e.message; }
   }
