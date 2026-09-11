@@ -615,6 +615,12 @@ async function parseWildberries(url) {
 
     const cdnHeaders = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
 
+    // Цена идёт через Firecrawl(RU) и не зависит от basket scan — стартуем
+    // запрос сразу, чтобы два медленных шага шли параллельно, а не подряд.
+    const pricePromise = parseViaFirecrawl(url, { waitFor: 6000, country: 'RU' })
+      .then(fc => (fc && fc.price) || null)
+      .catch(e => { console.log(`[wb] Firecrawl(RU) ошибка: ${e.message}`); return null; });
+
     // Параллельный перебор basket-01..basket-60: не зависим от устаревшей
     // таблицы порогов (WB регулярно добавляет новые basket-сервера, из-за
     // чего фиксированная таблица стабильно устаревает для новых артикулов).
@@ -657,8 +663,8 @@ async function parseWildberries(url) {
 
     if (!card) {
       console.log(`[wb] basket-01..60 не нашли card.json для nm=${nm} (vol=${vol}, part=${part}). Пробуем Firecrawl`);
-      const fc = await parseViaFirecrawl(url);
-      return { title: fc?.title || null, price: fc?.price || null, image: fc?.image || null, _wb_from_firecrawl: true };
+      const fc = await parseViaFirecrawl(url, { waitFor: 6000, country: 'RU' });
+      return { title: fc?.title || null, price: fc?.price || (await pricePromise) || null, image: fc?.image || null, _wb_from_firecrawl: true, _wb_price_source: 'firecrawl_ru' };
     }
     console.log(`[wb] нашли basket-${foundBasket}, ключи:`, Object.keys(card).slice(0, 8));
     const base = `https://basket-${foundBasket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
@@ -671,70 +677,16 @@ async function parseWildberries(url) {
       return { title: fc?.title || null, price: fc?.price || null, image };
     }
 
-    // WB price: сначала card.wb.ru (не геоблокирован), затем search.wb.ru через РФ-прокси.
-    let price = null;
-    try {
-      const priceRes = await fetch(
-        `https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`,
-        { headers: { ...cdnHeaders, Referer: "https://www.wildberries.ru/" }, signal: AbortSignal.timeout(5000) }
-      );
-      console.log(`[wb] card.wb.ru статус: ${priceRes.status}`);
-      if (priceRes.ok) {
-        const pd = await priceRes.json();
-        const prod = pd?.data?.products?.find(p => String(p.id) === nm);
-        if (prod) {
-          const sizes = prod?.sizes || [];
-          const sp = sizes[0]?.price;
-          console.log(`[wb] card.wb.ru keys: ${Object.keys(prod).join(',')}`);
-          console.log(`[wb] card.wb.ru salePriceU=${prod?.salePriceU} priceU=${prod?.priceU} sizes[0].price=${JSON.stringify(sp)}`);
-          const kopecks = prod?.salePriceU ?? prod?.priceU ?? sp?.total ?? sp?.basic;
-          if (kopecks) {
-            price = `${Math.round(kopecks / 100)} ₽`;
-            console.log(`[wb] card.wb.ru цена: ${price}`);
-          }
-        } else {
-          console.log(`[wb] card.wb.ru: not found, total=${pd?.data?.products?.length}, raw=${JSON.stringify(pd?.data?.products?.[0]).slice(0,200)}`);
-        }
-      }
-    } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
+    // ── ЦЕНА WB ──────────────────────────────────────────────────────────
+    // Прямые API недоступны: card.wb.ru отдаёт 403 с любого IP, search.wb.ru —
+    // постоянный 429 с датацентровых IP (проверено: proxy6.net и Timeweb).
+    // Рабочий путь: Firecrawl с location.country='RU' рендерит страницу товара
+    // с российского резидентного IP — цена присутствует в HTML.
+    const price = await pricePromise;
+    const priceSource = price ? 'firecrawl_ru' : 'none';
+    console.log(`[wb] цена: ${price || 'не найдена'} (${priceSource})`);
 
-    // search.wb.ru: 429 = rate limit после basket scan. Пауза 500ms + retry
-    if (!price) {
-      await new Promise(r => setTimeout(r, 500)); // небольшая пауза после batch basket запросов
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          if (attempt > 1) await new Promise(r => setTimeout(r, 1500 * attempt));
-          const searchRes = await ruFetch(
-            `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&nm=${nm}`,
-            {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                'Accept': 'application/json',
-                'Referer': 'https://www.wildberries.ru/',
-                'Origin': 'https://www.wildberries.ru',
-              },
-              signal: AbortSignal.timeout(8000),
-            }
-          );
-          console.log(`[wb] search.wb.ru статус: ${searchRes.status} (попытка ${attempt})${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
-          if (searchRes.status === 429) {
-            console.log('[wb] search.wb.ru rate limit (429), пауза...');
-            continue;
-          }
-          if (searchRes.ok) {
-            const sd = await searchRes.json();
-            const prod = sd?.data?.products?.find(p => String(p.id) === nm);
-            const kopecks = prod?.salePriceU ?? prod?.priceU;
-            if (kopecks) { price = `${Math.round(kopecks / 100)} ₽`; break; }
-          }
-          break;
-        } catch (e) {
-          console.log(`[wb] search.wb.ru ошибка (попытка ${attempt}): ${e.message}`);
-        }
-      }
-    }
-
-    return { title, price, image, _wb_price_source: price ? 'found' : (ruProxyAgent ? 'proxy_failed' : 'no_proxy') };
+    return { title, price, image, _wb_price_source: priceSource };
   } catch (e) {
     console.log(`[wb] parseWildberries ошибка: ${e.message}`);
     return null;
@@ -932,7 +884,7 @@ async function parseViaIframely(url) {
 }
 
 // Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
-async function parseViaFirecrawl(url, { waitFor = 4000 } = {}) {
+async function parseViaFirecrawl(url, { waitFor = 4000, country = null, proxy = null } = {}) {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) { console.log('[firecrawl] FIRECRAWL_API_KEY не задан в env'); return null; }
   try {
@@ -942,13 +894,13 @@ async function parseViaFirecrawl(url, { waitFor = 4000 } = {}) {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         url,
         formats: ['html'],
         onlyMainContent: false,
         timeout: 30000,
         waitFor,
-      }),
+      }, country ? { location: { country } } : {}, proxy ? { proxy } : {})),
       signal: AbortSignal.timeout(50000),
     });
     console.log(`[firecrawl] HTTP ${r.status}`);
@@ -1269,6 +1221,55 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+
+// ── PROBE V4: только Ozon, по одному запросу с паузами (лимит Firecrawl) ────
+app.get('/debug/probe4', async (req, res) => {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
+  const url = req.query.url || 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/';
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const out = {};
+
+  async function fc(body) {
+    const t0 = Date.now();
+    try {
+      const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ url, formats: ['html'], onlyMainContent: false, timeout: 50000 }, body)),
+        signal: AbortSignal.timeout(75000),
+      });
+      const e = { http: r.status, ms: Date.now() - t0 };
+      if (!r.ok) { e.body = (await r.text()).slice(0, 160); return e; }
+      const d = await r.json();
+      const html = d.data && d.data.html;
+      const meta = (d.data && d.data.metadata) || {};
+      e.html_len = html ? html.length : 0;
+      e.meta_title = meta.title ? String(meta.title).slice(0, 45) : null;
+      e.meta_status = meta.statusCode;
+      if (html) {
+        const p = parseProductFromHtml(html, url);
+        e.title = p.title ? p.title.slice(0, 45) : null;
+        e.price = p.price;
+        e.image = !!p.image;
+        const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+        e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+      }
+      return e;
+    } catch (err) { return { error: err.message.slice(0, 70), ms: Date.now() - t0 }; }
+  }
+
+  out.stealth_ru       = await fc({ waitFor: 10000, proxy: 'stealth', location: { country: 'RU' } });
+  await sleep(8000);
+  out.stealth_plain    = await fc({ waitFor: 10000, proxy: 'stealth' });
+  await sleep(8000);
+  out.loc_ru_long      = await fc({ waitFor: 15000, location: { country: 'RU' } });
+  await sleep(8000);
+  out.stealth_ru_wait20 = await fc({ waitFor: 20000, proxy: 'stealth', location: { country: 'RU' } });
+
+  res.json(out);
+});
 
 // ── PROBE V3: Firecrawl с location:RU и proxy:stealth ───────────────────────
 app.get('/debug/probe3', async (req, res) => {
