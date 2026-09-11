@@ -1,14 +1,3 @@
 {
-  "RU_PROXY_URL_set": true,
-  "RU_PROXY_URL_preview": "http:***@95.181.157.14:8000",
-  "ruProxyAgent_created": true,
-  "tests": {
-    "direct_ip": "162.220.232.75",
-    "proxy_ip": "95.181.157.14",
-    "proxy_works": true,
-    "wb_search_status": 429,
-    "ozon_main_error": "fetch failed",
-    "ozon_api_error": "fetch failed",
-    "ozon_cdn": 403
-  }
+  "error": "endpoint_failed"
 }
