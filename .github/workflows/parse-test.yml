@@ -14,10 +14,23 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Probe 12storeez URLs
+        run: |
+          # Ищем рабочий URL товара 12storeez
+          for url in \
+            "https://12storeez.com/catalog/platya/plate-iz-shelka-molochno-belyy/" \
+            "https://12storeez.com/catalog/futbolki/futbolka-s-printom/" \
+            "https://12storeez.com/catalog/dzhempery-i-kardigany/dzhemper-iz-shelka/" \
+            "https://12storeez.com/catalog/bryuki/bryuki-iz-sherti-klassicheskie/"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$url")
+            TITLE=$(curl -s --max-time 5 "$url" | grep -o '<title>[^<]*</title>' | head -1)
+            echo "[$STATUS] $url -> $TITLE"
+          done
+
       - name: Wait for Railway deploy
         run: sleep 150
 
-      - name: Run curl tests
+      - name: Run parse tests
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
 
@@ -43,8 +56,8 @@ jobs:
 
           echo "=== OZON ==="; cat /tmp/ozon.json
           echo "=== WB ==="; cat /tmp/wb.json
-          echo "=== FARFETCH ==="; cat /tmp/ff.json
-          echo "=== 12STOREEZ ==="; cat /tmp/s12.json
+          echo "=== FF ==="; cat /tmp/ff.json
+          echo "=== 12S ==="; cat /tmp/s12.json
 
       - name: Build scorecard
         run: |
@@ -82,8 +95,7 @@ jobs:
               t = "✓" if s.get("title") else "✗"
               p = "✓" if s.get("price") else "✗"
               i = "✓" if s.get("image") else "✗"
-              ms = s.get("ms", "?")
-              print(f"[{name:12}] title{t} price{p} image{i}  {ms}ms  {s.get('title_val','')[:40]}")
+              print(f"[{name:12}] title{t} price{p} image{i}  {s.get('ms','?')}ms  {s.get('title_val','')[:50]}")
 
           out = {
               "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -91,7 +103,7 @@ jobs:
           }
           with open("test_results.json", "w") as f:
               json.dump(out, f, ensure_ascii=False, indent=2)
-          print("Saved test_results.json")
+          print("Saved.")
           PYEOF
 
       - name: Commit results
