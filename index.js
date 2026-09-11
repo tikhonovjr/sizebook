@@ -1223,6 +1223,53 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 
 
+
+// ── PROBE V5: Ozon, один вариант за вызов (?v=1..4) — обход таймаута Railway ─
+app.get('/debug/probe5', async (req, res) => {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
+  const url = req.query.url || 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/';
+  const v = String(req.query.v || '1');
+
+  const variants = {
+    '1': { label: 'stealth_ru_w12',  body: { waitFor: 12000, proxy: 'stealth', location: { country: 'RU' } } },
+    '2': { label: 'stealth_only_w12',body: { waitFor: 12000, proxy: 'stealth' } },
+    '3': { label: 'loc_ru_w20',      body: { waitFor: 20000, location: { country: 'RU' } } },
+    '4': { label: 'stealth_ru_w25',  body: { waitFor: 25000, proxy: 'stealth', location: { country: 'RU' } } },
+  };
+  const variant = variants[v] || variants['1'];
+
+  const t0 = Date.now();
+  try {
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ url, formats: ['html'], onlyMainContent: false, timeout: 55000 }, variant.body)),
+      signal: AbortSignal.timeout(80000),
+    });
+    const e = { variant: variant.label, http: r.status, ms: Date.now() - t0 };
+    if (!r.ok) { e.body = (await r.text()).slice(0, 200); return res.json(e); }
+    const d = await r.json();
+    const html = d.data && d.data.html;
+    const meta = (d.data && d.data.metadata) || {};
+    e.html_len = html ? html.length : 0;
+    e.meta_title = meta.title ? String(meta.title).slice(0, 50) : null;
+    e.meta_status = meta.statusCode;
+    if (html) {
+      const p = parseProductFromHtml(html, url);
+      e.title = p.title ? p.title.slice(0, 50) : null;
+      e.price = p.price;
+      e.image = !!p.image;
+      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
+      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
+      e.head = html.slice(0, 150);
+    }
+    res.json(e);
+  } catch (err) {
+    res.json({ variant: variant.label, error: err.message.slice(0, 80), ms: Date.now() - t0 });
+  }
+});
+
 // ── PROBE V4: только Ozon, по одному запросу с паузами (лимит Firecrawl) ────
 app.get('/debug/probe4', async (req, res) => {
   const apiKey = process.env.FIRECRAWL_API_KEY;
