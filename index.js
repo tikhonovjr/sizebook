@@ -699,11 +699,12 @@ async function parseWildberries(url) {
       }
     } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
 
-    // search.wb.ru: если 429 (rate limit) — ждём 1 сек и пробуем ещё раз
+    // search.wb.ru: 429 = rate limit после basket scan. Пауза 500ms + retry
     if (!price) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      await new Promise(r => setTimeout(r, 500)); // небольшая пауза после batch basket запросов
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          if (attempt > 1) await new Promise(r => setTimeout(r, 1000));
+          if (attempt > 1) await new Promise(r => setTimeout(r, 1500 * attempt));
           const searchRes = await ruFetch(
             `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
             {
@@ -1284,12 +1285,21 @@ app.get('/debug/proxy-check', async (req, res) => {
     result.tests.direct_ip = (await r.json()).ip;
   } catch(e) { result.tests.direct_ip_error = e.message; }
 
-  // Тест 2: IP через прокси
+  // Тест 2: IP через прокси + его ASN (чтобы понять провайдера)
   if (ruProxyAgent) {
     try {
       const r = await ruFetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(8000) });
-      result.tests.proxy_ip = (await r.json()).ip;
+      const ip = (await r.json()).ip;
+      result.tests.proxy_ip = ip;
       result.tests.proxy_works = true;
+      // Получаем ASN
+      try {
+        const asnR = await ruFetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(5000) });
+        const asnD = await asnR.json();
+        result.tests.proxy_asn = asnD.asn;
+        result.tests.proxy_org = asnD.org;
+        result.tests.proxy_city = asnD.city;
+      } catch(_) {}
     } catch(e) {
       result.tests.proxy_ip_error = e.message;
       result.tests.proxy_works = false;
