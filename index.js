@@ -699,28 +699,39 @@ async function parseWildberries(url) {
       }
     } catch (e) { console.log(`[wb] card.wb.ru ошибка: ${e.message}`); }
 
-    if (!price) try {
-      const searchRes = await ruFetch(
-        `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://www.wildberries.ru/',
-            'Origin': 'https://www.wildberries.ru',
-          },
-          signal: AbortSignal.timeout(8000),
+    // search.wb.ru: если 429 (rate limit) — ждём 1 сек и пробуем ещё раз
+    if (!price) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          if (attempt > 1) await new Promise(r => setTimeout(r, 1000));
+          const searchRes = await ruFetch(
+            `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
+            {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                'Accept': 'application/json',
+                'Referer': 'https://www.wildberries.ru/',
+                'Origin': 'https://www.wildberries.ru',
+              },
+              signal: AbortSignal.timeout(8000),
+            }
+          );
+          console.log(`[wb] search.wb.ru статус: ${searchRes.status} (попытка ${attempt})${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
+          if (searchRes.status === 429) {
+            console.log('[wb] search.wb.ru rate limit (429), пауза...');
+            continue;
+          }
+          if (searchRes.ok) {
+            const sd = await searchRes.json();
+            const prod = sd?.data?.products?.find(p => String(p.id) === nm);
+            const kopecks = prod?.salePriceU ?? prod?.priceU;
+            if (kopecks) { price = `${Math.round(kopecks / 100)} ₽`; break; }
+          }
+          break;
+        } catch (e) {
+          console.log(`[wb] search.wb.ru ошибка (попытка ${attempt}): ${e.message}`);
         }
-      );
-      console.log(`[wb] search.wb.ru статус: ${searchRes.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}`);
-      if (searchRes.ok) {
-        const sd = await searchRes.json();
-        const prod = sd?.data?.products?.find(p => String(p.id) === nm);
-        const kopecks = prod?.salePriceU ?? prod?.priceU;
-        if (kopecks) price = `${Math.round(kopecks / 100)} ₽`;
       }
-    } catch (e) {
-      console.log(`[wb] search.wb.ru ошибка: ${e.message}`);
     }
 
     return { title, price, image, _wb_price_source: price ? 'found' : (ruProxyAgent ? 'proxy_failed' : 'no_proxy') };
@@ -759,7 +770,9 @@ async function parseOzon(url) {
         }
       }
     } catch (e) {
-      console.log(`[ozon] прямой fetch ошибка: ${e.message}${e.cause ? ' | cause: ' + (e.cause.message || e.cause.code || JSON.stringify(e.cause)) : ''}`);
+      const cause = e.cause?.code || e.cause?.message || e.cause;
+      console.log(`[ozon] прямой fetch ошибка: ${e.message}${cause ? ' | cause: ' + cause : ''}`);
+      ozonSteps.push({ step: 'direct_fetch', error: e.message, cause: String(cause || '') });
     }
 
     // Шаг 2a: Ozon мобильный API — слабее защищён, чем веб-эндпоинт
@@ -1298,15 +1311,21 @@ app.get('/debug/proxy-check', async (req, res) => {
     } catch(e) { result.tests.wb_search_error = e.message; }
   }
 
-  // Тест 4: Ozon через прокси
+  // Тест 4: Ozon через прокси — несколько хостов
   if (ruProxyAgent) {
-    try {
-      const r = await ruFetch('https://www.ozon.ru/', {
-        headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' },
-        signal: AbortSignal.timeout(8000)
-      });
-      result.tests.ozon_status = r.status;
-    } catch(e) { result.tests.ozon_error = e.message; }
+    for (const [label, url] of [
+      ['ozon_main', 'https://www.ozon.ru/'],
+      ['ozon_api', 'https://api.ozon.ru/composer-api.bx/page/json/v2?url=/'],
+      ['ozon_cdn', 'https://cdn1.ozone.ru/'],
+    ]) {
+      try {
+        const r = await ruFetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15', Accept: 'text/html,application/json' },
+          signal: AbortSignal.timeout(6000)
+        });
+        result.tests[label] = r.status;
+      } catch(e) { result.tests[label + '_error'] = e.message.slice(0,80); }
+    }
   }
 
   res.json(result);
