@@ -13,18 +13,27 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for deploy
-        run: sleep 180
+        run: sleep 150
 
       - name: Run deep probe
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
           curl -sf --max-time 120 "$BASE/debug/deep-probe?nm=1510075000&ozon=3148849655" \
             > deep_probe.json 2>/dev/null || echo '{"error":"probe_failed"}' > deep_probe.json
-          python3 -m json.tool deep_probe.json || cat deep_probe.json
+          echo "--- RESULT ---"
+          cat deep_probe.json
 
-      - name: Commit
+      - name: Commit with retry
         run: |
           git config user.email "parse-bot@sizebook.local"
           git config user.name "Parse Test Bot"
-          git add deep_probe.json
-          git diff --staged --quiet || (git commit -m "probe: deep probe results [skip ci]" && git push)
+          for i in 1 2 3; do
+            git fetch origin main
+            git reset --soft origin/main
+            git add -f deep_probe.json
+            git diff --staged --quiet && { echo "no changes"; exit 0; }
+            git commit -m "probe: deep probe results [skip ci]"
+            git push origin HEAD:main && { echo "pushed"; exit 0; }
+            echo "retry $i"; sleep 5
+          done
+          echo "push failed after retries"; exit 1
