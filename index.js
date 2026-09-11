@@ -1305,30 +1305,46 @@ app.get('/debug/proxy-check', async (req, res) => {
     }
   }
 
-  // Тест 3: WB через прокси
+  // Тест 3: WB цена через card.wb.ru (не геоблокирован) и search.wb.ru через прокси
+  const WB_NM = '1510075000';
+  try {
+    // card.wb.ru — без прокси
+    const cr = await fetch(`https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${WB_NM}`,
+      { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Referer: 'https://www.wildberries.ru/' },
+        signal: AbortSignal.timeout(6000) });
+    result.tests.wb_card_status = cr.status;
+    if (cr.ok) {
+      const cd = await cr.json();
+      const prod = cd?.data?.products?.find(p => String(p.id) === WB_NM);
+      result.tests.wb_card_found = !!prod;
+      if (prod) {
+        result.tests.wb_card_keys = Object.keys(prod).slice(0,15).join(',');
+        const sizes = prod?.sizes || [];
+        result.tests.wb_card_sizes0_price = JSON.stringify(sizes[0]?.price);
+        result.tests.wb_card_salePriceU = prod?.salePriceU;
+        result.tests.wb_card_priceU = prod?.priceU;
+      }
+    }
+  } catch(e) { result.tests.wb_card_error = e.message; }
+
+  // search.wb.ru через прокси — с правильным форматом
   if (ruProxyAgent) {
     try {
-      const r = await ruFetch('https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=1510075000',
+      const sr = await ruFetch(
+        `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&nm=${WB_NM}`,
         { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Referer: 'https://www.wildberries.ru/' },
           signal: AbortSignal.timeout(8000) });
-      result.tests.wb_search_status = r.status;
-      if (r.ok) {
-        const d = await r.json();
-        const prods = d?.data?.products || [];
-        result.tests.wb_products_count = prods.length;
-        const prod = prods[0];
+      result.tests.wb_search_nm_status = sr.status;
+      if (sr.ok) {
+        const sd = await sr.json();
+        const prod = sd?.data?.products?.find(p => String(p.id) === WB_NM);
+        result.tests.wb_search_nm_found = !!prod;
         if (prod) {
-          result.tests.wb_search_keys = Object.keys(prod).join(',');
-          result.tests.wb_salePriceU = prod?.salePriceU;
-          result.tests.wb_priceU = prod?.priceU;
-          result.tests.wb_sizes_price = prod?.sizes?.[0]?.price;
-          const kopecks = prod?.salePriceU ?? prod?.priceU ?? prod?.sizes?.[0]?.price?.total ?? prod?.sizes?.[0]?.price?.basic;
-          result.tests.wb_search_price = kopecks ? Math.round(kopecks / 100) + ' ₽' : 'no price field';
-        } else {
-          result.tests.wb_search_price = 'no products';
+          const kopecks = prod?.salePriceU ?? prod?.priceU ?? prod?.sizes?.[0]?.price?.total;
+          result.tests.wb_search_nm_price = kopecks ? Math.round(kopecks/100) + ' ₽' : 'no price';
         }
       }
-    } catch(e) { result.tests.wb_search_error = e.message; }
+    } catch(e) { result.tests.wb_search_nm_error = e.message; }
   }
 
   // Тест 4: Ozon через прокси — несколько хостов
