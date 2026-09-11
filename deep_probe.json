@@ -1,1 +1,55 @@
-{"error":"probe_failed"}
+{
+ "v1": {
+  "variant": "stealth_ru_w12",
+  "http": 200,
+  "ms": 527,
+  "html_len": 2075,
+  "meta_title": "Antibot Captcha",
+  "meta_status": 403,
+  "title": null,
+  "price": null,
+  "image": false,
+  "price_regex": null,
+  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+ },
+ "v2": {
+  "variant": "stealth_only_w12",
+  "http": 200,
+  "ms": 14959,
+  "html_len": 2101,
+  "meta_title": "Antibot Captcha",
+  "meta_status": 403,
+  "title": null,
+  "price": null,
+  "image": false,
+  "price_regex": null,
+  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+ },
+ "v3": {
+  "variant": "loc_ru_w20",
+  "http": 200,
+  "ms": 22434,
+  "html_len": 1416,
+  "meta_title": "Похоже, нет соединения",
+  "meta_status": 403,
+  "title": null,
+  "price": null,
+  "image": false,
+  "price_regex": null,
+  "head": "<!DOCTYPE html><html lang=\"ru\"><body><main><div class=\"sec bl\"><div class=\"cnt\"><img class=\"img\" src=\"https://cdn2.ozone.ru/s3/abt-challenge/incidents"
+ },
+ "v4": {
+  "variant": "stealth_ru_w25",
+  "http": 200,
+  "ms": 29499,
+  "html_len": 2074,
+  "meta_title": "Antibot Captcha",
+  "meta_status": 403,
+  "title": null,
+  "price": null,
+  "image": false,
+  "price_regex": null,
+  "head": "<!DOCTYPE html><html lang=\"ru\">\n\n<body>\n\n<div class=\"container\">\n    \n    \n    \n    \n    \n    <div id=\"captcha-container\">\n        <div id=\"captcha\" s"
+ },
+ "done": true
+}
