@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-11T05:31:58Z",
+  "timestamp": "2026-09-11T05:37:57Z",
   "scorecard": {
     "ozon": {
       "title": false,
@@ -8,7 +8,7 @@
       "steps": [
         {
           "label": "ozon:done",
-          "ms": 10530,
+          "ms": 9507,
           "title": false,
           "price": false,
           "image": false,
@@ -34,7 +34,7 @@
       ],
       "title_val": "",
       "price_val": "",
-      "ms": 10530
+      "ms": 9507
     },
     "wildberries": {
       "title": true,
@@ -43,7 +43,7 @@
       "steps": [
         {
           "label": "wildberries:done",
-          "ms": 7990,
+          "ms": 6249,
           "title": true,
           "price": false,
           "image": true,
@@ -53,7 +53,7 @@
       ],
       "title_val": "Треккинговые кроссовки мужские демисезонные",
       "price_val": "",
-      "ms": 7990
+      "ms": 6249
     },
     "farfetch": {
       "title": true,
@@ -62,30 +62,30 @@
       "steps": [
         {
           "label": "direct-fetch",
-          "ms": 38,
+          "ms": 44,
           "title": false,
           "price": false,
           "image": false
         },
         {
           "label": "playwright:skipped-known-dead-for-farfetch",
-          "ms": 38
+          "ms": 44
         },
         {
           "label": "firecrawl",
-          "ms": 813,
+          "ms": 807,
           "title": true,
           "price": true,
           "image": true
         },
         {
           "label": "done",
-          "ms": 813
+          "ms": 807
         }
       ],
       "title_val": "Salomon XT-6 Sneakers | White | FARFETCH UK",
       "price_val": "£272",
-      "ms": 813
+      "ms": 807
     },
     "12storeez": {
       "title": true,
@@ -94,7 +94,7 @@
       "steps": [
         {
           "label": "12storeez:direct-fetch",
-          "ms": 635,
+          "ms": 640,
           "title": false,
           "price": false,
           "image": false,
@@ -102,7 +102,7 @@
         },
         {
           "label": "12storeez:firecrawl",
-          "ms": 959,
+          "ms": 938,
           "title": true,
           "price": false,
           "image": true
@@ -110,7 +110,7 @@
       ],
       "title_val": "Страница не найдена",
       "price_val": "",
-      "ms": 959
+      "ms": 938
     }
   }
 }
