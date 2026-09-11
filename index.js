@@ -705,7 +705,7 @@ async function parseWildberries(url) {
         try {
           if (attempt > 1) await new Promise(r => setTimeout(r, 1500 * attempt));
           const searchRes = await ruFetch(
-            `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=${nm}`,
+            `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&nm=${nm}`,
             {
               headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
