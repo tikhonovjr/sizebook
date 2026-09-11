@@ -3,7 +3,7 @@
   "RU_PROXY_URL_preview": "http://201.24.49.174:3128",
   "ruProxyAgent_created": true,
   "tests": {
-    "direct_ip": "152.55.176.241",
+    "direct_ip": "162.220.232.209",
     "proxy_ip": "201.24.49.174",
     "proxy_works": true,
     "wb_card_status": 404,
