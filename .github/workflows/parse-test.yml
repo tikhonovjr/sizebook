@@ -14,31 +14,19 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Probe 12storeez via prod parser
-        run: |
-          BASE="https://desirable-cat-production-6c28.up.railway.app"
-          # Пробуем несколько кандидатов через реальный prod парсер
-          # (он использует Playwright + Firecrawl — может обойти защиту)
-          for url in \
-            "https://12storeez.com/catalog/platya/plate-midi-iz-shelka/" \
-            "https://12storeez.com/catalog/platya/plate-iz-krep-shatung/" \
-            "https://12storeez.com/catalog/futbolki/futbolka-iz-khlopka/" \
-            "https://12storeez.com/catalog/dzhempery-i-kardigany/dzhemper-iz-tonkoy-sherstyanoy-pryazhi/"; do
-            echo "Testing: $url"
-            curl -sf --max-time 30 -X POST "$BASE/parse" \
-              -H "Content-Type: application/json" \
-              -d "{\"url\":\"$url\"}" \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'  title={d.get(\"title\",\"?\")!r:.60} price={d.get(\"price\")} ms={d.get(\"_ms\")}')" \
-              2>/dev/null || echo "  [curl failed]"
-          done
-
       - name: Wait for Railway deploy
-        run: sleep 150
+        run: sleep 180
 
-      - name: Run parse tests
+      - name: Get real 12storeez links and run parse tests
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
 
+          # Получаем реальные ссылки на товары 12storeez через debug endpoint
+          echo "=== 12storeez real links ==="
+          curl -sf --max-time 15 "$BASE/debug/12storeez-links" \
+            > /tmp/12s_links.json 2>/dev/null && cat /tmp/12s_links.json || echo "debug endpoint unavailable"
+
+          # Основные тесты
           curl -sf --max-time 60 -X POST "$BASE/parse" \
             -H "Content-Type: application/json" \
             -d '{"url":"https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/"}' \
@@ -64,6 +52,16 @@ jobs:
           python3 - << 'PYEOF'
           import json
           from datetime import datetime
+
+          # Сохраняем 12storeez links если есть
+          try:
+              with open('/tmp/12s_links.json') as f:
+                  links_data = json.load(f)
+              with open('12storeez_links.json', 'w') as f:
+                  json.dump(links_data, f, ensure_ascii=False, indent=2)
+              print("12storeez links:", links_data.get('links', [])[:5])
+          except:
+              pass
 
           sites = [
             ("ozon",        "/tmp/ozon.json"),
@@ -103,6 +101,6 @@ jobs:
         run: |
           git config user.email "parse-bot@sizebook.local"
           git config user.name "Parse Test Bot"
-          git add test_results.json
+          git add test_results.json 12storeez_links.json || git add test_results.json
           git diff --staged --quiet && echo "No changes" || \
             (git commit -m "test: results $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]" && git push)
