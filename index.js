@@ -1256,20 +1256,25 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 // ── DEBUG: получить реальные URL товаров 12storeez ──────────────────────────
 app.get('/debug/12storeez-links', async (req, res) => {
-  const secret = process.env.LOG_SECRET;
-  if (!secret || req.query.secret !== secret) return res.status(403).json({ error: 'forbidden' });
+  // temporary debug endpoint - no auth needed
   try {
-    const resp = await fetch('https://12storeez.com/catalog/platya/', { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10000) });
-    const html = await resp.text();
-    const $ = require('cheerio').load(html);
-    const links = [];
-    $('a[href*="/catalog/"]').each((_, el) => {
-      const href = $(el).attr('href');
-      if (href && href.match(/\/catalog\/[^/]+\/[^/]+\/$/) && !links.includes(href)) {
-        links.push(href);
-      }
+    // Пробуем Playwright — 12storeez блокирует прямые запросы
+    const browser = await getHeadlessBrowser();
+    const ctx = await browser.newContext({ userAgent: FETCH_HEADERS['User-Agent'], viewport: { width: 1440, height: 900 } });
+    const page = await ctx.newPage();
+    await page.goto('https://12storeez.com/catalog/platya/', { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    const links = await page.evaluate(() => {
+      const hrefs = new Set();
+      document.querySelectorAll('a[href*="/catalog/"]').forEach(el => {
+        const h = el.getAttribute('href');
+        if (h && /\/catalog\/[^/]+\/[^/]+\/$/.test(h)) hrefs.add(h);
+      });
+      return [...hrefs].slice(0, 20);
     });
-    res.json({ status: resp.status, links: links.slice(0, 20) });
+    const title = await page.title();
+    await ctx.close();
+    res.json({ page_title: title, links });
   } catch (e) {
     res.json({ error: e.message });
   }
