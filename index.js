@@ -1254,6 +1254,64 @@ app.post('/parse', authenticateToken, async (req, res) => {
 });
 
 
+// ── DEBUG: диагностика прокси ────────────────────────────────────────────────
+app.get('/debug/proxy-check', async (req, res) => {
+  const result = {
+    RU_PROXY_URL_set: !!process.env.RU_PROXY_URL,
+    RU_PROXY_URL_preview: process.env.RU_PROXY_URL
+      ? process.env.RU_PROXY_URL.replace(/:([^@]+)@/, ':***@')  // скрываем пароль
+      : null,
+    ruProxyAgent_created: !!ruProxyAgent,
+    tests: {}
+  };
+
+  // Тест 1: что видит внешний мир как наш IP (без прокси)
+  try {
+    const r = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+    result.tests.direct_ip = (await r.json()).ip;
+  } catch(e) { result.tests.direct_ip_error = e.message; }
+
+  // Тест 2: IP через прокси
+  if (ruProxyAgent) {
+    try {
+      const r = await ruFetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(8000) });
+      result.tests.proxy_ip = (await r.json()).ip;
+      result.tests.proxy_works = true;
+    } catch(e) {
+      result.tests.proxy_ip_error = e.message;
+      result.tests.proxy_works = false;
+    }
+  }
+
+  // Тест 3: WB через прокси
+  if (ruProxyAgent) {
+    try {
+      const r = await ruFetch('https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&query=1510075000',
+        { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Referer: 'https://www.wildberries.ru/' },
+          signal: AbortSignal.timeout(8000) });
+      result.tests.wb_search_status = r.status;
+      if (r.ok) {
+        const d = await r.json();
+        const prod = d?.data?.products?.[0];
+        result.tests.wb_search_price = prod?.salePriceU ? Math.round(prod.salePriceU / 100) + ' ₽' : 'not found';
+      }
+    } catch(e) { result.tests.wb_search_error = e.message; }
+  }
+
+  // Тест 4: Ozon через прокси
+  if (ruProxyAgent) {
+    try {
+      const r = await ruFetch('https://www.ozon.ru/', {
+        headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' },
+        signal: AbortSignal.timeout(8000)
+      });
+      result.tests.ozon_status = r.status;
+    } catch(e) { result.tests.ozon_error = e.message; }
+  }
+
+  res.json(result);
+});
+
 // ── DEBUG: получить реальные URL товаров 12storeez ──────────────────────────
 app.get('/debug/12storeez-links', async (req, res) => {
   // temporary debug endpoint - no auth needed
