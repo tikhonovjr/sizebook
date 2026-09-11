@@ -13,16 +13,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for deploy
         run: sleep 150
-      - name: Sportmaster bypass variants
+      - name: Sportmaster via RU proxy
         run: |
           BASE="https://desirable-cat-production-6c28.up.railway.app"
           echo "{" > deep_probe.json
-          for v in 1 2 3 4 5; do
+          for v in 1 2 3; do
             echo "--- v$v ---"
-            R=$(curl -sf --max-time 110 "$BASE/debug/smprobe?v=$v" 2>/dev/null || echo '{"error":"call_failed"}')
-            echo "$R" | head -c 600; echo
+            R=$(curl -sf --max-time 110 "$BASE/debug/smproxy?v=$v" 2>/dev/null || echo '{"error":"call_failed"}')
+            echo "$R" | head -c 700; echo
             echo "\"v$v\": $R," >> deep_probe.json
-            sleep 8
+            sleep 5
           done
           echo "\"done\": true }" >> deep_probe.json
           python3 -c "
@@ -41,7 +41,7 @@ jobs:
             git reset --soft origin/main
             git add -f deep_probe.json
             git diff --staged --quiet && { echo "no changes"; exit 0; }
-            git commit -m "probe: sportmaster bypass [skip ci]"
+            git commit -m "probe: sportmaster ru proxy [skip ci]"
             git push origin HEAD:main && { echo pushed; exit 0; }
             sleep 5
           done
