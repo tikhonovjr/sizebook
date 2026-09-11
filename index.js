@@ -622,22 +622,37 @@ async function parseWildberries(url) {
     let card = null;
     let foundBasket = null;
     try {
-      const BASKET_MAX = 60;
-      const attempts = Array.from({ length: BASKET_MAX }, (_, i) => {
-        const bStr = String(i + 1).padStart(2, '0');
+      const tryBasket = async (num) => {
+        const bStr = String(num).padStart(2, '0');
         const tryUrl = `https://basket-${bStr}.wbbasket.ru/vol${vol}/part${part}/${nm}/info/ru/card.json`;
-        return fetch(tryUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(6000) })
-          .then(r => (r.ok ? r.json().then(json => ({ bStr, json })) : Promise.reject(new Error(`status ${r.status}`))))
-          .catch(() => null);
-      });
-      const results = await Promise.all(attempts);
-      const found = results.find(r => r && r.json);
-      if (found) { card = found.json; foundBasket = found.bStr; }
-      const successCount = results.filter(r => r && r.json).length;
-      const errCount = results.filter(r => r === null).length;
-      console.log(`[wb] basket scan: найден basket-${foundBasket || 'NONE'}, ok=${successCount}, err=${errCount}, nm=${nm}`);
+        try {
+          const r = await fetch(tryUrl, { headers: cdnHeaders, signal: AbortSignal.timeout(5000) });
+          if (r.ok) return { bStr, json: await r.json() };
+        } catch (_) {}
+        return null;
+      };
+
+      // Шаг 1: пробуем предсказанный basket
+      const predicted = startBasket;
+      const fast = await tryBasket(predicted);
+      if (fast) { card = fast.json; foundBasket = fast.bStr; console.log(`[wb] basket hit: ${foundBasket} (predicted)`); }
+
+      // Шаг 2: если не попали — расширяем ±20 параллельно (WB добавляет новые серверы)
+      if (!card) {
+        const RANGE = 20;
+        const candidates = new Set();
+        for (let d = 1; d <= RANGE; d++) {
+          if (predicted - d >= 1) candidates.add(predicted - d);
+          if (predicted + d <= 70) candidates.add(predicted + d);
+        }
+        const attempts = [...candidates].map(num => tryBasket(num));
+        const results = await Promise.all(attempts);
+        const found = results.find(r => r && r.json);
+        if (found) { card = found.json; foundBasket = found.bStr; }
+        console.log(`[wb] basket scan ±${RANGE} around ${predicted}: найден ${foundBasket || 'NONE'}, checked=${candidates.size}`);
+      }
     } catch (e) {
-      console.log(`[wb] параллельный перебор ошибка: ${e.message}`);
+      console.log(`[wb] basket scan ошибка: ${e.message}`);
     }
 
     if (!card) {
@@ -731,7 +746,7 @@ async function parseOzon(url) {
           ...FETCH_HEADERS,
           'Accept-Language': 'ru-RU,ru;q=0.9',
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(6000),
       });
       ozonSteps.push({ step: 'direct_fetch', status: resp.status });
       console.log(`[ozon] прямой fetch статус: ${resp.status}${ruProxyAgent ? ' (через RU-прокси)' : ''}, url=${resp.url}`);
@@ -803,7 +818,7 @@ async function parseOzon(url) {
               'Accept': 'application/json',
               'Referer': 'https://www.ozon.ru/',
             },
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(6000),
           }
         );
         ozonSteps.push({ step: 'web_api', status: apiResp.status });
@@ -1241,7 +1256,8 @@ app.post('/parse', authenticateToken, async (req, res) => {
 
 // ── HEALTHLOG (просмотр логов из чата) ───────────────────────────────────────
 app.get('/healthlog', (req, res) => {
-  const secret = process.env.LOG_SECRET || 'sizebook-log-2024';
+  const secret = process.env.LOG_SECRET;
+  if (!secret) return res.status(403).json({ error: 'LOG_SECRET not configured' });
   if (req.query.secret !== secret) return res.status(403).json({ error: 'forbidden' });
   const n = parseInt(req.query.n) || 200;
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
