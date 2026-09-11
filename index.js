@@ -1267,6 +1267,156 @@ app.post('/parse', authenticateToken, async (req, res) => {
 });
 
 
+
+// ── DEEP PROBE: перебор всех точек входа WB и Ozon ──────────────────────────
+app.get('/debug/deep-probe', async (req, res) => {
+  const nm = req.query.nm || '1510075000';
+  const ozonId = req.query.ozon || '3148849655';
+  const out = { nm, ozonId, proxy: !!ruProxyAgent, wb: {}, ozon: {} };
+
+  const UA_DESKTOP = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+  const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  const UA_ANDROID_APP = 'ozonapp_android/18.0.0 (Android 13; SDK 33; ru)';
+
+  const wbHeaders = {
+    'User-Agent': UA_DESKTOP,
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'ru-RU,ru;q=0.9',
+    'Origin': 'https://www.wildberries.ru',
+    'Referer': 'https://www.wildberries.ru/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'cross-site',
+  };
+
+  function extractWbPrice(prod) {
+    if (!prod) return null;
+    const s0 = prod.sizes && prod.sizes[0];
+    const cands = [
+      prod.salePriceU, prod.priceU,
+      s0 && s0.price && s0.price.total,
+      s0 && s0.price && s0.price.product,
+      s0 && s0.price && s0.price.basic,
+      prod.extended && prod.extended.basicPriceU,
+    ].filter(v => typeof v === 'number' && v > 0);
+    return cands.length ? Math.round(cands[0] / 100) + ' RUB' : null;
+  }
+
+  // ── WB: множество хостов и версий API ────────────────────────────────────
+  const wbTargets = [
+    ['card_v1',        `https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, false],
+    ['card_v2',        `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, false],
+    ['ucard_v2',       `https://u-card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, false],
+    ['card_v1_proxy',  `https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, true],
+    ['card_v2_proxy',  `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, true],
+    ['ucard_v2_proxy', `https://u-card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257786&nm=${nm}`, true],
+    ['card_v2_dest2',  `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=12358062&nm=${nm}`, true],
+    ['card_v2_spb',    `https://card.wb.ru/cards/v2/detail?appType=1&curr=rub&dest=-1257216&nm=${nm}`, true],
+    ['search_v4',      `https://search.wb.ru/exactmatch/ru/common/v4/search?appType=1&curr=rub&dest=-1257786&query=${nm}&resultset=catalog`, true],
+    ['search_v9',      `https://search.wb.ru/exactmatch/ru/common/v9/search?appType=1&curr=rub&dest=-1257786&query=${nm}&resultset=catalog`, true],
+  ];
+
+  await Promise.all(wbTargets.map(async ([label, url, useProxy]) => {
+    try {
+      const f = useProxy ? ruFetch : fetch;
+      const r = await f(url, { headers: wbHeaders, signal: AbortSignal.timeout(7000) });
+      const entry = { status: r.status };
+      if (r.ok) {
+        const txt = await r.text();
+        entry.len = txt.length;
+        try {
+          const d = JSON.parse(txt);
+          const prods = (d && d.data && d.data.products) || (d && d.products) || [];
+          entry.count = prods.length;
+          const prod = prods.find(p => String(p.id) === String(nm)) || prods[0];
+          if (prod) {
+            entry.price = extractWbPrice(prod);
+            entry.name = (prod.name || '').slice(0, 40);
+            entry.keys = Object.keys(prod).slice(0, 12).join(',');
+          }
+        } catch (_) { entry.parse = 'not_json'; entry.head = txt.slice(0, 120); }
+      }
+      out.wb[label] = entry;
+    } catch (e) {
+      out.wb[label] = { error: e.message.slice(0, 60), cause: String((e.cause && (e.cause.code || e.cause.message)) || '').slice(0, 40) };
+    }
+  }));
+
+  // ── WB: price-history на basket CDN ──────────────────────────────────────
+  try {
+    const id = Number(nm), vol = Math.floor(id / 100000), part = Math.floor(id / 1000);
+    const found = await Promise.all(
+      Array.from({ length: 30 }, (_, i) => {
+        const b = String(i + 1).padStart(2, '0');
+        return fetch(`https://basket-${b}.wbbasket.ru/vol${vol}/part${part}/${nm}/info/price-history.json`,
+          { headers: { 'User-Agent': UA_DESKTOP }, signal: AbortSignal.timeout(4000) })
+          .then(r => r.ok ? r.json().then(j => ({ b, j })) : null).catch(() => null);
+      })
+    );
+    const hit = found.find(Boolean);
+    out.wb.price_history = hit
+      ? { basket: hit.b, points: Array.isArray(hit.j) ? hit.j.length : 0, last: Array.isArray(hit.j) && hit.j.length ? hit.j[hit.j.length - 1] : null }
+      : { found: false };
+  } catch (e) { out.wb.price_history = { error: e.message.slice(0, 60) }; }
+
+  // ── OZON: разные домены и пути, через прокси и напрямую ──────────────────
+  const ozonTargets = [
+    ['web_composer_proxy', `https://www.ozon.ru/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`, true,  UA_DESKTOP],
+    ['api_composer_proxy', `https://api.ozon.ru/composer-api.bx/page/json/v2?url=/product/${ozonId}/`,     true,  UA_ANDROID_APP],
+    ['entrypoint_proxy',   `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${ozonId}/`, true, UA_MOBILE],
+    ['web_composer_direct',`https://www.ozon.ru/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`, false, UA_DESKTOP],
+    ['ozon_by_proxy',      `https://www.ozon.by/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`,  true,  UA_DESKTOP],
+    ['ozon_kz_proxy',      `https://www.ozon.kz/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`,  true,  UA_DESKTOP],
+    ['ozon_by_direct',     `https://www.ozon.by/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`,  false, UA_DESKTOP],
+    ['ozon_kz_direct',     `https://www.ozon.kz/api/composer-api.bx/page/json/v2?url=/product/${ozonId}/`,  false, UA_DESKTOP],
+  ];
+
+  await Promise.all(ozonTargets.map(async ([label, url, useProxy, ua]) => {
+    try {
+      const f = useProxy ? ruFetch : fetch;
+      const r = await f(url, {
+        headers: {
+          'User-Agent': ua,
+          'Accept': 'application/json',
+          'Accept-Language': 'ru-RU,ru;q=0.9',
+          'x-o3-app-name': 'ozonapp_android',
+          'x-o3-device-type': 'mobile',
+        },
+        signal: AbortSignal.timeout(9000),
+      });
+      const entry = { status: r.status };
+      if (r.ok) {
+        const txt = await r.text();
+        entry.len = txt.length;
+        try {
+          const d = JSON.parse(txt);
+          const ws = d.widgetStates || {};
+          const keys = Object.keys(ws);
+          entry.widgets = keys.length;
+          let title = null, price = null;
+          for (const k of keys) {
+            try {
+              const w = JSON.parse(ws[k]);
+              if (!title) title = w.title || w.name || (w.cellTrackingInfo && w.cellTrackingInfo.title) || null;
+              if (!price) {
+                const p = w.price || (w.cellTrackingInfo && w.cellTrackingInfo.price);
+                if (p) price = (typeof p === 'object' ? (p.price || p.cardPrice || p.originalPrice) : p) || null;
+              }
+            } catch (_) {}
+          }
+          entry.title = title ? String(title).slice(0, 40) : null;
+          entry.price = price ? String(price).slice(0, 30) : null;
+        } catch (_) { entry.parse = 'not_json'; entry.head = txt.slice(0, 120); }
+      }
+      out.ozon[label] = entry;
+    } catch (e) {
+      out.ozon[label] = { error: e.message.slice(0, 60), cause: String((e.cause && (e.cause.code || e.cause.message)) || '').slice(0, 40) };
+    }
+  }));
+
+  res.json(out);
+});
+
 // ── DEBUG: диагностика прокси ────────────────────────────────────────────────
 app.get('/debug/proxy-check', async (req, res) => {
   const result = {
