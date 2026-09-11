@@ -1,3 +1,14 @@
 {
-  "error": "endpoint_failed"
+  "RU_PROXY_URL_set": true,
+  "RU_PROXY_URL_preview": "http://201.24.49.174:3128",
+  "ruProxyAgent_created": true,
+  "tests": {
+    "direct_ip": "152.55.178.87",
+    "proxy_ip_error": "fetch failed",
+    "proxy_works": false,
+    "wb_search_error": "fetch failed",
+    "ozon_main_error": "fetch failed",
+    "ozon_api_error": "fetch failed",
+    "ozon_cdn_error": "fetch failed"
+  }
 }
