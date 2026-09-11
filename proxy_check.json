@@ -3,14 +3,13 @@
   "RU_PROXY_URL_preview": "http://201.24.49.174:3128",
   "ruProxyAgent_created": true,
   "tests": {
-    "direct_ip": "152.55.178.49",
+    "direct_ip": "13.52.68.61",
     "proxy_ip": "201.24.49.174",
     "proxy_works": true,
-    "wb_search_status": 200,
-    "wb_products_count": 0,
-    "wb_search_price": "no products",
-    "ozon_main_error": "fetch failed",
-    "ozon_api_error": "fetch failed",
+    "wb_card_status": 403,
+    "wb_search_nm_status": 429,
+    "ozon_main_error": "The operation was aborted due to timeout",
+    "ozon_api_error": "The operation was aborted due to timeout",
     "ozon_cdn": 403
   }
 }
