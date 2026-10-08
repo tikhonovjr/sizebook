@@ -1,0 +1,35 @@
+name: Prod Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Smoke test (read-only, no accounts created)
+        run: |
+          BASE="https://desirable-cat-production-6c28.up.railway.app"
+          FAIL=0
+          check() { # name, expected, actual
+            if [ "$2" = "$3" ]; then echo "PASS  $1 (got $3)"; else echo "FAIL  $1 (expected $2, got $3)"; FAIL=1; fi
+          }
+          # ждём, пока задеплоится версия со строгим auth (до 6 минут)
+          for i in $(seq 1 36); do
+            C=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$BASE/sizes" || echo 000)
+            [ "$C" = "401" ] && break; sleep 10
+          done
+          check "GET /sizes без токена"           401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/sizes)"
+          check "GET /wishlist без токена"        401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/wishlist)"
+          check "GET /items без токена"           401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$BASE/items?zone=x")"
+          check "POST /sizes без токена"          401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H 'Content-Type: application/json' -d '{}' $BASE/sizes)"
+          check "GET /sizes с мусорным токеном"   401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -H 'Authorization: Bearer garbage' $BASE/sizes)"
+          check "GET /profile/admin закрыт"       404 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/profile/admin)"
+          check "GET /share/<несуществующий>"     404 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/share/nonexistenttoken)"
+          check "POST /auth/login неверный пароль" 401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H 'Content-Type: application/json' -d '{"email":"nobody-xyz","password":"x"}' $BASE/auth/login)"
+          check "GET / (приложение)"              200 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/)"
+          check "GET /s/x (share-страница)"       200 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/s/x)"
+          B=$(curl -s --max-time 15 $BASE/s/x)
+          echo "$B" | grep -q "esc(" && echo "PASS  share.html содержит экранирование" || { echo "FAIL  share.html без экранирования"; FAIL=1; }
+          check "POST /parse открыт (400 на мусор)" 400 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H 'Content-Type: application/json' -d '{"url":"notaurl"}' $BASE/parse)"
+          exit $FAIL
