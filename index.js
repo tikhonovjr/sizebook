@@ -1362,6 +1362,38 @@ app.post('/parse', optionalAuth, async (req, res) => {
 });
 
 // Фоновое дополнение товара вишлиста: заполняем только пустые поля.
+// ── Прокси картинок вишлиста: только URL, уже сохранённые в вишлисте (не открытый прокси) ──
+const _dns = require('dns').promises;
+const _net = require('net');
+function _privIp(ip) {
+  if (_net.isIPv6(ip)) return /^(::1|fc|fd|fe80)/i.test(ip) || ip === '::';
+  const p = ip.split('.').map(Number);
+  return p[0] === 10 || p[0] === 127 || p[0] === 0 || (p[0] === 169 && p[1] === 254) ||
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 192 && p[1] === 168);
+}
+app.get('/img', async (req, res) => {
+  try {
+    const u = String(req.query.u || '');
+    if (!/^https?:\/\//i.test(u) || u.length > 2000) return res.status(400).end();
+    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 LIMIT 1', [u]);
+    if (!known.rowCount) return res.status(404).end();
+    const host = new URL(u).hostname;
+    const addrs = await _dns.lookup(host, { all: true });
+    if (!addrs.length || addrs.some(a => _privIp(a.address))) return res.status(403).end();
+    const r = await fetch(u, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8' },
+      signal: AbortSignal.timeout(15000), redirect: 'follow'
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !/^image\//i.test(ct)) return res.status(502).end();
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 10 * 1024 * 1024) return res.status(413).end();
+    res.set({ 'Content-Type': ct, 'Cache-Control': 'public, max-age=604800' });
+    res.send(buf);
+  } catch (e) { res.status(502).end(); }
+});
+
+
 async function enrichWishlistItem(id, userId, url, fallbackTitle) {
   try {
     const m = await runParse(url);
@@ -1750,14 +1782,6 @@ app.get('/debug/sdprobe', async (req, res) => {
 });
 
 // ВРЕМЕННО: что лежит в вишлисте у пользователей, подключивших Telegram (только поля отображения)
-app.get('/debug/wl', async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT w.id, w.title, w.shop, w.price, w.image, w.parse_status, w.added_at
-      FROM wishlist w JOIN users u ON u.id=w.user_id WHERE u.tg_chat_id IS NOT NULL ORDER BY w.id DESC LIMIT 8`);
-    res.json(r.rows);
-  } catch (e) { res.json({ error: e.message }); }
-});
-
 // /debug/uaprobe?url=...&ua=chrome|tg|fb|google|wa — прямой fetch с Railway-IP под разными User-Agent
 app.get('/debug/uaprobe', async (req, res) => {
   const url = req.query.url;

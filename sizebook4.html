@@ -3402,7 +3402,7 @@ function renderWishlist() {
       el.addEventListener('click', () => { if (el.parentElement && el.parentElement._blockClick && el.parentElement._blockClick()) return; window.open(item.url, '_blank'); });
     }
     const imgHtml = item.image
-      ? `<img referrerpolicy="no-referrer" loading="lazy" src="${_escWl(item.image)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
+      ? `<img referrerpolicy="no-referrer" loading="lazy" src="${_escWl(item.image)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="if(!this.dataset.p){this.dataset.p=1;this.src=API+'/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
       : `<div class="wishlist-thumb" style="flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg></div>`;
     el.innerHTML = `
       ${imgHtml}

@@ -210,7 +210,7 @@ function renderData(data) {
     data.wishlist.forEach(item => {
       const imgSrc = safeUrl(item.image);
       const img = imgSrc
-        ? `<img class="wl-thumb" src="${esc(imgSrc)}" alt="" onerror="this.className='wl-thumb-placeholder'">`
+        ? `<img class="wl-thumb" src="${esc(imgSrc)}" alt="" onerror="if(!this.dataset.p){this.dataset.p=1;this.src=location.origin+'/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.className='wl-thumb-placeholder'">`
         : `<div class="wl-thumb-placeholder"></div>`;
       const meta = esc([item.shop, item.size].filter(Boolean).join(' · '));
       const price = item.price ? `<div class="wl-price">${esc(formatPrice(item.price))}</div>` : '';
