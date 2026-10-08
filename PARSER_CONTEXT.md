@@ -1,3 +1,71 @@
+# SizeBook — парсер: Ozon и Wildberries решены через сервис `fetcher`
+
+_Обновлено: ночь 08→09.10.2026. Разделы ниже «История» — предыдущее состояние, оставлены для контекста._
+
+## TL;DR
+
+- **Ozon работает** по любой ссылке, включая короткие `ozon.ru/t/...` из «Поделиться»: название, цена (по Ozon-карте, как в приложении), фото. ~1–2 с при живой сессии.
+- **Wildberries — полная цена**: название и фото как раньше с basket CDN, цена из `fetcher` (~4–5 с). Scrape.do/Firecrawl остались запасным путём.
+- Ключ — отдельный сервис **`fetcher`** в том же проекте Railway: настоящий браузер (Camoufox — Firefox с правдоподобным отпечатком) в виртуальном дисплее. Он проходит JS-проверку Ozon/WB как обычный посетитель. Капчу не решаем.
+- Российский прокси **не нужен** (и мёртв: Timeweb VPS из `RU_PROXY_URL` не отвечает — таймаут).
+
+## Почему раньше не получалось
+
+| Что пробовали | Почему не работало |
+|---|---|
+| fetch / curl_cffi с TLS-отпечатком Chrome/Safari | Ozon отдаёт «Antibot Captcha» (JS-проверка), WB `card.wb.ru` — 403 |
+| Playwright (Chromium headless) | распознаётся как бот |
+| Firecrawl / Scrape.do | их браузер тоже распознаётся (Ozon), WB — нестабильно и медленно |
+| Российские VPS (Timeweb, proxy6) | дело не в стране, а в «похож ли посетитель на человека» |
+| Быстрая команда iOS (запрос с телефона) | Ozon показал слайдер-капчу даже с мобильного российского IP — это не браузер |
+
+## Как устроено
+
+```
+Пользователь → desirable-cat (/parse, бот, вишлист)
+                   │  POST http://fetcher.railway.internal:8080/product  (заголовок x-fetcher-secret)
+                   ▼
+              fetcher (Python, aiohttp + Camoufox)
+                ├─ Ozon: одна «живая» сессия браузера с куками после прохождения проверки
+                └─ WB: открывает страницу товара и перехватывает JSON cards/v4/detail
+```
+
+### Ozon (`fetcher/app.py`, класс `OzonSession`)
+- Свежая сессия проходит JS-проверку **не всегда** (замер: ~20–40% попыток, остальные — слайдер). Удачность сильно зависит от конкретного запуска браузера → после 2 неудач браузер перезапускается (новый отпечаток).
+- Прошедшая сессия работает быстро (1–2 с на товар), короткие ссылки сама раскрывает.
+- Сессия «протухает» через несколько минут — часто совпадает со сменой исходящего IP Railway (пул 152.55.176–177.x). Фоновый keeper раз в 90 с проверяет сессию и пересоздаёт её заранее, чтобы запрос пользователя попадал в тёплую.
+- Цена: JSON-LD `offers.price` (обычная) + `state-webPrice` `cardPrice` (по Ozon-карте). Основной сервис показывает `cardPrice`.
+- `available=false` → в вишлисте «Нет в наличии».
+
+### WB
+- Camoufox открывает `wildberries.ru/catalog/<nm>/detail.aspx`, ловит ответ `.../cards/v4/detail?...nm=...`, цена `sizes[].price.product / 100`.
+- Браузер WB закрывается после 10 мин простоя (экономия памяти), Ozon-браузер живёт всегда.
+
+### Основной сервис (`index.js`)
+- `viaFetcher(url)`; `parseOzon` и цена в `parseWildberries` идут через него.
+- Неполный результат кэшируется на 2 мин (а не на час).
+- `retryWishlistEnrichment` раз в 5 мин добирает название/цену у свежих Ozon/WB вещей (до 4 попыток), бот пишет «✓ Подтянул: …».
+- Бот отвечает карточкой с фото.
+
+### Переменные
+- desirable-cat: `FETCHER_URL=http://fetcher.railway.internal:8080`, `FETCHER_SECRET=${{fetcher.FETCHER_SECRET}}`
+- fetcher: `FETCHER_SECRET`, `PORT=8080`, `OZON_KEEP_EVERY=90`, `PROBE=0` (1 — прогон `PROBE_URLS` на старте), `WB_BROWSER_IDLE=600`
+- fetcher: healthcheck `/ready` (готов, когда есть живая сессия Ozon, или через 4 мин) — деплой без провала.
+- Watch patterns: fetcher — `/fetcher/**`; desirable-cat — всё, кроме `fetcher/**` и `.github/**`.
+
+### Проверка на проде
+- `.github/workflows/e2e-parse.yml` (ручной, `workflow_dispatch` с `urls` и `tag`) → результат в ветке `e2e-results`, файл `e2e_<tag>.json`.
+- Запуск из сессии: `gh api -X POST repos/tikhonovjr/sizebook/actions/workflows/e2e-parse.yml/dispatches -f ref=main -f 'inputs[tag]=t' -f 'inputs[urls]=...'`
+- Логи fetcher: строки `PRODUCT`, `OZON_KEEP`, `WB_NO_PRICE`.
+
+### Что улучшило бы надёжность Ozon
+- Статический исходящий IP Railway (план Pro) — сессия не будет протухать при смене IP.
+- Мобильный/резидентный российский прокси для браузера Ozon (`BROWSER_PROXY=1` + `RU_PROXY_URL`) — выше доля прохождения проверки.
+
+---
+
+# История (до 09.10.2026)
+
 # SizeBook — Контекст сессии «парсер: WB решён, Ozon/Спортмастер закрыты»
 
 _Дата: 11.09.2026. Заменяет предыдущие CONTEXT_FOR_NEW_CHAT.md в части парсинга._
