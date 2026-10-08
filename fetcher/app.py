@@ -456,27 +456,32 @@ class OzonSession:
         return None, None
 
     async def keeper(self):
-        """Фоном: держим сессию живой и готовим следующую до того, как текущая истечёт."""
+        """Фоном держим сессию живой: раз в OZON_KEEP_EVERY секунд проверяем её лёгким заходом
+        и сразу пересоздаём, если Ozon её «отозвал» (замер: примерно раз в 5 минут для всех
+        сессий с одного IP), — чтобы запрос пользователя попадал в уже рабочую сессию."""
         await asyncio.sleep(3)
-        refresh_age = int(os.environ.get('OZON_REFRESH_AGE', '200'))
-        hot_window = int(os.environ.get('OZON_HOT_WINDOW', str(24 * 3600)))
         while True:
             steps = []
             try:
-                idle = time.time() - self.last_demand > hot_window and self.last_demand > 0
+                tries = int(os.environ.get('OZON_KEEP_TRIES', '4'))
                 if self.ctx is None:
-                    await self.ensure(OZON_WARM_URL, steps, tries=int(os.environ.get('OZON_KEEP_TRIES', '3')))
-                elif not idle and time.time() - self.born > refresh_age:
-                    async with self.lock:
-                        br, ctx, _, _ = await self._mint(OZON_WARM_URL, steps, int(os.environ.get('OZON_KEEP_TRIES', '3')))
-                        if ctx is not None:
-                            self.stats['refresh'] += 1
-                            self._install(br, ctx)
+                    await self.ensure(OZON_WARM_URL, steps, tries=tries)
+                else:
+                    ctx = self.ctx
+                    t = time.time()
+                    html, _ = await self._get(ctx, OZON_WARM_URL)
+                    ok = ozon_page_passed(html)
+                    steps.append({'check': ok, 'ms': int((time.time() - t) * 1000)})
+                    if not ok:
+                        self.stats['stale'] += 1
+                        async with self.lock:
+                            await self._drop(ctx)
+                        await self.ensure(OZON_WARM_URL, steps, tries=tries)
                 log('OZON_KEEP', alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
                     used=self.used, stats=self.stats, steps=steps)
             except Exception:
                 log('ERROR', where='keeper', err=traceback.format_exc()[-1200:])
-            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '60')))
+            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '45')))
 
 
 OZON = OzonSession()
