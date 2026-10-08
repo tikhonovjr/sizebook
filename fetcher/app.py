@@ -337,6 +337,12 @@ class OzonSession:
         for i in range(tries or OZON_MINT_TRIES):
             if i:
                 await asyncio.sleep(min(2 + 2 * i, 8))
+            # Замер 08.10: первая сессия в только что запущенном браузере проходит проверку заметно
+            # чаще, повторные в том же браузере — почти никогда (у браузера тот же отпечаток).
+            # Поэтому каждая попытка — в свежем запуске (новый отпечаток), это 1–2 с.
+            async with BROWSER_OZ.lock:
+                await BROWSER_OZ._stop()
+            self.ctx = None
             t = time.time()
             ctx, html, final = await self._try_ctx(url)
             ok = ctx is not None
@@ -357,22 +363,16 @@ class OzonSession:
                                     lambda route: route.abort())
                 except Exception:
                     pass
-                old, self.ctx, self.born, self.used = self.ctx, ctx, time.time(), 0
-                if old:
-                    try:
-                        await old.close()
-                    except Exception:
-                        pass
+                self.ctx, self.born, self.used = ctx, time.time(), 0
+                # «Якорная» вкладка: скрипты Ozon в ней сами продлевают токены сессии
+                try:
+                    self.anchor = await ctx.new_page()
+                    await self.anchor.goto('https://www.ozon.ru/', wait_until='domcontentloaded', timeout=20000)
+                except Exception:
+                    pass
                 return html, final
             self.stats['mint_fail'] += 1
             fails += 1
-            if fails % 2 == 0:
-                # Замер: удачность зависит от отпечатка конкретного запуска браузера.
-                # Две неудачи подряд — перезапускаем браузер (новый отпечаток).
-                async with BROWSER_OZ.lock:
-                    await BROWSER_OZ._stop()
-                if steps is not None:
-                    steps.append({'browser': 'restart'})
         return None, None
 
     async def fetch(self, url, steps):
