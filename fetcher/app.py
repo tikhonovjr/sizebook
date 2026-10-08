@@ -342,8 +342,13 @@ class OzonSession:
             ok = ctx is not None
             if steps is not None:
                 ipm = re.search(r'id="captcha-ip"[^>]*value="([^"]+)"', html or '')
-                steps.append({'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000),
-                              'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')})
+                st = {'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000),
+                      'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')}
+                if not ok:
+                    tm = re.search(r'<title[^>]*>([^<]*)', html or '')
+                    st.update(title=(tm.group(1)[:60] if tm else None), len=len(html or ''), url=(final or '')[:120],
+                              slider='captcha-container' in (html or ''))
+                steps.append(st)
             if ok:
                 self.stats['mint_ok'] += 1
                 # проверка пройдена — дальше картинки/шрифты/видео этой сессии не нужны
