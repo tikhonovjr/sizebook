@@ -198,8 +198,8 @@ def parse_ozon(html):
         res['price'] = res['price'] or to_num(offers.get('price') or offers.get('lowPrice'))
         res['currency'] = offers.get('priceCurrency') or res['currency']
     # виджет цены: в data-state лежат обычная цена и цена по Ozon-карте
-    m = re.search(r'id="state-webPrice-[^"]*"[^>]*data-state=\'([^\']+)\'', html) \
-        or re.search(r'data-state=\'(\{[^\']*"cardPrice"[^\']*)\'', html)
+    m = re.search(r'id="state-webPrice-[^"]*"[^>]*data-state="([^"]+)"', html) \
+        or re.search(r"id=\"state-webPrice-[^\"]*\"[^>]*data-state='([^']+)'", html)
     if m:
         try:
             st = json.loads(htmllib.unescape(m.group(1)))
@@ -208,10 +208,6 @@ def parse_ozon(html):
             res['original_price'] = to_num(st.get('originalPrice'))
         except Exception:
             pass
-    if res['card_price'] is None:
-        k = html.find('cardPrice')
-        if k >= 0:
-            log('OZON_PRICE_DEBUG', around=html[max(0, k - 300):k + 300])
     res['title'] = res['title'] or meta(html, 'og:title')
     res['image'] = res['image'] or meta(html, 'og:image')
     if res['title']:
@@ -250,12 +246,22 @@ class OzonSession:
             except Exception:
                 pass
             deadline = time.time() + OZON_PASS_WAIT
+            slider_seen = 0
             while time.time() < deadline:
                 try:
                     html = await page.content()
                 except Exception:
                     await asyncio.sleep(0.4); continue
                 if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+                    break
+                try:  # слайдер показан — эта сессия уже не пройдёт, не ждём зря
+                    vis = await page.evaluate("() => { const c = document.querySelector('#captcha-container'); "
+                                              "return !!(c && c.getBoundingClientRect().height > 0 && "
+                                              "document.querySelector('#image') && document.querySelector('#image').src) }")
+                except Exception:
+                    vis = False
+                slider_seen = slider_seen + 1 if vis else 0
+                if slider_seen >= 2:
                     break
                 await asyncio.sleep(0.5)
             final = page.url
