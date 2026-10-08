@@ -182,8 +182,16 @@ def first_image(v):
 OZON_SHORT_RE = re.compile(r'^https?://(?:www\.)?ozon\.ru/t/([A-Za-z0-9_-]+)')
 
 
+def ozon_page_passed(html):
+    return ('application/ld+json' in html or 'state-webPrice' in html) and not CAPTCHA_RE.search(html[:30000])
+
+
 def ozon_ready(html):
-    return 'application/ld+json' in html or 'webPrice' in html
+    """Прошли антибот и на странице уже есть название и цена."""
+    if not ozon_page_passed(html):
+        return False
+    r = parse_ozon(html)
+    return bool(r['title'] and (r['price'] or r['card_price']))
 
 
 def parse_ozon(html):
@@ -247,13 +255,18 @@ class OzonSession:
                 pass
             deadline = time.time() + OZON_PASS_WAIT
             slider_seen = 0
+            passed_at = None
             while time.time() < deadline:
                 try:
                     html = await page.content()
                 except Exception:
                     await asyncio.sleep(0.4); continue
-                if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+                if ozon_ready(html):
                     break
+                if ozon_page_passed(html):  # прошли, но цены пока нет (или товара нет в наличии)
+                    passed_at = passed_at or time.time()
+                    if time.time() - passed_at > 4:
+                        break
                 try:  # слайдер показан — эта сессия уже не пройдёт, не ждём зря
                     vis = await page.evaluate("() => { const c = document.querySelector('#captcha-container'); "
                                               "return !!(c && c.getBoundingClientRect().height > 0 && "
@@ -270,7 +283,7 @@ class OzonSession:
                 await page.close()
             except Exception:
                 pass
-        if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+        if ozon_page_passed(html):
             return ctx, html, final
         await ctx.close()
         return None, html, final
@@ -330,13 +343,18 @@ class OzonSession:
             except Exception:
                 pass
             deadline = time.time() + 10
+            passed_at = None
             while time.time() < deadline:
                 try:
                     html = await page.content()
                 except Exception:
                     await asyncio.sleep(0.3); continue
-                if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+                if ozon_ready(html):
                     break
+                if ozon_page_passed(html):  # прошли, но цены пока нет (или товара нет в наличии)
+                    passed_at = passed_at or time.time()
+                    if time.time() - passed_at > 4:
+                        break
                 await asyncio.sleep(0.4)
             final = page.url
         except RuntimeError:
@@ -347,7 +365,7 @@ class OzonSession:
                     await page.close()
             except Exception:
                 pass
-        ok = ozon_ready(html) and not CAPTCHA_RE.search(html[:30000])
+        ok = ozon_page_passed(html)
         steps.append({'session': 'reuse', 'ok': ok, 'ms': int((time.time() - t) * 1000),
                       'age_s': int(time.time() - (self.born or time.time()))})
         if ok:
