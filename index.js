@@ -108,6 +108,7 @@ async function initDB() {
       added_at TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_status TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS received_at TIMESTAMP;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS add_key TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_chat_id BIGINT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_link_code TEXT;
@@ -528,6 +529,18 @@ app.post('/wishlist/quick', async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
+app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
+  try {
+    const received = !!(req.body && req.body.received);
+    const r = await pool.query(
+      `UPDATE wishlist SET received_at = ${received ? 'NOW()' : 'NULL'} WHERE id=$1 AND user_id=$2 RETURNING id, received_at`,
+      [req.params.id, req.user.id]
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
+    res.json({ ok: true, received_at: r.rows[0].received_at });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+
 app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
   try {
     await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
@@ -608,7 +621,7 @@ app.get('/share/:token', async (req, res) => {
 
     if (sections.wishlist) {
       const wr = await pool.query(
-        'SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC', [link.user_id]
+        'SELECT * FROM wishlist WHERE user_id=$1 AND received_at IS NULL ORDER BY id DESC', [link.user_id]
       );
       const excl = Array.isArray(sections.excluded_wishlist_ids) ? sections.excluded_wishlist_ids : [];
       result.wishlist = excl.length
@@ -944,13 +957,33 @@ const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a mome
 
 async function parseViaScrapedo(url, { geo = null } = {}) {
   if (!process.env.SCRAPEDO_TOKEN) return null;
-  if (!sdAllowed()) { console.log('[scrapedo] дневной лимит исчерпан'); return null; }
-  const r = await fetchViaScrapedo(url, { super: true, geo, timeout: 25000 });
-  console.log(`[scrapedo] ${new URL(url).hostname} http=${r.http} ms=${r.ms} cost=${r.cost} remaining=${r.remaining} ${r.error || ''}`);
-  if (!r.html || r.http !== 200) return null;
-  const p = parseProductFromHtml(r.html, url);
-  if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
-  return p;
+  // Хеджирование: Scrape.do иногда зависает на ротации прокси (успешные ответы идут за 2–5 с).
+  // Если первый запрос не ответил за 6 с — стартуем второй, берём первый успешный.
+  const attempt = async () => {
+    if (!sdAllowed()) { console.log('[scrapedo] дневной лимит исчерпан'); return null; }
+    const r = await fetchViaScrapedo(url, { super: true, geo, timeout: 14000 });
+    console.log(`[scrapedo] ${new URL(url).hostname} http=${r.http} ms=${r.ms} cost=${r.cost} remaining=${r.remaining} ${r.error || ''}`);
+    if (!r.html || r.http !== 200) return null;
+    const p = parseProductFromHtml(r.html, url);
+    if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
+    return (p.title || p.price || p.image) ? p : null;
+  };
+  return new Promise((resolve) => {
+    let started = 0, finished = 0, done = false, timer = null;
+    const finish = (v) => { if (!done) { done = true; clearTimeout(timer); resolve(v); } };
+    const run = () => {
+      started++;
+      attempt().then(onResult, () => onResult(null));
+    };
+    const onResult = (v) => {
+      finished++;
+      if (v) return finish(v);
+      if (started < 2) { clearTimeout(timer); return run(); } // первый вернул пусто — сразу повтор с новым прокси
+      if (finished >= started) finish(null);
+    };
+    run();
+    timer = setTimeout(() => { if (!done && started < 2) run(); }, 6000);
+  });
 }
 
 // ── Стратегии по магазинам ───────────────────────────────────────────────────
