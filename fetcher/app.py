@@ -375,7 +375,7 @@ class OzonSession:
             fails += 1
         return None, None
 
-    async def fetch(self, url, steps):
+    async def fetch(self, url, steps, _retried=False):
         """Страница url через живую сессию; при «протухании» — новая сессия."""
         async with self.lock:
             if self.ctx is None:
@@ -426,6 +426,11 @@ class OzonSession:
             self.stats['hit'] += 1
             return html, final
         self.stats['stale'] += 1
+        async with self.lock:
+            fresh = self.ctx is not None and self.ctx is not ctx
+        if fresh and not _retried:
+            # пока мы ждали, сессию уже пересоздал другой запрос — пробуем в ней
+            return await self.fetch(url, steps, _retried=True)
         async with self.lock:
             if self.ctx is ctx:
                 self.ctx = None
