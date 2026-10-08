@@ -643,7 +643,18 @@ def main():
     app.router.add_get('/ready', h_ready)
     app.router.add_post('/product', h_product)
     app.on_startup.append(on_start)
-    web.run_app(app, host=['0.0.0.0', '::'], port=PORT, access_log=None)
+    async def serve():
+        runner = web.AppRunner(app, access_log=None)
+        await runner.setup()
+        # IPv4 — для healthcheck Railway, IPv6 — для внутренней сети (fetcher.railway.internal)
+        await web.TCPSite(runner, '0.0.0.0', PORT).start()
+        try:
+            await web.TCPSite(runner, '::', PORT).start()
+        except OSError as e:
+            log('WARN', msg='IPv6 bind failed', err=str(e))
+        log('LISTEN', port=PORT)
+        await asyncio.Event().wait()
+    asyncio.run(serve())
 
 
 if __name__ == '__main__':
