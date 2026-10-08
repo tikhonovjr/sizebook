@@ -109,6 +109,9 @@ async function initDB() {
     );
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_status TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS add_key TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_chat_id BIGINT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_link_code TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_tg_chat_idx ON users(tg_chat_id);
     CREATE UNIQUE INDEX IF NOT EXISTS users_add_key_idx ON users(add_key);
     CREATE TABLE IF NOT EXISTS sizes (
       id SERIAL PRIMARY KEY,
@@ -403,6 +406,107 @@ app.post('/me/add-key/rotate', authenticateToken, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
+// Общая функция: достаёт первую ссылку из текста, кладёт товар в вишлист (pending), возвращает функцию фонового дополнения.
+async function addWishlistFromText(userId, raw) {
+  const m = String(raw).match(/https?:\/\/[^\s<>"']+/i);
+  if (!m) return { error: 'Ссылка не найдена' };
+  const url = m[0].replace(/[).,;]+$/, '');
+  let host;
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return { error: 'Некорректная ссылка' }; }
+  const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
+  if (dup.rows[0]) return { duplicate: true, host };
+  const r = await pool.query(
+    "INSERT INTO wishlist (user_id,title,shop,url,parse_status) VALUES ($1,$2,$3,$4,'pending') RETURNING id",
+    [userId, host, host, url]
+  );
+  return { host, url, enrich: () => enrichWishlistItem(r.rows[0].id, userId, url, host) };
+}
+
+// ── TELEGRAM-БОТ: «Поделиться» → Telegram → SizeBook ─────────────────────────
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TG_BOT = (process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '');
+const TG_SECRET = TG_TOKEN ? crypto.createHash('sha256').update(TG_TOKEN + JWT_SECRET).digest('hex').slice(0, 32) : '';
+async function tgSend(chatId, text) {
+  if (!TG_TOKEN) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (e) { console.log('[tg] send error', e.message); }
+}
+async function tgSetWebhook() {
+  const domain = process.env.PUBLIC_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
+  if (!TG_TOKEN || !domain) return;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/setWebhook`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `${domain}/tg/webhook/${TG_SECRET}`, allowed_updates: ['message'] }),
+      signal: AbortSignal.timeout(10000),
+    });
+    console.log('[tg] setWebhook', r.status);
+  } catch (e) { console.log('[tg] setWebhook error', e.message); }
+}
+
+app.get('/me/telegram', authenticateToken, async (req, res) => {
+  try {
+    if (!TG_TOKEN || !TG_BOT) return res.json({ enabled: false });
+    const r = await pool.query('SELECT tg_chat_id, tg_link_code FROM users WHERE id=$1', [req.user.id]);
+    const row = r.rows[0];
+    if (!row) return res.status(404).json({ error: 'Не найден' });
+    if (row.tg_chat_id) return res.json({ enabled: true, linked: true, bot: TG_BOT });
+    let code = row.tg_link_code;
+    if (!code) {
+      code = crypto.randomBytes(12).toString('hex');
+      await pool.query('UPDATE users SET tg_link_code=$1 WHERE id=$2', [code, req.user.id]);
+    }
+    res.json({ enabled: true, linked: false, bot: TG_BOT, link: `https://t.me/${TG_BOT}?start=${code}` });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+app.post('/me/telegram/unlink', authenticateToken, async (req, res) => {
+  try { await pool.query('UPDATE users SET tg_chat_id=NULL, tg_link_code=NULL WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+const tgHits = new Map();
+app.post('/tg/webhook/:secret', async (req, res) => {
+  if (!TG_SECRET || req.params.secret !== TG_SECRET) return res.sendStatus(404);
+  res.sendStatus(200); // Telegram ждёт быстрый ответ, остальное делаем после
+  try {
+    const msg = req.body && req.body.message;
+    if (!msg || !msg.chat || msg.chat.type !== 'private') return;
+    const chatId = msg.chat.id;
+    const text = String(msg.text || msg.caption || '');
+    const now = Date.now();
+    const hits = (tgHits.get(chatId) || []).filter(t => now - t < 60000);
+    if (hits.length >= 20) return;
+    hits.push(now); tgHits.set(chatId, hits);
+    if (tgHits.size > 5000) tgHits.delete(tgHits.keys().next().value);
+
+    const start = text.match(/^\/start(?:\s+([0-9a-f]{24}))?/i);
+    if (start) {
+      const code = start[1];
+      if (code) {
+        const u = await pool.query('UPDATE users SET tg_chat_id=$1, tg_link_code=NULL WHERE tg_link_code=$2 RETURNING id', [chatId, code]);
+        if (u.rows[0]) return tgSend(chatId, 'Готово, Telegram подключён к SizeBook ✓\n\nТеперь в любом приложении магазина нажмите «Поделиться» → Telegram → этот чат, и вещь окажется в вашем вишлисте.');
+        return tgSend(chatId, 'Ссылка для подключения устарела. Откройте SizeBook → Вишлист и нажмите «Подключить Telegram» ещё раз.');
+      }
+      const linked = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
+      return tgSend(chatId, linked.rows[0] ? 'Присылайте ссылки на товары, я добавлю их в ваш вишлист.' : 'Чтобы подключить бота, откройте SizeBook → Вишлист → «Подключить Telegram».');
+    }
+    const u = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
+    if (!u.rows[0]) return tgSend(chatId, 'Бот ещё не подключён. Откройте SizeBook → Вишлист → «Подключить Telegram».');
+    const out = await addWishlistFromText(u.rows[0].id, text);
+    if (out.error) return tgSend(chatId, 'Не нашёл ссылку на товар в сообщении. Пришлите её через «Поделиться» в приложении магазина.');
+    if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`);
+    await tgSend(chatId, `Добавил: ${out.host}. Подтягиваю название и цену…`);
+    const e = await out.enrich();
+    if (e && e.found) await tgSend(chatId, `✓ ${e.title}${e.price ? ' — ' + e.price : ''}`);
+    else await tgSend(chatId, 'Вещь сохранена, но название и цену магазин не отдал. Они могут появиться позже в приложении.');
+  } catch (e) { console.error('[tg] webhook', e.message); }
+});
+
 const quickHits = new Map(); // key -> [timestamps]
 app.post('/wishlist/quick', async (req, res) => {
   try {
@@ -417,25 +521,10 @@ app.post('/wishlist/quick', async (req, res) => {
 
     const u = await pool.query('SELECT id FROM users WHERE add_key=$1', [key]);
     if (!u.rows[0]) return res.status(401).json({ error: 'Неверный ключ' });
-    const userId = u.rows[0].id;
-
-    // Из «Поделиться» часто приходит текст вида «Смотри, что нашёл: https://…» — берём первую ссылку
-    const raw = String(b.url || b.text || b.link || '');
-    const m = raw.match(/https?:\/\/[^\s<>"']+/i);
-    if (!m) return res.status(400).json({ error: 'Ссылка не найдена' });
-    const url = m[0].replace(/[).,;]+$/, '');
-    let host;
-    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return res.status(400).json({ error: 'Некорректная ссылка' }); }
-
-    const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
-    if (dup.rows[0]) return res.json({ ok: true, duplicate: true, shop: host });
-
-    const r = await pool.query(
-      "INSERT INTO wishlist (user_id,title,shop,url,parse_status) VALUES ($1,$2,$3,$4,'pending') RETURNING id",
-      [userId, host, host, url]
-    );
-    res.json({ ok: true, shop: host });
-    enrichWishlistItem(r.rows[0].id, userId, url, host);
+    const out = await addWishlistFromText(u.rows[0].id, String(b.url || b.text || b.link || ''));
+    if (out.error) return res.status(400).json({ error: out.error });
+    res.json({ ok: true, duplicate: out.duplicate || undefined, shop: out.host });
+    if (out.enrich) out.enrich();
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -1244,16 +1333,19 @@ async function enrichWishlistItem(id, userId, url, fallbackTitle) {
   try {
     const m = await runParse(url);
     const cur = (await pool.query('SELECT title, price, image FROM wishlist WHERE id=$1 AND user_id=$2', [id, userId])).rows[0];
-    if (!cur) return; // удалили, пока парсили
+    if (!cur) return null; // удалили, пока парсили
     const titleEmpty = !cur.title || cur.title === fallbackTitle;
+    const newTitle = titleEmpty && m.title ? m.title : cur.title;
     await pool.query(
       `UPDATE wishlist SET title=$1, price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3), parse_status=$4 WHERE id=$5 AND user_id=$6`,
       [titleEmpty && m.title ? m.title : cur.title, m.price || null, m.image || null,
        (m.title || m.price || m.image) ? 'done' : 'failed', id, userId]
     );
+    return { title: newTitle, price: cur.price || m.price || null, found: !!(m.title || m.price || m.image) };
   } catch (e) {
     console.error('[enrich]', e.message);
     try { await pool.query("UPDATE wishlist SET parse_status='failed' WHERE id=$1 AND parse_status='pending'", [id]); } catch (_) {}
+    return null;
   }
 }
 
@@ -1766,5 +1858,5 @@ app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 
 // ── СТАРТ ─────────────────────────────────────────────────────────────────────
 initDB().then(() => {
-  app.listen(PORT, () => console.log(`SizeBook on port ${PORT}`));
+  app.listen(PORT, () => { console.log(`SizeBook on port ${PORT}`); tgSetWebhook(); });
 }).catch(e => { console.error('DB init error:', e); process.exit(1); });
