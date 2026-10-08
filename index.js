@@ -107,6 +107,7 @@ async function initDB() {
       image TEXT,
       added_at TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_status TEXT;
     CREATE TABLE IF NOT EXISTS sizes (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -194,6 +195,8 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_items_user_zone ON items(user_id, zone);
   `);
+
+  await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
 
   const usersCountRes = await pool.query('SELECT COUNT(*)::int AS c FROM users');
   const usersCount = usersCountRes.rows[0].c;
@@ -361,14 +364,18 @@ app.get('/wishlist', authenticateToken, async (req, res) => {
 });
 
 app.post('/wishlist', authenticateToken, async (req, res) => {
-  const { title, shop, url, price, size, image } = req.body;
+  const { title, shop, url, price, size, image, autotitle } = req.body;
   if (!title) return res.status(400).json({ error: 'Нужно название' });
+  let valid = false;
+  try { valid = !!url && /^https?:$/.test(new URL(url).protocol); } catch (_) {}
+  const needsEnrich = valid && (autotitle || !price || !image);
   try {
     const r = await pool.query(
-      'INSERT INTO wishlist (user_id,title,shop,url,price,size,image) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-      [req.user.id, title, shop||null, url||null, price||null, size||null, image||null]
+      'INSERT INTO wishlist (user_id,title,shop,url,price,size,image,parse_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+      [req.user.id, title, shop||null, url||null, price||null, size||null, image||null, needsEnrich ? 'pending' : null]
     );
     res.json(r.rows[0]);
+    if (needsEnrich) enrichWishlistItem(r.rows[0].id, req.user.id, url, autotitle ? title : null);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
@@ -984,7 +991,7 @@ function mergeParseResults(a, b) {
 
 
 
-app.post('/parse', optionalAuth, async (req, res) => {
+async function parseHandler(req, res) {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
@@ -1107,7 +1114,58 @@ app.post('/parse', optionalAuth, async (req, res) => {
   t.mark('done');
   console.log(`[parse] final result (${host}) за ${t.total()}ms:`, accumulated, t.steps());
   res.json(withTiming(accumulated));
+}
+
+// Кэш результатов парсинга (в памяти) + дедупликация одновременных запросов по одному URL.
+const PARSE_CACHE = new Map();      // url -> { at, data }
+const PARSE_INFLIGHT = new Map();   // url -> Promise
+const PARSE_CACHE_TTL = 60 * 60 * 1000;
+
+function runParse(url) {
+  const hit = PARSE_CACHE.get(url);
+  if (hit && Date.now() - hit.at < PARSE_CACHE_TTL) return Promise.resolve({ ...hit.data, _cached: true });
+  if (PARSE_INFLIGHT.has(url)) return PARSE_INFLIGHT.get(url);
+  const p = new Promise((resolve) => {
+    const fakeRes = { statusCode: 200, status(c) { this.statusCode = c; return this; }, json(o) { resolve({ ...o, _status: this.statusCode }); return this; } };
+    parseHandler({ body: { url } }, fakeRes).catch(e => resolve({ error: e.message, _status: 500 }));
+  }).then(r => {
+    if (r._status === 200 && (r.title || r.price || r.image)) {
+      PARSE_CACHE.set(url, { at: Date.now(), data: r });
+      if (PARSE_CACHE.size > 500) PARSE_CACHE.delete(PARSE_CACHE.keys().next().value);
+    }
+    return r;
+  }).finally(() => PARSE_INFLIGHT.delete(url));
+  PARSE_INFLIGHT.set(url, p);
+  return p;
+}
+
+app.post('/parse', optionalAuth, async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ error: 'URL обязателен' });
+  try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
+  const r = await runParse(url);
+  const { _status, ...body } = r;
+  res.status(_status || 200).json(body);
 });
+
+// Фоновое дополнение товара вишлиста: заполняем только пустые поля.
+async function enrichWishlistItem(id, userId, url, fallbackTitle) {
+  try {
+    const m = await runParse(url);
+    const cur = (await pool.query('SELECT title, price, image FROM wishlist WHERE id=$1 AND user_id=$2', [id, userId])).rows[0];
+    if (!cur) return; // удалили, пока парсили
+    const titleEmpty = !cur.title || cur.title === fallbackTitle;
+    await pool.query(
+      `UPDATE wishlist SET title=$1, price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3), parse_status=$4 WHERE id=$5 AND user_id=$6`,
+      [titleEmpty && m.title ? m.title : cur.title, m.price || null, m.image || null,
+       (m.title || m.price || m.image) ? 'done' : 'failed', id, userId]
+    );
+  } catch (e) {
+    console.error('[enrich]', e.message);
+    try { await pool.query("UPDATE wishlist SET parse_status='failed' WHERE id=$1 AND parse_status='pending'", [id]); } catch (_) {}
+  }
+}
+
 
 
 
