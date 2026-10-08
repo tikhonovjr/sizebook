@@ -1749,15 +1749,6 @@ app.get('/debug/sdprobe', async (req, res) => {
   res.json(e);
 });
 
-// ВРЕМЕННО: что лежит в вишлисте у пользователей, подключивших Telegram (только поля отображения)
-app.get('/debug/wl', async (req, res) => {
-  try {
-    const r = await pool.query(`SELECT w.id, w.title, w.shop, w.price, w.image, w.parse_status, w.added_at
-      FROM wishlist w JOIN users u ON u.id=w.user_id WHERE u.tg_chat_id IS NOT NULL ORDER BY w.id DESC LIMIT 8`);
-    res.json(r.rows);
-  } catch (e) { res.json({ error: e.message }); }
-});
-
 // /debug/uaprobe?url=...&ua=chrome|tg|fb|google|wa — прямой fetch с Railway-IP под разными User-Agent
 app.get('/debug/uaprobe', async (req, res) => {
   const url = req.query.url;

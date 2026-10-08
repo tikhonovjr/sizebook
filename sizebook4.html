@@ -3344,7 +3344,11 @@ let _wlParseAbort = null;
 async function loadWishlist() {
   try {
     const r = await fetch(API + '/wishlist', { headers: apiHeaders(), signal: AbortSignal.timeout(3000) });
-    if (r.ok) { wlItems = await r.json(); renderWishlist(); return; }
+    if (r.ok) {
+      wlItems = await r.json(); renderWishlist();
+      if (wlItems.some(i => i.parse_status === 'pending')) pollWishlistPending();
+      return;
+    }
   } catch(e) {}
   // Сервер недоступен — показываем что уже в wlItems (локальные данные)
   renderWishlist();
@@ -3398,7 +3402,7 @@ function renderWishlist() {
       el.addEventListener('click', () => { if (el.parentElement && el.parentElement._blockClick && el.parentElement._blockClick()) return; window.open(item.url, '_blank'); });
     }
     const imgHtml = item.image
-      ? `<img src="${_escWl(item.image)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
+      ? `<img referrerpolicy="no-referrer" loading="lazy" src="${_escWl(item.image)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<div class=wishlist-thumb style=flex-shrink:0><svg width=20 height=20 viewBox=\\'0 0 24 24\\' fill=none stroke=currentColor stroke-width=1.5><rect x=3 y=3 width=18 height=18 rx=2/><path d=\\'M3 9l5-5 4 4 4-4 5 5\\'/></svg></div>'">`
       : `<div class="wishlist-thumb" style="flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l5-5 4 4 4-4 5 5"/></svg></div>`;
     el.innerHTML = `
       ${imgHtml}
@@ -3544,6 +3548,12 @@ function _cancelWlParse() {
     ind.style.opacity = 0; ind.style.transform = '';
   });
 })();
+
+// Приложение вернулось на передний план (например, после добавления через Telegram) — подтягиваем свежие данные
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && authToken) { try { refreshCurrent(); } catch (_) {} }
+});
+window.addEventListener('pageshow', e => { if (e.persisted && authToken) { try { refreshCurrent(); } catch (_) {} } });
 
 async function refreshCurrent() {
   const jobs = [loadWishlist(), loadAllSizes(), loadItemCounts()];
