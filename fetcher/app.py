@@ -93,7 +93,8 @@ class Browser:
                 pass
 
 
-BROWSER = Browser()
+BROWSER = Browser()      # WB и прочее
+BROWSER_OZ = Browser()   # отдельный браузер для Ozon: его перезапуск (смена отпечатка) не мешает WB
 
 
 async def open_page(key, url, *, on_response=None, timeout=25, ready=None):
@@ -207,6 +208,10 @@ def parse_ozon(html):
             res['original_price'] = to_num(st.get('originalPrice'))
         except Exception:
             pass
+    if res['card_price'] is None:
+        k = html.find('cardPrice')
+        if k >= 0:
+            log('OZON_PRICE_DEBUG', around=html[max(0, k - 300):k + 300])
     res['title'] = res['title'] or meta(html, 'og:title')
     res['image'] = res['image'] or meta(html, 'og:image')
     if res['title']:
@@ -234,8 +239,8 @@ class OzonSession:
 
     async def _try_ctx(self, url):
         """Новая сессия + переход на url. Возвращает (ctx|None, html, final)."""
-        await BROWSER.context('wb')  # гарантирует, что браузер запущен
-        ctx = await BROWSER.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
+        await BROWSER_OZ.context('_boot')  # гарантирует, что браузер запущен
+        ctx = await BROWSER_OZ.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
                                            viewport={'width': 1366, 'height': 900})
         page = await ctx.new_page()
         html, final = '', url
@@ -285,10 +290,13 @@ class OzonSession:
                 return html, final
             self.stats['mint_fail'] += 1
             fails += 1
-            if fails % 4 == 0 and BROWSER.active == 0:
-                # серия неудач — перезапускаем браузер (новый отпечаток)
-                async with BROWSER.lock:
-                    await BROWSER._stop()
+            if fails % 2 == 0:
+                # Замер: удачность зависит от отпечатка конкретного запуска браузера.
+                # Две неудачи подряд — перезапускаем браузер (новый отпечаток).
+                async with BROWSER_OZ.lock:
+                    await BROWSER_OZ._stop()
+                if steps is not None:
+                    steps.append({'browser': 'restart'})
         return None, None
 
     async def fetch(self, url, steps):
