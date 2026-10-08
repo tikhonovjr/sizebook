@@ -1,217 +1,373 @@
-"""SizeBook fetcher: отдельный сервис для магазинов с антиботом (WB, Ozon).
+"""SizeBook fetcher — отдельный сервис для магазинов с жёстким антиботом (Ozon, Wildberries).
 
-- curl_cffi: HTTP-клиент с TLS/HTTP2-отпечатком настоящего браузера.
-- Camoufox: Firefox с правдоподобным отпечатком, в виртуальном дисплее (не headless).
-- RU_PROXY_URL: российский выход (нужен для Ozon, который режет зарубежные IP).
+Почему отдельный сервис: здесь живёт настоящий браузер (Camoufox — Firefox с правдоподобным
+отпечатком, в виртуальном дисплее). Он проходит JS-проверку Ozon/WB так же, как обычный
+посетитель, и открывает ровно ту страницу, ссылку на которую прислал пользователь.
+Основной бэкенд (desirable-cat) ходит сюда по внутренней сети Railway.
 
-HTTP API (только внутренняя сеть Railway + секрет):
-  POST /fetch {url, mode} -> {status, final_url, html|json, ms}
+API (внутренняя сеть + заголовок x-fetcher-secret):
+  POST /product {url}  -> {ok, shop, title, price, currency, card_price, image, final_url, ms, steps}
   GET  /health
-При PROBE=1 на старте прогоняет набор проверок и пишет результаты в лог (строки PROBE {...}).
+При PROBE=1 на старте прогоняет набор проверок и пишет результаты в лог (строки PROBE ...).
 """
-import asyncio, json, os, re, time, traceback
+import asyncio, json, os, re, time, traceback, html as htmllib
 from urllib.parse import urlparse
 
 from aiohttp import web
-from curl_cffi import requests as creq
 
-RU_PROXY = os.environ.get('RU_PROXY_URL') or None
 SECRET = os.environ.get('FETCHER_SECRET', '')
 PORT = int(os.environ.get('PORT', '8080'))
+MAX_PAGES = int(os.environ.get('FETCHER_MAX_PAGES', '2'))
+RECYCLE_AFTER = int(os.environ.get('FETCHER_RECYCLE_AFTER', '150'))  # перезапуск браузера каждые N страниц
 
-CAPTCHA_RE = re.compile(r'fab_cp_|Antibot Captcha|Сопоставьте пазл|Подтвердите, что вы не бот|Доступ ограничен|x-pow', re.I)
+CAPTCHA_RE = re.compile(r'<title>Antibot Captcha</title>|fab_cp_|Сопоставьте пазл', re.I)
 
 
 def log(kind, **kw):
     print(kind, json.dumps(kw, ensure_ascii=False)[:4000], flush=True)
 
 
-# ── curl_cffi ────────────────────────────────────────────────────────────────
-def cffi_get(url, impersonate='chrome', proxy=None, headers=None, timeout=20):
-    t = time.time()
-    try:
-        s = creq.Session(impersonate=impersonate)
-        r = s.get(url, headers=headers or {}, proxy=proxy, timeout=timeout, allow_redirects=True)
-        return {'status': r.status_code, 'final_url': r.url, 'text': r.text,
-                'ms': int((time.time() - t) * 1000), 'cookies': list(s.cookies.keys())}
-    except Exception as e:
-        return {'status': None, 'error': str(e)[:300], 'ms': int((time.time() - t) * 1000)}
+# ── браузер ──────────────────────────────────────────────────────────────────
+class Browser:
+    """Один браузер на процесс, по постоянному контексту (с куками) на каждый магазин.
 
+    Куки, полученные после прохождения JS-проверки, переиспользуются — повторные
+    запросы к тому же магазину идут без проверки и быстрее.
+    """
 
-# ── Camoufox ─────────────────────────────────────────────────────────────────
-_browser = None
-_browser_lock = asyncio.Lock()
+    def __init__(self):
+        self.cm = None
+        self.br = None
+        self.ctx = {}
+        self.lock = asyncio.Lock()
+        self.sem = asyncio.Semaphore(MAX_PAGES)
+        self.pages_opened = 0
+        self.active = 0
 
+    async def _start(self):
+        from camoufox.async_api import AsyncCamoufox
+        t = time.time()
+        self.cm = AsyncCamoufox(headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
+                                humanize=False, i_know_what_im_doing=True,
+                                firefox_user_prefs={'media.autoplay.default': 5})
+        self.br = await self.cm.__aenter__()
+        self.ctx = {}
+        self.pages_opened = 0
+        log('BROWSER', event='started', ms=int((time.time() - t) * 1000))
 
-def proxy_conf():
-    if not RU_PROXY:
-        return None
-    u = urlparse(RU_PROXY)
-    c = {'server': f'{u.scheme}://{u.hostname}:{u.port}'}
-    if u.username:
-        c['username'] = u.username
-        c['password'] = u.password or ''
-    return c
-
-
-async def get_browser(use_proxy=True):
-    """Один живой браузер на процесс (запуск ~3–5 с, дальше страницы открываются быстро)."""
-    global _browser
-    from camoufox.async_api import AsyncCamoufox
-    async with _browser_lock:
-        if _browser is None:
-            opts = dict(headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
-                        humanize=False, i_know_what_im_doing=True)
-            px = proxy_conf() if use_proxy else None
-            if px:
-                opts['proxy'] = px
-                opts['geoip'] = True
-            cm = AsyncCamoufox(**opts)
-            br = await cm.__aenter__()
-            _browser = (cm, br)
-        return _browser[1]
-
-
-async def browser_get(url, wait_selector=None, timeout=30, settle=2.5, use_proxy=None):
-    t = time.time()
-    if use_proxy is None:
-        use_proxy = os.environ.get('BROWSER_PROXY', '0') == '1'
-    br = await get_browser(use_proxy)
-    ctx = await br.new_context(locale='ru-RU')
-    page = await ctx.new_page()
-    out = {}
-    try:
-        resp = await page.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
-        out['first_status'] = resp.status if resp else None
-        # антибот-страница Ozon сама перезагружается после JS-проверки — ждём уход с неё
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            html = await page.content()
-            if not CAPTCHA_RE.search(html[:20000]) and ('og:title' in html or '<h1' in html):
-                break
-            await asyncio.sleep(1)
-        if wait_selector:
-            try:
-                await page.wait_for_selector(wait_selector, timeout=8000)
-            except Exception:
-                pass
-        await asyncio.sleep(settle)
-        out['html'] = await page.content()
-        out['final_url'] = page.url
-        out['title'] = await page.title()
-    except Exception as e:
-        out['error'] = str(e)[:300]
+    async def _stop(self):
         try:
-            out['html'] = await page.content()
-            out['final_url'] = page.url
+            if self.cm:
+                await self.cm.__aexit__(None, None, None)
         except Exception:
             pass
-    finally:
-        await ctx.close()
-    out['ms'] = int((time.time() - t) * 1000)
+        self.cm = self.br = None
+        self.ctx = {}
+
+    async def context(self, key):
+        async with self.lock:
+            need_restart = self.br is None or not self.br.is_connected()
+            if not need_restart and self.pages_opened >= RECYCLE_AFTER and self.active == 0:
+                need_restart = True
+            if need_restart:
+                await self._stop()
+                await self._start()
+            if key not in self.ctx:
+                self.ctx[key] = await self.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
+                                                          viewport={'width': 1366, 'height': 900})
+                # картинки/видео/шрифты не нужны — страница грузится заметно быстрее
+                await self.ctx[key].route(re.compile(r'\.(png|jpe?g|webp|gif|avif|mp4|webm|woff2?|ttf)(\?|$)', re.I),
+                                          lambda route: route.abort())
+            self.pages_opened += 1
+            return self.ctx[key]
+
+    async def reset_context(self, key):
+        async with self.lock:
+            c = self.ctx.pop(key, None)
+        if c:
+            try:
+                await c.close()
+            except Exception:
+                pass
+
+
+BROWSER = Browser()
+
+
+async def open_page(key, url, *, on_response=None, timeout=25, ready=None):
+    """Открывает url в контексте магазина key, ждёт, пока пройдёт антибот и выполнится ready(html).
+    Возвращает (html, final_url, first_status, steps)."""
+    steps = []
+    async with BROWSER.sem:
+        BROWSER.active += 1
+        try:
+            ctx = await BROWSER.context(key)
+            page = await ctx.new_page()
+            if on_response:
+                page.on('response', on_response)
+            try:
+                t = time.time()
+                resp = await page.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+                status = resp.status if resp else None
+                steps.append({'goto': status, 'ms': int((time.time() - t) * 1000)})
+                deadline = time.time() + timeout
+                html = ''
+                while time.time() < deadline:
+                    try:
+                        html = await page.content()
+                    except Exception:  # страница перезагружается после проверки
+                        await asyncio.sleep(0.5)
+                        continue
+                    if not CAPTCHA_RE.search(html[:30000]) and (ready is None or ready(html)):
+                        break
+                    await asyncio.sleep(0.7)
+                steps.append({'settled_ms': int((time.time() - t) * 1000), 'captcha': bool(CAPTCHA_RE.search(html[:30000]))})
+                return html, page.url, status, steps
+            finally:
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+        finally:
+            BROWSER.active -= 1
+
+
+# ── разбор ───────────────────────────────────────────────────────────────────
+def meta(html, prop):
+    m = re.search(r'<meta[^>]+(?:property|name)=["\']%s["\'][^>]*content=["\']([^"\']*)' % re.escape(prop), html) \
+        or re.search(r'<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']%s["\']' % re.escape(prop), html)
+    return htmllib.unescape(m.group(1)).strip() if m else None
+
+
+def jsonld_products(html):
+    out = []
+    for m in re.finditer(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', html, re.S):
+        try:
+            d = json.loads(m.group(1))
+        except Exception:
+            continue
+        for x in (d if isinstance(d, list) else d.get('@graph', [d]) if isinstance(d, dict) else []):
+            if isinstance(x, dict) and str(x.get('@type', '')).lower() == 'product':
+                out.append(x)
     return out
 
 
-# ── извлечение для логов ─────────────────────────────────────────────────────
-def summarize(text, n=250):
-    if not text:
-        return {}
-    meta = {}
-    for k in ('og:title', 'og:image', 'og:description', 'product:price:amount'):
-        m = re.search(r'<meta[^>]+(?:property|name)=["\']%s["\'][^>]+content=["\']([^"\']*)' % re.escape(k), text)
-        if m:
-            meta[k] = m.group(1)[:200]
-    title = re.search(r'<title[^>]*>([^<]*)', text)
-    prices = re.findall(r'(\d[\d\s  ]{1,9})\s?₽', text)[:8]
-    return {'len': len(text), 'title': title.group(1)[:150] if title else None, 'meta': meta,
-            'captcha': bool(CAPTCHA_RE.search(text)), 'rub': [p.strip() for p in prices],
-            'jsonld': 'application/ld+json' in text, 'head': re.sub(r'\s+', ' ', text[:n])}
+def to_num(s):
+    if s is None:
+        return None
+    if isinstance(s, (int, float)):
+        return float(s)
+    s = re.sub(r'[\s   ]', '', str(s)).replace(',', '.')
+    m = re.search(r'\d+(?:\.\d+)?', s)
+    return float(m.group(0)) if m else None
 
 
-# ── пробы ────────────────────────────────────────────────────────────────────
-WB_NM = os.environ.get('PROBE_WB_NM', '1099397415')
-OZON_URLS = [u for u in os.environ.get('PROBE_OZON', 'https://ozon.ru/t/fBkpTSz').split(',') if u]
+def first_image(v):
+    if isinstance(v, list):
+        v = v[0] if v else None
+    if isinstance(v, dict):
+        v = v.get('url') or v.get('contentUrl')
+    return v
+
+
+# ── Ozon ─────────────────────────────────────────────────────────────────────
+OZON_SHORT_RE = re.compile(r'^https?://(?:www\.)?ozon\.ru/t/([A-Za-z0-9_-]+)')
+
+
+def ozon_ready(html):
+    return 'application/ld+json' in html or 'webPrice' in html
+
+
+def parse_ozon(html):
+    res = {'title': None, 'price': None, 'currency': 'RUB', 'card_price': None, 'image': None, 'sku': None}
+    for p in jsonld_products(html):
+        res['title'] = res['title'] or p.get('name')
+        res['image'] = res['image'] or first_image(p.get('image'))
+        res['sku'] = res['sku'] or p.get('sku')
+        offers = p.get('offers') or {}
+        if isinstance(offers, list):
+            offers = offers[0] if offers else {}
+        res['price'] = res['price'] or to_num(offers.get('price') or offers.get('lowPrice'))
+        res['currency'] = offers.get('priceCurrency') or res['currency']
+    # виджет цены: в data-state лежат обычная цена и цена по Ozon-карте
+    m = re.search(r'id="state-webPrice-[^"]*"[^>]*data-state=\'([^\']+)\'', html) \
+        or re.search(r'data-state=\'(\{[^\']*"cardPrice"[^\']*)\'', html)
+    if m:
+        try:
+            st = json.loads(htmllib.unescape(m.group(1)))
+            res['card_price'] = to_num(st.get('cardPrice'))
+            res['price'] = res['price'] or to_num(st.get('price'))
+            res['original_price'] = to_num(st.get('originalPrice'))
+        except Exception:
+            pass
+    res['title'] = res['title'] or meta(html, 'og:title')
+    res['image'] = res['image'] or meta(html, 'og:image')
+    if res['title']:
+        res['title'] = htmllib.unescape(res['title']).strip()
+    return res
+
+
+async def ozon_product(url):
+    steps = []
+    short = OZON_SHORT_RE.match(url)
+    target = f'https://www.ozon.ru/t/{short.group(1)}' if short else url
+    html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
+    steps += st
+    if CAPTCHA_RE.search(html[:30000]):
+        # Слайдер-капчу Ozon показывает «холодному» посетителю. Заходим на главную (обычная
+        # JS-проверка, проходит сама), получаем куки и повторяем.
+        steps.append({'retry': 'warmup'})
+        await open_page('ozon', 'https://www.ozon.ru/', ready=lambda h: 'ozon' in h.lower(), timeout=20)
+        html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
+        steps += st
+    if CAPTCHA_RE.search(html[:30000]):
+        steps.append({'retry': 'fresh_context'})
+        await BROWSER.reset_context('ozon')
+        await open_page('ozon', 'https://www.ozon.ru/', ready=lambda h: 'ozon' in h.lower(), timeout=20)
+        html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
+        steps += st
+    if CAPTCHA_RE.search(html[:30000]):
+        return {'ok': False, 'error': 'captcha', 'final_url': final, 'steps': steps}
+    r = parse_ozon(html)
+    final_clean = re.sub(r'\?.*$', '', final or url)
+    return {'ok': bool(r['title']), **r, 'final_url': final_clean, 'steps': steps}
+
+
+# ── Wildberries ──────────────────────────────────────────────────────────────
+WB_NM_RE = re.compile(r'/catalog/(\d+)')
+
+
+async def wb_product(url):
+    """Цена WB приходит в браузер из JSON-запроса карточки (cards/v4/detail) — его и ловим."""
+    m = WB_NM_RE.search(url)
+    nm = m.group(1) if m else None
+    captured = {}
+    done = asyncio.Event()
+
+    async def on_response(resp):
+        u = resp.url
+        if '/cards/' in u and 'detail' in u and (not nm or nm in u):
+            try:
+                j = await resp.json()
+            except Exception:
+                return
+            prods = j.get('products') or (j.get('data') or {}).get('products') or []
+            for p in prods:
+                if not nm or str(p.get('id')) == nm:
+                    captured['p'] = p
+                    done.set()
+                    return
+
+    page_url = f'https://www.wildberries.ru/catalog/{nm}/detail.aspx' if nm else url
+    steps = []
+    html, final, status, st = await open_page('wb', page_url, on_response=lambda r: asyncio.ensure_future(on_response(r)),
+                                              ready=lambda h: done.is_set(), timeout=25)
+    steps += st
+    if not done.is_set():
+        try:
+            await asyncio.wait_for(done.wait(), 5)
+        except asyncio.TimeoutError:
+            pass
+    p = captured.get('p')
+    if not p:
+        return {'ok': False, 'error': 'no_card_json', 'final_url': final, 'steps': steps}
+    price = None
+    for sz in p.get('sizes') or []:
+        pr = (sz.get('price') or {})
+        v = pr.get('product') or pr.get('total')
+        if v:
+            price = v / 100
+            break
+    if price is None and p.get('salePriceU'):
+        price = p['salePriceU'] / 100
+    title = p.get('name')
+    if p.get('brand') and title and p['brand'].lower() not in title.lower():
+        title = f"{p['brand']} / {title}"
+    return {'ok': True, 'title': title, 'price': price, 'currency': 'RUB', 'image': None, 'sku': nm,
+            'final_url': f'https://www.wildberries.ru/catalog/{nm}/detail.aspx', 'steps': steps}
+
+
+# ── маршрутизация ────────────────────────────────────────────────────────────
+def shop_of(url):
+    h = (urlparse(url).hostname or '').lower()
+    if h.endswith('ozon.ru'):
+        return 'ozon'
+    if h.endswith('wildberries.ru') or h.endswith('wb.ru'):
+        return 'wb'
+    return None
+
+
+async def product(url):
+    t = time.time()
+    shop = shop_of(url)
+    try:
+        if shop == 'ozon':
+            r = await asyncio.wait_for(ozon_product(url), 70)
+        elif shop == 'wb':
+            r = await asyncio.wait_for(wb_product(url), 45)
+        else:
+            r = {'ok': False, 'error': 'unsupported_shop'}
+    except asyncio.TimeoutError:
+        r = {'ok': False, 'error': 'timeout'}
+    except Exception as e:
+        log('ERROR', url=url, err=traceback.format_exc()[-1500:])
+        r = {'ok': False, 'error': str(e)[:200]}
+    r['shop'] = shop
+    r['ms'] = int((time.time() - t) * 1000)
+    log('PRODUCT', url=url, **{k: v for k, v in r.items() if k != 'steps'}, steps=r.get('steps'))
+    return r
+
+
+# ── HTTP ─────────────────────────────────────────────────────────────────────
+async def h_health(req):
+    return web.json_response({'ok': True, 'browser': BROWSER.br is not None, 'active': BROWSER.active,
+                              'pages': BROWSER.pages_opened})
+
+
+async def h_product(req):
+    if not SECRET or req.headers.get('x-fetcher-secret') != SECRET:
+        return web.json_response({'error': 'forbidden'}, status=403)
+    try:
+        body = await req.json()
+    except Exception:
+        return web.json_response({'error': 'bad json'}, status=400)
+    url = str(body.get('url') or '')
+    if not re.match(r'^https?://', url) or not shop_of(url):
+        return web.json_response({'error': 'unsupported url'}, status=400)
+    return web.json_response(await product(url))
+
+
+PROBE_URLS = [u for u in os.environ.get('PROBE_URLS', '').split(',') if u.strip()]
 
 
 async def run_probes():
-    await asyncio.sleep(2)
-    log('PROBE_START', proxy=bool(RU_PROXY))
-    wb_card = f'https://card.wb.ru/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&nm={WB_NM}'
-    wb_int = f'https://www.wildberries.ru/__internal/u-card/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&ab_testing=false&lang=ru&nm={WB_NM}'
-    cases = []
-    for ou in OZON_URLS[:1]:
-        cases.append(('ozon_page_noproxy', ou, 'chrome', None))
-    for name, url, imp, px in cases:
-        r = await asyncio.to_thread(cffi_get, url, imp, px)
-        s = summarize(r.get('text'))
-        extra = {}
-        if name.startswith('wb') and r.get('text', '').startswith('{'):
-            try:
-                j = json.loads(r['text'])
-                prods = j.get('products') or j.get('data', {}).get('products') or []
-                if prods:
-                    p = prods[0]
-                    extra = {'name': p.get('name'), 'brand': p.get('brand'),
-                             'sizes_price': [sz.get('price') for sz in p.get('sizes', [])][:3]}
-            except Exception as e:
-                extra = {'json_err': str(e)}
-        log('PROBE', case=name, imp=imp, proxy=bool(px), status=r.get('status'), ms=r.get('ms'),
-            final=r.get('final_url'), err=r.get('error'), cookies=r.get('cookies'), **s, **extra)
-        if s.get('captcha'):
-            txt = re.sub(r'\s+', ' ', r.get('text', ''))
-            for i in range(0, min(len(txt), 10500), 3500):
-                log('PROBE_RAW', part=i, text=txt[i:i + 3500])
-
-    # браузер
-    for ou in OZON_URLS:
-        try:
-            r = await browser_get(ou, wait_selector='[data-widget="webPrice"]', timeout=40)
-            log('PROBE', case='ozon_camoufox_direct', status=r.get('first_status'), ms=r.get('ms'),
-                final=r.get('final_url'), err=r.get('error'), page_title=r.get('title'), **summarize(r.get('html'), 400))
-        except Exception as e:
-            log('PROBE', case='ozon_camoufox_ru', err=traceback.format_exc()[-800:])
-    try:
-        r = await browser_get(f'https://www.wildberries.ru/catalog/{WB_NM}/detail.aspx', wait_selector='ins.price-block__final-price, .price-block__wallet-price')
-        log('PROBE', case='wb_camoufox_direct', status=r.get('first_status'), ms=r.get('ms'), final=r.get('final_url'),
-            err=r.get('error'), page_title=r.get('title'), **summarize(r.get('html'), 200))
-    except Exception:
-        log('PROBE', case='wb_camoufox_direct', err=traceback.format_exc()[-800:])
+    await asyncio.sleep(1)
+    log('PROBE_START', n=len(PROBE_URLS))
+    for u in PROBE_URLS:
+        r = await product(u.strip())
+        log('PROBE', url=u, ok=r.get('ok'), ms=r.get('ms'), title=r.get('title'), price=r.get('price'),
+            card_price=r.get('card_price'), image=r.get('image'), error=r.get('error'), final=r.get('final_url'))
     log('PROBE_END')
 
 
-# ── HTTP API ─────────────────────────────────────────────────────────────────
-async def h_health(req):
-    return web.json_response({'ok': True, 'proxy': bool(RU_PROXY), 'browser': _browser is not None})
-
-
-async def h_fetch(req):
-    if not SECRET or req.headers.get('x-fetcher-secret') != SECRET:
-        return web.json_response({'error': 'forbidden'}, status=403)
-    body = await req.json()
-    url, mode = body.get('url'), body.get('mode', 'http')
-    if not url or not re.match(r'^https?://', url):
-        return web.json_response({'error': 'bad url'}, status=400)
-    if mode == 'browser':
-        r = await asyncio.wait_for(browser_get(url, body.get('wait_selector'), timeout=int(body.get('timeout', 25))), 60)
-        return web.json_response({'status': r.get('first_status'), 'final_url': r.get('final_url'),
-                                  'html': r.get('html'), 'ms': r.get('ms'), 'error': r.get('error')})
-    px = RU_PROXY if body.get('proxy', True) else None
-    r = await asyncio.to_thread(cffi_get, url, body.get('impersonate', 'chrome'), px, body.get('headers'), int(body.get('timeout', 15)))
-    return web.json_response({'status': r.get('status'), 'final_url': r.get('final_url'), 'text': r.get('text'),
-                              'ms': r.get('ms'), 'error': r.get('error')})
-
-
 async def on_start(app):
+    async def warm():
+        try:
+            await BROWSER.context('ozon')
+        except Exception:
+            log('ERROR', err=traceback.format_exc()[-1500:])
     if os.environ.get('PROBE') == '1':
         asyncio.create_task(run_probes())
+    else:
+        asyncio.create_task(warm())
 
 
 def main():
-    app = web.Application(client_max_size=2 * 1024 * 1024)
+    app = web.Application(client_max_size=256 * 1024)
     app.router.add_get('/health', h_health)
-    app.router.add_post('/fetch', h_fetch)
+    app.router.add_post('/product', h_product)
     app.on_startup.append(on_start)
-    web.run_app(app, host='::', port=PORT)
+    web.run_app(app, host='::', port=PORT, access_log=None)
 
 
 if __name__ == '__main__':
