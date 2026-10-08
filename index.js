@@ -62,7 +62,12 @@ async function fetchWithCookies(url, opts = {}, maxRedirects = 10) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'sizebook-super-secret-2024';
+// JWT_SECRET берётся только из Railway Variables. Без него — случайный секрет на время жизни
+// процесса (безопасно, но токены сбрасываются при каждом рестарте), хардкода в коде больше нет.
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
+if (!process.env.JWT_SECRET) {
+  console.warn('[security] JWT_SECRET не задан в Railway Variables — используется временный случайный секрет, сессии будут сбрасываться при рестарте. Задай JWT_SECRET.');
+}
 
 // ── БУФЕР ЛОГОВ ───────────────────────────────────────────────────────────────
 const LOG_BUFFER_SIZE = 500;
@@ -119,16 +124,51 @@ async function initDB() {
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS image TEXT;
   `);
   // Миграция: уникальный индекс на sizes.user_id (нужен для ON CONFLICT в POST /sizes)
-  await pool.query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'sizes_user_id_unique'
-      ) THEN
-        ALTER TABLE sizes ADD CONSTRAINT sizes_user_id_unique UNIQUE (user_id);
-      END IF;
-    END $$;
-  `);
+  // Миграция sizes (роадмап 1.1): реальная таблица в проде могла быть создана по старой схеме
+  // (напр. колонка category TEXT NOT NULL без DEFAULT), а CREATE TABLE IF NOT EXISTS её не меняет.
+  // Все шаги идемпотентны и неразрушающие; ошибка миграции не должна валить старт приложения.
+  try {
+    await pool.query(`ALTER TABLE sizes ADD COLUMN IF NOT EXISTS data JSONB NOT NULL DEFAULT '{}'`);
+    await pool.query(`ALTER TABLE sizes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
+    // Любая «лишняя» NOT NULL колонка без DEFAULT (category и т.п.) ломает INSERT из кода — снимаем NOT NULL.
+    const strict = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = current_schema() AND table_name = 'sizes'
+        AND is_nullable = 'NO' AND column_default IS NULL
+        AND column_name NOT IN ('id', 'user_id', 'data')
+    `);
+    for (const row of strict.rows) {
+      await pool.query(`ALTER TABLE sizes ALTER COLUMN "${row.column_name}" DROP NOT NULL`);
+      console.log(`[migrate] sizes.${row.column_name}: снят NOT NULL`);
+    }
+    // POST /sizes использует ON CONFLICT (user_id) — нужна ровно одна строка на пользователя.
+    // Если в старой схеме было несколько строк на user_id: бэкап-копия таблицы, затем слияние data.
+    const dups = await pool.query(`SELECT user_id FROM sizes GROUP BY user_id HAVING COUNT(*) > 1`);
+    if (dups.rows.length) {
+      await pool.query(`CREATE TABLE IF NOT EXISTS sizes_backup_pre_merge AS SELECT * FROM sizes`);
+      for (const { user_id } of dups.rows) {
+        const rows = await pool.query(`SELECT id, data FROM sizes WHERE user_id=$1 ORDER BY id ASC`, [user_id]);
+        const merged = rows.rows.reduce((acc, r) => ({ ...acc, ...(r.data || {}) }), {});
+        const keepId = rows.rows[rows.rows.length - 1].id;
+        await pool.query(`UPDATE sizes SET data=$1::jsonb WHERE id=$2`, [JSON.stringify(merged), keepId]);
+        await pool.query(`DELETE FROM sizes WHERE user_id=$1 AND id<>$2`, [user_id, keepId]);
+      }
+      console.log(`[migrate] sizes: объединены дубли строк у ${dups.rows.length} пользователей (бэкап: sizes_backup_pre_merge)`);
+    }
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'sizes_user_id_unique'
+        ) THEN
+          ALTER TABLE sizes ADD CONSTRAINT sizes_user_id_unique UNIQUE (user_id);
+        END IF;
+      END $$;
+    `);
+    console.log('[migrate] sizes OK');
+  } catch (e) {
+    console.error('[migrate] sizes: ОШИБКА миграции —', e.message);
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS share_links (
       id         SERIAL PRIMARY KEY,
@@ -160,34 +200,29 @@ async function initDB() {
   console.log(`[seed] users count at startup: ${usersCount}`);
 
   const adminCheck = await pool.query("SELECT id FROM users WHERE username='admin'");
+  const adminPassEnv = process.env.ADMIN_PASSWORD || null;
 
   if (adminCheck.rows.length) {
     const adminId = adminCheck.rows[0].id;
-    const hash = await bcrypt.hash('admin', 10);
-    await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, adminId]);
-    console.log(`[seed] admin already existed with id=${adminId}, password forcibly reset to 'admin'`);
-  } else if (usersCount === 0) {
-    // Таблица пустая — обычный SERIAL INSERT даст id=1, это совпадёт
-    // с user_id=1, который использовался в гостевом режиме для
-    // существующих sizes/items/wishlist. НЕ указываем id явно.
-    const hash = await bcrypt.hash('admin', 10);
-    const r = await pool.query(
-      "INSERT INTO users (username, email, password_hash) VALUES ('admin','admin@sizebook.local',$1) RETURNING id",
-      [hash]
-    );
-    console.log(`[seed] created admin with id=${r.rows[0].id}`);
+    if (adminPassEnv) {
+      const hash = await bcrypt.hash(adminPassEnv, 10);
+      await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, adminId]);
+      console.log(`[seed] admin id=${adminId}: пароль синхронизирован с ADMIN_PASSWORD`);
+    } else {
+      console.log(`[seed] admin id=${adminId} уже существует, пароль не трогаем (задай ADMIN_PASSWORD в Railway Variables, чтобы сменить)`);
+    }
   } else {
-    // В users уже есть строки, но это не admin — не угадываем, что делать
-    // с привязкой существующих sizes/items/wishlist (user_id=1). Создаём
-    // admin как нового пользователя, но НЕ трогаем существующие данные.
-    const hash = await bcrypt.hash('admin', 10);
+    // Без ADMIN_PASSWORD создаём admin со случайным паролем — войти нельзя, пока не задана переменная.
+    // id не указываем явно: на пустой таблице SERIAL даст id=1 (совпадает с legacy user_id=1).
+    const hash = await bcrypt.hash(adminPassEnv || crypto.randomBytes(24).toString('hex'), 10);
     const r = await pool.query(
       "INSERT INTO users (username, email, password_hash) VALUES ('admin','admin@sizebook.local',$1) RETURNING id",
       [hash]
     );
-    console.log(`[seed] WARNING: users table was non-empty (count=${usersCount}) before seeding admin. ` +
-                `Admin got id=${r.rows[0].id}, which may NOT match the legacy guest user_id=1 data. ` +
-                `Manual review needed — check Railway logs and existing sizes/items/wishlist rows with user_id=1.`);
+    console.log(`[seed] создан admin id=${r.rows[0].id}` + (adminPassEnv ? '' : ' со случайным паролем (задай ADMIN_PASSWORD)'));
+    if (usersCount > 0) {
+      console.log(`[seed] WARNING: users не была пустой (count=${usersCount}); id admin может не совпасть с legacy user_id=1.`);
+    }
   }
   console.log('DB ready');
 }
@@ -201,22 +236,31 @@ app.use((req, res, next) => {
   next();
 });
 
+// Гостевой режим (user_id=1) — только по явному флагу ALLOW_GUEST_MODE=1, по умолчанию выключен.
+const ALLOW_GUEST_MODE = process.env.ALLOW_GUEST_MODE === '1';
+
 function authenticateToken(req, res, next) {
   const token = (req.headers['authorization'] || '').split(' ')[1];
   if (!token) {
-    // Авторизация отключена для тестирования — подставляем тестового пользователя
-    req.user = { id: 1 };
-    return next();
+    if (ALLOW_GUEST_MODE) { req.user = { id: 1 }; return next(); }
+    return res.status(401).json({ error: 'Требуется авторизация' });
   }
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      // Невалидный токен — тоже считаем гостем, не блокируем
-      req.user = { id: 1 };
-      return next();
+      if (ALLOW_GUEST_MODE) { req.user = { id: 1 }; return next(); }
+      return res.status(401).json({ error: 'Недействительный токен' });
     }
     req.user = user;
     next();
   });
+}
+
+// /parse не привязан к пользователю (только разбор ссылки) и вызывается из CI без токена —
+// оставляем прежнее поведение (открыт), токен если есть — проверяем мягко.
+function optionalAuth(req, res, next) {
+  const token = (req.headers['authorization'] || '').split(' ')[1];
+  if (!token) { req.user = { id: 1 }; return next(); }
+  jwt.verify(token, JWT_SECRET, (err, user) => { req.user = err ? { id: 1 } : user; next(); });
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -333,16 +377,9 @@ app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
 });
 
 // ── ПУБЛИЧНЫЙ ПРОФИЛЬ ─────────────────────────────────────────────────────────
-app.get('/profile/:username', async (req, res) => {
-  try {
-    const ur = await pool.query('SELECT id,username FROM users WHERE username=$1', [req.params.username.toLowerCase()]);
-    if (!ur.rows.length) return res.status(404).json({ error: 'Не найден' });
-    const u = ur.rows[0];
-    const wr = await pool.query('SELECT * FROM wishlist WHERE user_id=$1 ORDER BY id DESC', [u.id]);
-    const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [u.id]);
-    res.json({ username: u.username, wishlist: wr.rows, sizes: sr.rows[0]?.data || {} });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
-});
+// Публичный профиль по username закрыт: отдавал размеры и вишлист любого пользователя без токена
+// и без учёта настроек шаринга. Фронт его не использует; публичный доступ — только через /share/:token.
+app.get('/profile/:username', (req, res) => res.status(404).json({ error: 'Не найден' }));
 
 // ── SHARE LINKS ──────────────────────────────────────────────────────────────
 app.post('/share', authenticateToken, async (req, res) => {
@@ -944,7 +981,7 @@ function mergeParseResults(a, b) {
 
 
 
-app.post('/parse', authenticateToken, async (req, res) => {
+app.post('/parse', optionalAuth, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }

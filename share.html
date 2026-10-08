@@ -107,6 +107,13 @@ function formatPrice(raw) {
   return n.toLocaleString('ru-RU') + ' ' + symbol;
 }
 
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function safeUrl(u) {
+  try { const x = new URL(String(u)); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; } catch (_) { return ''; }
+}
+
 function formatSizeKey(k) {
   const MAP = {
     daily_top: 'Верх',
@@ -154,12 +161,15 @@ function formatSizeKey(k) {
     shoes_boot: 'Сапоги',
     shoes_sandal: 'Сандалии / шлёпки',
   };
-  return MAP[k] || k.replace(/_/g, ' ');
+  if (MAP[k]) return MAP[k];
+  const t = String(k).replace(/_/g, ' ').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
 }
 
 function formatSizeValue(raw) {
   if (raw && typeof raw === 'object') {
-    return [raw.value, raw.brand, raw.note].filter(Boolean).join(' · ');
+    const parts = [raw.value, raw.brand, raw.note].filter(v => v != null && v !== '' && typeof v !== 'object');
+    return parts.map(String).join(' · ');
   }
   return raw == null ? '' : String(raw);
 }
@@ -187,7 +197,9 @@ function renderData(data) {
     html += '<div class="section-label">Размеры</div>';
     html += '<div class="tags-row">';
     Object.entries(data.sizes).forEach(([k, v]) => {
-      html += `<span class="tag">${formatSizeKey(k)}: ${formatSizeValue(v)}</span>`;
+      const val = formatSizeValue(v);
+      if (!val) return;
+      html += `<span class="tag">${esc(formatSizeKey(k))}: ${esc(val)}</span>`;
     });
     html += '</div></div>';
   }
@@ -196,16 +208,18 @@ function renderData(data) {
     html += '<div class="card">';
     html += '<div class="section-label">Вишлист</div>';
     data.wishlist.forEach(item => {
-      const img = item.image
-        ? `<img class="wl-thumb" src="${item.image}" alt="" onerror="this.className='wl-thumb-placeholder'">`
+      const imgSrc = safeUrl(item.image);
+      const img = imgSrc
+        ? `<img class="wl-thumb" src="${esc(imgSrc)}" alt="" onerror="this.className='wl-thumb-placeholder'">`
         : `<div class="wl-thumb-placeholder"></div>`;
-      const meta = [item.shop, item.size].filter(Boolean).join(' · ');
-      const price = item.price ? `<div class="wl-price">${formatPrice(item.price)}</div>` : '';
-      const link = item.url
-        ? `<a href="${item.url}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">`
+      const meta = esc([item.shop, item.size].filter(Boolean).join(' · '));
+      const price = item.price ? `<div class="wl-price">${esc(formatPrice(item.price))}</div>` : '';
+      const href = safeUrl(item.url);
+      const link = href
+        ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">`
         : '';
-      const linkClose = item.url ? '</a>' : '';
-      html += `<div class="wl-item">${link}${img}<div class="wl-info"><div class="wl-title">${item.title}</div>${meta ? `<div class="wl-meta">${meta}</div>` : ''}</div>${price}${linkClose}</div>`;
+      const linkClose = href ? '</a>' : '';
+      html += `<div class="wl-item">${link}${img}<div class="wl-info"><div class="wl-title">${esc(item.title)}</div>${meta ? `<div class="wl-meta">${meta}</div>` : ''}</div>${price}${linkClose}</div>`;
     });
     html += '</div>';
   }
