@@ -47,8 +47,9 @@ class Browser:
     запросы к тому же магазину идут без проверки и быстрее.
     """
 
-    def __init__(self, use_proxy=False):
+    def __init__(self, use_proxy=False, opts=None):
         self.use_proxy = use_proxy
+        self.opts = opts or {}
         self.cm = None
         self.br = None
         self.ctx = {}
@@ -62,8 +63,10 @@ class Browser:
         t = time.time()
         px = proxy_conf() if self.use_proxy else None
         extra = {'proxy': px, 'geoip': True} if px else {}
-        self.cm = AsyncCamoufox(**extra, headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
-                                humanize=False, i_know_what_im_doing=True,
+        base = dict(headless='virtual', os='windows', locale='ru-RU', block_webrtc=True, humanize=False)
+        base.update(extra)
+        base.update(self.opts)
+        self.cm = AsyncCamoufox(**base, i_know_what_im_doing=True,
                                 firefox_user_prefs={'media.autoplay.default': 5,
                                                     'browser.cache.memory.capacity': 32768,
                                                     'browser.sessionhistory.max_total_viewers': 0,
@@ -674,7 +677,63 @@ async def scenarios():
     log('SCEN_END')
 
 
+EXP_CONFIGS = {
+    'A_win_msk': ({}, {'timezone_id': 'Europe/Moscow'}),
+    'B_win_geoip': ({'geoip': True}, {}),
+    'C_mac_geoip': ({'geoip': True, 'os': 'macos'}, {}),
+    'D_win_geoip_human': ({'geoip': True, 'humanize': True}, {}),
+}
+
+
+async def exp_configs():
+    rounds = int(os.environ.get('EXP_ROUNDS', '6'))
+    score = {k: [0, 0] for k in EXP_CONFIGS}
+    for r in range(rounds):
+        for name, (bopts, copts) in EXP_CONFIGS.items():
+            br = Browser(opts=bopts)
+            ok, why = False, None
+            try:
+                await br.context('_boot')
+                ctx = await br.br.new_context(locale='ru-RU', viewport={'width': 1366, 'height': 900}, **copts)
+                page = await ctx.new_page()
+                try:
+                    await page.goto(OZON_WARM_URL, wait_until='domcontentloaded', timeout=20000)
+                except Exception:
+                    pass
+                deadline = time.time() + 12
+                html = ''
+                while time.time() < deadline:
+                    try:
+                        html = await page.content()
+                    except Exception:
+                        await asyncio.sleep(0.4); continue
+                    if ozon_page_passed(html):
+                        ok = True; break
+                    try:
+                        vis = await page.evaluate("() => { const i = document.querySelector('#image'); return !!(i && i.src) }")
+                    except Exception:
+                        vis = False
+                    if vis:
+                        why = 'slider'; break
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                why = 'err ' + str(e)[:100]
+            finally:
+                await br._stop()
+            score[name][0] += ok
+            score[name][1] += 1
+            log('EXP', round=r, cfg=name, ok=ok, why=why)
+            await asyncio.sleep(8)
+    log('EXP_SUMMARY', score=score)
+
+
 async def run_probes():
+    if os.environ.get('PROBE_EXP') == '1':
+        try:
+            await exp_configs()
+        except Exception:
+            log('ERROR', err=traceback.format_exc()[-1500:])
+        return
     await asyncio.sleep(1)
     if os.environ.get('PROBE_SCEN') == '1':
         try:
