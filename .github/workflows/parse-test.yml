@@ -1,8 +1,8 @@
 name: Parse Test Loop
 
+# Автозапуск на каждый push отключён: каждый прогон тратил кредиты Firecrawl и коммитил результаты в main,
+# из-за чего Railway делал лишний редеплой. Запуск — вручную (workflow_dispatch).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:

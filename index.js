@@ -263,6 +263,9 @@ function optionalAuth(req, res, next) {
   jwt.verify(token, JWT_SECRET, (err, user) => { req.user = err ? { id: 1 } : user; next(); });
 }
 
+// /debug/* — только при ENABLE_DEBUG=1 в Railway Variables (по умолчанию выключено: эндпоинты открыты и жгут кредиты Firecrawl)
+app.use('/debug', (req, res, next) => process.env.ENABLE_DEBUG === '1' ? next() : res.status(404).json({ error: 'Not found' }));
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -1396,6 +1399,70 @@ app.get('/debug/fcprobe', async (req, res) => {
   } catch (err) {
     res.json({ variant: variant.label, error: err.message.slice(0, 90), ms: Date.now() - t0 });
   }
+});
+
+// ── DEBUG: замеры скорости Firecrawl с произвольными параметрами (временно) ──
+// /debug/fcspeed?url=...&wf=0&loc=RU&fmt=rawHtml&maxAge=0&raw=1&actions=none
+app.get('/debug/fcspeed', async (req, res) => {
+  const apiKey = process.env.FIRECRAWL_API_KEY;
+  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'url required' });
+  const body = { url, formats: [req.query.fmt || 'rawHtml'], onlyMainContent: false, timeout: Number(req.query.timeout) || 30000 };
+  if (req.query.wf !== undefined) body.waitFor = Number(req.query.wf);
+  if (req.query.loc) body.location = { country: req.query.loc };
+  if (req.query.maxAge !== undefined) body.maxAge = Number(req.query.maxAge);
+  if (req.query.proxy) body.proxy = req.query.proxy;
+  const t0 = Date.now();
+  try {
+    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    });
+    const e = { sent: { ...body, url: undefined }, http: r.status, ms: Date.now() - t0 };
+    const txt = await r.text();
+    let d = null; try { d = JSON.parse(txt); } catch (_) {}
+    if (!d) { e.body = txt.slice(0, 200); return res.json(e); }
+    if (!d.success) { e.err = JSON.stringify(d).slice(0, 200); return res.json(e); }
+    const html = d.data && (d.data.rawHtml || d.data.html);
+    const meta = d.data.metadata || {};
+    e.html_len = html ? html.length : 0;
+    e.meta_status = meta.statusCode; e.meta_title = meta.title ? String(meta.title).slice(0, 60) : null;
+    e.cache = meta.cacheState || null;
+    if (html) {
+      const p = parseProductFromHtml(html, url);
+      e.title = p.title ? p.title.slice(0, 60) : null; e.price = p.price; e.image = !!p.image;
+      if (req.query.raw === '1') e.raw = html.slice(0, 700);
+    }
+    res.json(e);
+  } catch (err) { res.json({ error: err.message.slice(0, 120), ms: Date.now() - t0 }); }
+});
+
+// /debug/uaprobe?url=...&ua=chrome|tg|fb|google|wa — прямой fetch с Railway-IP под разными User-Agent
+app.get('/debug/uaprobe', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'url required' });
+  const UAS = {
+    chrome: FETCH_HEADERS['User-Agent'],
+    tg: 'TelegramBot (like TwitterBot)',
+    fb: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    google: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    wa: 'WhatsApp/2.23.20.0 A',
+    tw: 'Twitterbot/1.0',
+    slack: 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)',
+  };
+  const ua = String(req.query.ua || 'chrome');
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, { headers: { ...FETCH_HEADERS, 'User-Agent': UAS[ua] || UAS.chrome }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
+    const html = await r.text();
+    const p = parseProductFromHtml(html, url);
+    res.json({ ua, status: r.status, ms: Date.now() - t0, html_len: html.length,
+      json_ld: /application\/ld\+json/.test(html), og_title: /property=["']og:title/.test(html),
+      title: p.title ? p.title.slice(0, 70) : null, price: p.price, image: !!p.image });
+  } catch (err) { res.json({ ua, error: err.message.slice(0, 100), ms: Date.now() - t0 }); }
 });
 
 // ── DEBUG: диагностика прокси ────────────────────────────────────────────────
