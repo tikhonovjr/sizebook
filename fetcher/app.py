@@ -269,16 +269,20 @@ class OzonSession:
         await ctx.close()
         return None, html, final
 
-    async def mint(self, url=None, steps=None):
+    async def mint(self, url=None, steps=None, tries=None):
         """Создаёт прошедшую проверку сессию. Если передан url — заодно возвращает его страницу."""
         url = url or OZON_WARM_URL
         fails = 0
-        for i in range(OZON_MINT_TRIES):
+        for i in range(tries or OZON_MINT_TRIES):
+            if i:
+                await asyncio.sleep(min(2 + 2 * i, 8))
             t = time.time()
             ctx, html, final = await self._try_ctx(url)
             ok = ctx is not None
             if steps is not None:
-                steps.append({'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000)})
+                ipm = re.search(r'id="captcha-ip"[^>]*value="([^"]+)"', html or '')
+                steps.append({'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000),
+                              'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')})
             if ok:
                 self.stats['mint_ok'] += 1
                 old, self.ctx, self.born, self.used = self.ctx, ctx, time.time(), 0
@@ -363,7 +367,7 @@ class OzonSession:
                 if self.ctx is None:
                     async with self.lock:
                         if self.ctx is None:
-                            await self.mint(None, steps)
+                            await self.mint(None, steps, tries=int(os.environ.get('OZON_KEEP_TRIES', '2')))
                 else:
                     await self.fetch(OZON_WARM_URL, steps)
                 log('OZON_KEEP', alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
