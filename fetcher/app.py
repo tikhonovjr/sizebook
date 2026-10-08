@@ -75,9 +75,11 @@ class Browser:
             if key not in self.ctx:
                 self.ctx[key] = await self.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
                                                           viewport={'width': 1366, 'height': 900})
-                # картинки/видео/шрифты не нужны — страница грузится заметно быстрее
-                await self.ctx[key].route(re.compile(r'\.(png|jpe?g|webp|gif|avif|mp4|webm|woff2?|ttf)(\?|$)', re.I),
-                                          lambda route: route.abort())
+                # WB: картинки/шрифты не нужны — страница грузится быстрее.
+                # Ozon: не трогаем — его JS-проверка сама загружает картинки.
+                if key == 'wb':
+                    await self.ctx[key].route(re.compile(r'\.(png|jpe?g|webp|gif|avif|mp4|webm|woff2?|ttf)(\?|$)', re.I),
+                                              lambda route: route.abort())
             self.pages_opened += 1
             return self.ctx[key]
 
@@ -121,7 +123,12 @@ async def open_page(key, url, *, on_response=None, timeout=25, ready=None):
                     if not CAPTCHA_RE.search(html[:30000]) and (ready is None or ready(html)):
                         break
                     await asyncio.sleep(0.7)
-                steps.append({'settled_ms': int((time.time() - t) * 1000), 'captcha': bool(CAPTCHA_RE.search(html[:30000]))})
+                st = {'settled_ms': int((time.time() - t) * 1000), 'captcha': bool(CAPTCHA_RE.search(html[:30000]))}
+                if ready is not None and not ready(html):
+                    tm = re.search(r'<title[^>]*>([^<]*)', html)
+                    st.update(not_ready=True, title=tm.group(1)[:80] if tm else None, len=len(html), url=page.url[:150],
+                              head=re.sub(r'\s+', ' ', re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.S))[:600])
+                steps.append(st)
                 return html, page.url, status, steps
             finally:
                 try:
