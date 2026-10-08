@@ -1098,7 +1098,7 @@ async function viaFetcher(url, timeoutMs = 75000) {
   }
 }
 
-// Ozon: закрыт JS-антиботом и слайдер-капчей для «голых» HTTP-запросов (fetch, Firecrawl,
+// Ozon (см. PARSER_CONTEXT.md): закрыт JS-антиботом и слайдер-капчей для «голых» HTTP-запросов (fetch, Firecrawl,
 // Scrape.do — проверено 09–10.2026). Работает только настоящий браузер → сервис fetcher.
 async function parseOzon(url) {
   // до ~2 мин: если сессия Ozon в fetcher «отозвана», он открывает новую (несколько попыток)
