@@ -643,7 +643,7 @@ def main():
     app.router.add_get('/ready', h_ready)
     app.router.add_post('/product', h_product)
     app.on_startup.append(on_start)
-    web.run_app(app, host='::', port=PORT, access_log=None)
+    web.run_app(app, host=['0.0.0.0', '::'], port=PORT, access_log=None)
 
 
 if __name__ == '__main__':
