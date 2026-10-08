@@ -347,7 +347,7 @@ async def h_product(req):
 PROBE_URLS = [u for u in os.environ.get('PROBE_URLS', '').split(',') if u.strip()]
 
 
-async def step(page, url, wait=30):
+async def step(page, url, wait=20):
     t = time.time()
     try:
         resp = await page.goto(url, wait_until='domcontentloaded', timeout=wait * 1000)
@@ -361,13 +361,15 @@ async def step(page, url, wait=30):
             html = await page.content()
         except Exception:
             await asyncio.sleep(0.5); continue
-        if CAPTCHA_RE.search(html[:30000]) and 'Сопоставьте' in html:
-            break  # слайдер — ждать бесполезно
         if 'application/ld+json' in html or ('og:title' in html and 'Antibot' not in html[:3000]):
             break
         await asyncio.sleep(0.7)
     tm = re.search(r'<title[^>]*>([^<]*)', html)
-    log('SCEN_STEP', url=url[:80], status=st, ms=int((time.time() - t) * 1000), final=page.url[:160],
+    try:
+        vis = await page.evaluate("() => { const c = document.querySelector('.container'); return c ? !c.classList.contains('hidden') : null }")
+    except Exception:
+        vis = 'err'
+    log('SCEN_STEP', slider_visible=vis, url=url[:80], status=st, ms=int((time.time() - t) * 1000), final=page.url[:160],
         title=(tm.group(1)[:90] if tm else None), slider='Сопоставьте' in html, antibot='Antibot' in html[:3000],
         jsonld='application/ld+json' in html, len=len(html))
 
@@ -382,6 +384,8 @@ async def scenarios():
         'S3_product_then_short': [prod, short],
         'S4_short_nowww': ['https://ozon.ru/t/fBkpTSz'],
         'S5_product_twice': [prod, prod],
+        'S6_product_then_short': [prod, short],
+        'S7_short_www': [short],
     }
     for name, urls in plans.items():
         ctx = await BROWSER.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow', viewport={'width': 1366, 'height': 900})
