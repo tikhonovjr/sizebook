@@ -258,7 +258,7 @@ def parse_ozon(html):
 
 
 OZON_WARM_URL = os.environ.get('OZON_WARM_URL', 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/')
-OZON_MINT_TRIES = int(os.environ.get('OZON_MINT_TRIES', '8'))
+OZON_MINT_TRIES = int(os.environ.get('OZON_MINT_TRIES', '10'))
 OZON_PASS_WAIT = float(os.environ.get('OZON_PASS_WAIT', '12'))
 
 
@@ -296,11 +296,12 @@ class OzonSession:
     @staticmethod
     async def _try(url):
         """Новый запуск браузера + переход на url. Возвращает (browser, ctx, html, final) или (None, None, html, final)."""
-        br = Browser(use_proxy=True)
+        # Замер 09.10 (эксперимент EXP): часовой пояс/геолокация, согласованные с IP (geoip),
+        # и отпечаток macOS проходят проверку заметно чаще (Windows + Москва при IP в NL — 0 из 6).
+        br = Browser(use_proxy=True, opts={'geoip': True, 'os': 'macos'})
         try:
             await br.context('_boot')
-            ctx = await br.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
-                                          viewport={'width': 1366, 'height': 900})
+            ctx = await br.br.new_context(viewport={'width': 1440, 'height': 900})
         except Exception:
             await br._stop()
             return None, None, '', url
