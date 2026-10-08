@@ -791,12 +791,12 @@ function sdAllowed() {
   if (sdUsage.n >= SD_DAILY_LIMIT) return false;
   sdUsage.n++; return true;
 }
-const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|not found|404|403|доступ ограничен|подтвердите|проверка)/i;
+const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|not found|404|403|доступ ограничен|подтвердите|проверка|страница не найдена|сайт |amazon\.com$|uniqlo$|farfetch|net-a-porter|puma - официальный|yandex$)/i;
 
 async function parseViaScrapedo(url, { geo = null } = {}) {
   if (!process.env.SCRAPEDO_TOKEN) return null;
   if (!sdAllowed()) { console.log('[scrapedo] дневной лимит исчерпан'); return null; }
-  const r = await fetchViaScrapedo(url, { super: true, geo, timeout: 45000 });
+  const r = await fetchViaScrapedo(url, { super: true, geo, timeout: 25000 });
   console.log(`[scrapedo] ${new URL(url).hostname} http=${r.http} ms=${r.ms} cost=${r.cost} remaining=${r.remaining} ${r.error || ''}`);
   if (!r.html || r.http !== 200) return null;
   const p = parseProductFromHtml(r.html, url);
@@ -815,6 +815,9 @@ const HOST_STRATEGY = {
   'ssense.com': { tiers: ['wa', 'sd'], geo: null }, 'asos.com': { tiers: ['wa', 'sd'], geo: null },
   'net-a-porter.com': { tiers: ['sd'], geo: null }, 'uniqlo.com': { tiers: ['direct', 'sd'], geo: null },
   'amazon.com': { tiers: ['direct', 'sd'], geo: null },
+  // Закрытые антиботом (проверено 08.10.2026): быстро отдаём пусто, не жжём кредиты и время
+  'sportmaster.ru': { tiers: ['direct+wa'], noFallback: true }, 'tsum.ru': { tiers: ['direct+wa'], noFallback: true },
+  'ru.puma.com': { tiers: ['direct+wa'], noFallback: true },
   'befree.ru': { tiers: ['direct'] }, 'brandshop.ru': { tiers: ['direct'] }, 'street-beat.ru': { tiers: ['direct'] },
   'detmir.ru': { tiers: ['direct', 'wa'] }, 'bask.ru': { tiers: ['direct'] }, 'nike.com': { tiers: ['direct', 'sd'], geo: null },
 };
@@ -854,13 +857,13 @@ async function parseByStrategy(url, host, t) {
     acc = mergeParseResults(acc, r);
   }
   // Запасной вариант на Firecrawl, если Scrape.do недоступен/не сработал и нет названия
-  if (!acc.title && process.env.FIRECRAWL_API_KEY) {
+  if (!acc.title && !st.noFallback && process.env.FIRECRAWL_API_KEY) {
     const fc = await parseViaFirecrawl(url, { waitFor: 4000, country: st.geo === 'ru' ? 'RU' : null });
     t.mark('tier:firecrawl', { title: !!fc?.title, price: !!fc?.price, image: !!fc?.image });
     acc = mergeParseResults(acc, fc);
   }
   // Последний шанс для названия/картинки: внешние OG-парсеры (цену не отдают)
-  if (!acc.title || !acc.image) {
+  if ((!acc.title || !acc.image) && !st.noFallback) {
     const jl = await parseViaJsonlink(url);
     t.mark('tier:jsonlink', { title: !!jl?.title, image: !!jl?.image });
     acc = mergeParseResults(acc, jl);
