@@ -1140,6 +1140,17 @@ function parseProductFromHtml(html, url) {
   // 2. OpenGraph
   title = title || $('meta[property="og:title"]').attr('content') || null;
   image = image || $('meta[property="og:image"]').attr('content') || null;
+  // Если вместо названия товара — только имя магазина (Спортмастер и т.п.), берём h1 или <title> без хвоста магазина
+  {
+    const brand = (() => { try { return new URL(url).hostname.replace(/^(www|m)\./, '').split('.')[0].toLowerCase(); } catch (_) { return ''; } })();
+    const isShopName = t => { const x = (t || '').trim().toLowerCase().replace(/[^a-zа-яё0-9]/g, ''); return !x || x === brand || /^(спортмастер|sportmaster|интернетмагазин.*)$/.test(x); };
+    if (isShopName(title)) {
+      const clean = t => (t || '').replace(/\s+/g, ' ').split(/\s+[|—–]\s+|\s+-\s+(?=[^-]*$)/)[0]
+        .replace(/\s*(купить|заказать)\b.*$/i, '').trim();
+      const cand = [$('h1').first().text(), $('title').first().text()].map(clean).find(t => t && !isShopName(t));
+      title = cand || null;
+    }
+  }
   if (!price) {
     const p = $('meta[property="product:price:amount"]').attr('content');
     const c = $('meta[property="product:price:currency"]').attr('content');

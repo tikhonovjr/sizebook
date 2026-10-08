@@ -2521,10 +2521,15 @@ function updateCardCount(zone) {
   delete _zonePanelCache[zone];
 }
 
+let _icBusy = false, _icLast = 0;
 async function loadItemCounts() {
+  if (_icBusy || Date.now() - _icLast < 4000) return;
   const zones = [...new Set(Array.from(document.querySelectorAll('.size-card-sub[data-item-zone]'))
+    .filter(el => el.offsetParent !== null)
     .map(el => el.dataset.itemZone)
     .filter(Boolean))];
+  if (!zones.length) return;
+  _icBusy = true; _icLast = Date.now();
   try {
     const results = await Promise.all(zones.map(z =>
       fetch(API + '/items?zone=' + z, { headers: apiHeaders() }).then(r => r.ok ? r.json() : []).catch(() => [])
@@ -2536,6 +2541,7 @@ async function loadItemCounts() {
       });
     });
   } catch(e) { /* silent */ }
+  finally { _icBusy = false; }
 }
 
 async function showZonePanel(zone) {
