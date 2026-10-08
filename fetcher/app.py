@@ -195,7 +195,7 @@ def ozon_ready(html):
 
 
 def parse_ozon(html):
-    res = {'title': None, 'price': None, 'currency': 'RUB', 'card_price': None, 'image': None, 'sku': None}
+    res = {'title': None, 'price': None, 'currency': 'RUB', 'card_price': None, 'image': None, 'sku': None, 'available': True}
     for p in jsonld_products(html):
         res['title'] = res['title'] or p.get('name')
         res['image'] = res['image'] or first_image(p.get('image'))
@@ -214,6 +214,8 @@ def parse_ozon(html):
             res['card_price'] = to_num(st.get('cardPrice'))
             res['price'] = res['price'] or to_num(st.get('price'))
             res['original_price'] = to_num(st.get('originalPrice'))
+            if st.get('isAvailable') is False:
+                res['available'] = False
         except Exception:
             pass
     res['title'] = res['title'] or meta(html, 'og:title')
@@ -464,10 +466,14 @@ async def wb_product(url):
             break
     if price is None and p.get('salePriceU'):
         price = p['salePriceU'] / 100
+    qty = p.get('totalQuantity')
+    available = bool(price) or (qty is not None and qty > 0)
+    if price is None:
+        log('WB_NO_PRICE', nm=nm, qty=qty, keys=list(p.keys())[:40], sizes=(p.get('sizes') or [])[:2])
     title = p.get('name')
     if p.get('brand') and title and p['brand'].lower() not in title.lower():
         title = f"{p['brand']} / {title}"
-    return {'ok': True, 'title': title, 'price': price, 'currency': 'RUB', 'image': None, 'sku': nm,
+    return {'ok': True, 'title': title, 'price': price, 'currency': 'RUB', 'image': None, 'sku': nm, 'available': available,
             'final_url': f'https://www.wildberries.ru/catalog/{nm}/detail.aspx', 'steps': steps}
 
 
