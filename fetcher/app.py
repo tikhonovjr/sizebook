@@ -28,6 +28,18 @@ def log(kind, **kw):
 
 
 # ── браузер ──────────────────────────────────────────────────────────────────
+def proxy_conf():
+    """RU_PROXY_URL (http://user:pass@host:port) → формат Playwright. Используется, только если BROWSER_PROXY=1."""
+    raw = os.environ.get('RU_PROXY_URL')
+    if not raw or os.environ.get('BROWSER_PROXY') != '1':
+        return None
+    u = urlparse(raw)
+    c = {'server': f'{u.scheme}://{u.hostname}:{u.port}'}
+    if u.username:
+        c['username'], c['password'] = u.username, u.password or ''
+    return c
+
+
 class Browser:
     """Один браузер на процесс, по постоянному контексту (с куками) на каждый магазин.
 
@@ -35,7 +47,8 @@ class Browser:
     запросы к тому же магазину идут без проверки и быстрее.
     """
 
-    def __init__(self):
+    def __init__(self, use_proxy=False):
+        self.use_proxy = use_proxy
         self.cm = None
         self.br = None
         self.ctx = {}
@@ -47,7 +60,9 @@ class Browser:
     async def _start(self):
         from camoufox.async_api import AsyncCamoufox
         t = time.time()
-        self.cm = AsyncCamoufox(headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
+        px = proxy_conf() if self.use_proxy else None
+        extra = {'proxy': px, 'geoip': True} if px else {}
+        self.cm = AsyncCamoufox(**extra, headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
                                 humanize=False, i_know_what_im_doing=True,
                                 firefox_user_prefs={'media.autoplay.default': 5,
                                                     'browser.cache.memory.capacity': 32768,
@@ -109,7 +124,7 @@ class Browser:
 
 
 BROWSER = Browser()      # WB и прочее
-BROWSER_OZ = Browser()   # отдельный браузер для Ozon: его перезапуск (смена отпечатка) не мешает WB
+BROWSER_OZ = Browser(use_proxy=True)   # отдельный браузер для Ozon: его перезапуск (смена отпечатка) не мешает WB
 
 
 async def open_page(key, url, *, on_response=None, timeout=25, ready=None):
