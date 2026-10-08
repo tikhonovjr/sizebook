@@ -364,6 +364,13 @@ class OzonSession:
                 except Exception:
                     pass
                 self.ctx, self.born, self.used = ctx, time.time(), 0
+                try:
+                    now = time.time()
+                    ck = await ctx.cookies()
+                    log('OZON_COOKIES', c={c['name']: (int(c['expires'] - now) if c.get('expires', -1) > 0 else 'session')
+                                           for c in ck if 'ozon' in c.get('domain', '')})
+                except Exception:
+                    pass
                 # «Якорная» вкладка: скрипты Ozon в ней сами продлевают токены сессии
                 try:
                     self.anchor = await ctx.new_page()
