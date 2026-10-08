@@ -1,0 +1,546 @@
+{
+ "wildberries.ru": {
+  "url": "https://www.wildberries.ru/catalog/176566362/detail.aspx",
+  "chrome": {
+   "status": 498,
+   "ms": 622,
+   "title": "...",
+   "image": false
+  },
+  "wa": {
+   "status": 498,
+   "ms": 201,
+   "title": "...",
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 1390,
+   "cost": "10",
+   "title": "Кроссовки мужские высокие  зимние утепленные Merrell, MERREL",
+   "image": true
+  }
+ },
+ "ozon.ru": {
+  "url": "https://www.ozon.ru/product/krossovki-nike-2292301192/",
+  "chrome": {
+   "ms": 5321,
+   "error": "fetch failed"
+  },
+  "wa": {
+   "status": 403,
+   "ms": 216,
+   "image": false
+  },
+  "sd_super": {
+   "http": 400,
+   "ms": 196,
+   "image": false,
+   "head": "{\"URL\":\"https://www.ozon.ru/product/krossovki-nike-2292301192/\",\"StatusCode\":400,\"Message\":[\"We disabled the target domain for free packages. Please upgrade you"
+  }
+ },
+ "lamoda.ru": {
+  "url": "https://www.lamoda.ru/p/rtladq279101/shoes-newbalance-krossovki/",
+  "chrome": {
+   "status": 403,
+   "ms": 1660,
+   "title": "Запрос отклонен",
+   "image": false
+  },
+  "wa": {
+   "status": 403,
+   "ms": 153,
+   "title": "Запрос отклонен",
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 8352,
+   "cost": "10",
+   "title": "New Balance Кроссовки 1000",
+   "price": "12499 RUB",
+   "image": true
+  }
+ },
+ "market.yandex.ru": {
+  "url": "https://market.yandex.ru/product--futbolka-ivcapriz/1098415872?sku=102252020555&uniqueId=69979524",
+  "chrome": {
+   "status": 200,
+   "ms": 1286,
+   "title": "Yandex",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 486,
+   "title": "Yandex",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 6481,
+   "cost": "10",
+   "title": "Футболка",
+   "price": "834 RUB",
+   "image": true
+  }
+ },
+ "sportmaster.ru": {
+  "url": "https://www.sportmaster.ru/product/39936790299/",
+  "chrome": {
+   "ms": 10194,
+   "error": "fetch failed"
+  },
+  "wa": {
+   "ms": 10365,
+   "error": "fetch failed"
+  },
+  "sd_super": {
+   "http": 502,
+   "ms": 57193,
+   "cost": "0",
+   "image": false,
+   "head": "{\"URL\":\"https://www.sportmaster.ru/product/39936790299/\",\"StatusCode\":502,\"ErrorCode\":90,\"ErrorType\":\"ROTATION_FAILED\",\"Message\":[\"Error: failed to make request"
+  }
+ },
+ "aliexpress.ru": {
+  "url": "https://aliexpress.ru/item/1005005582450490.html",
+  "chrome": {
+   "status": 200,
+   "ms": 2024,
+   "image": false
+  },
+  "wa": {
+   "status": 200,
+   "ms": 255,
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 3451,
+   "cost": "10",
+   "title": "Футболка East-1 Cosmonaut из полиэстера на AliExpress",
+   "image": true
+  }
+ },
+ "gloria-jeans.ru": {
+  "url": "https://www.gloria-jeans.ru/product/GJN037497-1/Serye-pramye-dzinsy",
+  "chrome": {
+   "status": 200,
+   "ms": 639,
+   "image": false
+  },
+  "wa": {
+   "status": 200,
+   "ms": 148,
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 633,
+   "cost": "10",
+   "title": "Сайт Gloria Jeans",
+   "image": false
+  }
+ },
+ "befree.ru": {
+  "url": "https://befree.ru/zhenskaya/product/BF2441414019/50",
+  "chrome": {
+   "status": 200,
+   "ms": 1488,
+   "title": "Платье миди облегающее из сетки с пайетками",
+   "price": "499 RUB",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 757,
+   "title": "Платье миди облегающее из сетки с пайетками",
+   "price": "499 RUB",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 1769,
+   "cost": "10",
+   "title": "Платье миди облегающее из сетки с пайетками",
+   "price": "499 RUB",
+   "image": true
+  }
+ },
+ "sela.ru": {
+  "url": "https://www.sela.ru/eshop/men/dzhempery/dzhempery/5802110635_2/",
+  "chrome": {
+   "status": 404,
+   "ms": 1667,
+   "title": "Страница не найдена",
+   "image": true
+  },
+  "wa": {
+   "status": 404,
+   "ms": 689,
+   "title": "Страница не найдена",
+   "image": true
+  },
+  "sd_super": {
+   "http": 404,
+   "ms": 2423,
+   "cost": "10",
+   "title": "Страница не найдена",
+   "image": true
+  }
+ },
+ "12storeez.com": {
+  "url": "https://12storeez.com/catalog/plata/womencollection/plate-iz-shelka-126639",
+  "chrome": {
+   "status": 200,
+   "ms": 668,
+   "image": false
+  },
+  "wa": {
+   "status": 200,
+   "ms": 153,
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 2068,
+   "cost": "10",
+   "title": "Платье из шелка",
+   "price": "9800.00 RUB",
+   "image": true
+  }
+ },
+ "brandshop.ru": {
+  "url": "https://brandshop.ru/goods/494666/mr530adc/",
+  "chrome": {
+   "status": 200,
+   "ms": 889,
+   "title": "Мужские кроссовки New Balance MR530ADC, MR530ADC",
+   "price": "9940 RUB",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 655,
+   "title": "Мужские кроссовки New Balance MR530ADC, MR530ADC",
+   "price": "9940 RUB",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 1343,
+   "cost": "10",
+   "title": "Мужские кроссовки New Balance MR530ADC, MR530ADC",
+   "price": "9940 RUB",
+   "image": true
+  }
+ },
+ "street-beat.ru": {
+  "url": "https://street-beat.ru/d/krossovki-street-beat-snkm10024-100/",
+  "chrome": {
+   "status": 200,
+   "ms": 2611,
+   "title": "Мужские кроссовки District 2",
+   "price": "3199 RUB",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 642,
+   "title": "Мужские кроссовки District 2",
+   "price": "3199 RUB",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 3261,
+   "cost": "10",
+   "title": "Мужские кроссовки District 2",
+   "price": "3199 RUB",
+   "image": true
+  }
+ },
+ "tsum.ru": {
+  "url": "https://www.tsum.ru/product/6405687-khlopkovye-boksery-tom-ford-temno-seryi/",
+  "chrome": {
+   "ms": 10407,
+   "error": "fetch failed"
+  },
+  "wa": {
+   "ms": 10353,
+   "error": "fetch failed"
+  },
+  "sd_super": {
+   "http": 502,
+   "ms": 57522,
+   "cost": "0",
+   "image": false,
+   "head": "{\"URL\":\"https://www.tsum.ru/product/6405687-khlopkovye-boksery-tom-ford-temno-seryi/\",\"StatusCode\":502,\"ErrorCode\":90,\"ErrorType\":\"ROTATION_FAILED\",\"Message\":[\""
+  }
+ },
+ "detmir.ru": {
+  "url": "https://www.detmir.ru/product/index/id/6197460/",
+  "chrome": {
+   "status": 200,
+   "ms": 2355,
+   "title": "Куртка Reima цвет розовый 5100084A-4230 купить по цене 12729 ₽ в интер",
+   "price": "9 546 ₽",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 2782,
+   "title": "Куртка Reima цвет розовый 5100084A-4230 купить по цене 12729 ₽ в интер",
+   "price": "9 546 ₽",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 6327,
+   "cost": "10",
+   "title": "Куртка Reima цвет розовый 5100084A-4230 купить по цене 12729",
+   "price": "9 546 ₽",
+   "image": true
+  }
+ },
+ "kupivip.ru": {
+  "url": "https://kupivip.ru/product/plate-patrizia-pepe-85888-zheltyy/",
+  "chrome": {
+   "ms": 12002,
+   "error": "The operation was aborted due to timeout"
+  },
+  "wa": {
+   "ms": 12001,
+   "error": "The operation was aborted due to timeout"
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 2016,
+   "cost": "10",
+   "title": "Купить платье PATRIZIA PEPE 8A1061K9J5, цвет Желтый для женщ",
+   "price": "45 900 ₽",
+   "image": true
+  }
+ },
+ "ru.puma.com": {
+  "url": "https://ru.puma.com/puma-r78-373117-01.html",
+  "chrome": {
+   "status": 503,
+   "ms": 242,
+   "title": "PUMA",
+   "image": false
+  },
+  "wa": {
+   "status": 503,
+   "ms": 199,
+   "title": "PUMA",
+   "image": false
+  },
+  "sd_super": {
+   "http": 502,
+   "ms": 57182,
+   "cost": "0",
+   "image": false,
+   "head": "{\"URL\":\"https://ru.puma.com/puma-r78-373117-01.html\",\"StatusCode\":502,\"ErrorCode\":90,\"ErrorType\":\"ROTATION_FAILED\",\"Message\":[\"Error: cannot connect target url\""
+  }
+ },
+ "bask.ru": {
+  "url": "https://bask.ru/catalog/kurtka-bask-taimyr-v3-19h08/",
+  "chrome": {
+   "status": 200,
+   "ms": 2955,
+   "title": "TAIMYR V4 ЧЕРНЫЙ",
+   "price": "66300 RUB",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 2122,
+   "title": "TAIMYR V4 ЧЕРНЫЙ",
+   "price": "66300 RUB",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 2719,
+   "cost": "10",
+   "title": "TAIMYR V4 ЧЕРНЫЙ",
+   "price": "66300 RUB",
+   "image": true
+  }
+ },
+ "farfetch.com": {
+  "url": "https://www.farfetch.com/shopping/women/swear-element-sneakers-item-14612856.aspx",
+  "chrome": {
+   "status": 403,
+   "ms": 34,
+   "image": false
+  },
+  "wa": {
+   "status": 403,
+   "ms": 57,
+   "image": false
+  },
+  "sd_super": {
+   "http": 410,
+   "ms": 1394,
+   "cost": "10",
+   "title": "FARFETCH",
+   "image": false
+  }
+ },
+ "asos.com": {
+  "url": "https://www.asos.com/us/asos-design/asos-design-essentials-muscle-fit-t-shirt-in-black/prd/203291724",
+  "chrome": {
+   "ms": 12001,
+   "error": "The operation was aborted due to timeout"
+  },
+  "wa": {
+   "status": 200,
+   "ms": 999,
+   "title": "ASOS DESIGN essentials muscle fit T-shirt in black | ASOS",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 3230,
+   "cost": "10",
+   "title": "ASOS DESIGN essentials muscle fit T-shirt in black | ASOS",
+   "image": true
+  }
+ },
+ "hm.com": {
+  "url": "https://www2.hm.com/en_us/productpage.1227157019.html",
+  "chrome": {
+   "status": 403,
+   "ms": 41,
+   "image": false
+  },
+  "wa": {
+   "status": 403,
+   "ms": 240,
+   "image": false
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 7467,
+   "cost": "10",
+   "title": "Men’s Black/New York Loose Fit Printed T-shirt | H&M US",
+   "price": "$8.99",
+   "image": true
+  }
+ },
+ "uniqlo.com": {
+  "url": "https://www.uniqlo.com/us/en/products/E470067-000/00",
+  "chrome": {
+   "status": 404,
+   "ms": 519,
+   "title": "UNIQLO",
+   "image": false
+  },
+  "wa": {
+   "status": 404,
+   "ms": 382,
+   "title": "UNIQLO",
+   "image": false
+  },
+  "sd_super": {
+   "http": 404,
+   "ms": 3185,
+   "cost": "10",
+   "title": "UNIQLO",
+   "image": false
+  }
+ },
+ "net-a-porter.com": {
+  "url": "https://www.net-a-porter.com/en-us/shop/product/anine-bing/clothing/midi-dresses/chloe-silk-satin-maxi-dress/1647597311244139",
+  "chrome": {
+   "status": 403,
+   "ms": 35,
+   "image": false
+  },
+  "wa": {
+   "status": 403,
+   "ms": 87,
+   "image": false
+  },
+  "sd_super": {
+   "http": 404,
+   "ms": 3322,
+   "cost": "10"
+  }
+ },
+ "ssense.com": {
+  "url": "https://www.ssense.com/en-us/men/product/nike/gray-dunk-low-sneakers/11885161",
+  "chrome": {
+   "status": 403,
+   "ms": 33,
+   "image": false
+  },
+  "wa": {
+   "status": 200,
+   "ms": 999,
+   "title": "Silver & Black Shox BB4 Sneakers",
+   "price": "185 USD",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 3349,
+   "cost": "10",
+   "title": "Silver & Black Shox BB4 Sneakers",
+   "price": "185 USD",
+   "image": true
+  }
+ },
+ "nike.com": {
+  "url": "https://www.nike.com/t/air-force-1-07-mens-shoes-DZejrQoC",
+  "chrome": {
+   "status": 200,
+   "ms": 602,
+   "title": "Nike Air Force 1 '07 Men's Shoes",
+   "price": "$115",
+   "image": true
+  },
+  "wa": {
+   "status": 200,
+   "ms": 158,
+   "title": "Nike Air Force 1 '07 Men's Shoes",
+   "price": "$115",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 1400,
+   "cost": "10",
+   "title": "Nike Air Force 1 '07 Men's Shoes",
+   "price": "$115",
+   "image": true
+  }
+ },
+ "amazon.com": {
+  "url": "https://www.amazon.com/True-Classic-Mens-T-Shirts-Novelty/dp/B0FNN4R5H6",
+  "chrome": {
+   "status": 200,
+   "ms": 2021,
+   "title": "True Classic Mens T",
+   "price": "$69.99",
+   "image": false
+  },
+  "wa": {
+   "status": 200,
+   "ms": 1781,
+   "title": "True Classic Mens T-Shirts, Short Sleeve Crew Neck T Shirts for Men | ",
+   "image": true
+  },
+  "sd_super": {
+   "http": 200,
+   "ms": 3183,
+   "cost": "10",
+   "title": "True Classic Mens T",
+   "price": "$69.99",
+   "image": false
+  }
+ }
+}

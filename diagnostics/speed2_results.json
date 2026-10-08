@@ -1,0 +1,457 @@
+{
+  "started": "2026-10-08T10:31:08Z",
+  "firecrawl": {
+    "ff_proxy_basic_wf0": {
+      "wall_ms": 7605,
+      "sent": {
+        "formats": [
+          "rawHtml"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 0,
+        "maxAge": 0,
+        "proxy": "basic"
+      },
+      "http": 200,
+      "ms": 6917,
+      "html_len": 583380,
+      "meta_status": 200,
+      "meta_title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "cache": null,
+      "title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "price": "192.00 GBP",
+      "image": true
+    },
+    "ff_proxy_stealth_wf0": {
+      "wall_ms": 4675,
+      "sent": {
+        "formats": [
+          "rawHtml"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 0,
+        "maxAge": 0,
+        "proxy": "stealth"
+      },
+      "http": 200,
+      "ms": 4133,
+      "html_len": 238071,
+      "meta_status": 200,
+      "meta_title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "cache": null,
+      "title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "price": "192.00 GBP",
+      "image": true
+    },
+    "ff_proxy_enh_wf0": {
+      "wall_ms": 3559,
+      "sent": {
+        "formats": [
+          "rawHtml"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 0,
+        "maxAge": 0,
+        "proxy": "enhanced"
+      },
+      "http": 200,
+      "ms": 3069,
+      "html_len": 236548,
+      "meta_status": 200,
+      "meta_title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "cache": null,
+      "title": "Salomon XT-6 Sneakers | White | FARFETCH UK",
+      "price": "192.00 GBP",
+      "image": true
+    },
+    "wb_html_wf3000_RU": {
+      "wall_ms": 4923,
+      "sent": {
+        "formats": [
+          "html"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 3000,
+        "location": {
+          "country": "RU"
+        },
+        "maxAge": 0
+      },
+      "http": 200,
+      "ms": 4706,
+      "html_len": 4922,
+      "meta_status": 200,
+      "meta_title": "Интернет‑магазин Wildberries: широкий ассортимент товаров - ",
+      "cache": null,
+      "title": null,
+      "price": null,
+      "image": false
+    },
+    "wb_html_wf4500_RU": {
+      "wall_ms": 6603,
+      "sent": {
+        "formats": [
+          "html"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 4500,
+        "location": {
+          "country": "RU"
+        },
+        "maxAge": 0
+      },
+      "http": 200,
+      "ms": 6188,
+      "html_len": 115359,
+      "meta_status": 200,
+      "meta_title": "Интернет‑магазин Wildberries: широкий ассортимент товаров - ",
+      "cache": null,
+      "title": null,
+      "price": null,
+      "image": false
+    },
+    "wb_html_wf6000_RU": {
+      "wall_ms": 8396,
+      "sent": {
+        "formats": [
+          "html"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 6000,
+        "location": {
+          "country": "RU"
+        },
+        "maxAge": 0
+      },
+      "http": 200,
+      "ms": 7983,
+      "html_len": 99586,
+      "meta_status": 200,
+      "meta_title": "Интернет‑магазин Wildberries: широкий ассортимент товаров - ",
+      "cache": null,
+      "title": null,
+      "price": null,
+      "image": false
+    },
+    "wb_v4_internal_RU": {
+      "wall_ms": 1145,
+      "sent": {
+        "formats": [
+          "rawHtml"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 0,
+        "location": {
+          "country": "RU"
+        },
+        "maxAge": 0
+      },
+      "http": 200,
+      "ms": 936,
+      "html_len": 321,
+      "meta_status": 403,
+      "meta_title": null,
+      "cache": null,
+      "title": null,
+      "price": null,
+      "image": false,
+      "raw": "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1252\"><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;/head&gt;&lt;body&gt;&lt;/body&gt;&lt;/html&gt;</pre></body></html>"
+    },
+    "wb_ucard_v4_RU": {
+      "wall_ms": 1397,
+      "sent": {
+        "formats": [
+          "rawHtml"
+        ],
+        "onlyMainContent": false,
+        "timeout": 30000,
+        "waitFor": 0,
+        "location": {
+          "country": "RU"
+        },
+        "maxAge": 0
+      },
+      "http": 200,
+      "ms": 1193,
+      "html_len": 321,
+      "meta_status": 403,
+      "meta_title": null,
+      "cache": null,
+      "title": null,
+      "price": null,
+      "image": false,
+      "raw": "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1252\"><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;/head&gt;&lt;body&gt;&lt;/body&gt;&lt;/html&gt;</pre></body></html>"
+    }
+  },
+  "stability": {
+    "ozon": {
+      "chrome_1": {
+        "wall_ms": 4613,
+        "ua": "chrome",
+        "error": "fetch failed",
+        "ms": 4411
+      },
+      "tg_1": {
+        "wall_ms": 3904,
+        "ua": "tg",
+        "error": "fetch failed",
+        "ms": 3683
+      },
+      "wa_1": {
+        "wall_ms": 1447,
+        "ua": "wa",
+        "status": 200,
+        "ms": 1240,
+        "html_len": 1588029,
+        "json_ld": true,
+        "og_title": true,
+        "title": "Носки мужские мужские, 5 пар",
+        "price": "705 RUB",
+        "image": true
+      },
+      "wa_2": {
+        "wall_ms": 849,
+        "ua": "wa",
+        "status": 200,
+        "ms": 615,
+        "html_len": 1587996,
+        "json_ld": true,
+        "og_title": true,
+        "title": "Носки мужские мужские, 5 пар",
+        "price": "705 RUB",
+        "image": true
+      },
+      "wa_3": {
+        "wall_ms": 627,
+        "ua": "wa",
+        "status": 200,
+        "ms": 446,
+        "html_len": 1588022,
+        "json_ld": true,
+        "og_title": true,
+        "title": "Носки мужские мужские, 5 пар",
+        "price": "705 RUB",
+        "image": true
+      }
+    },
+    "sm_product_1": {
+      "chrome_1": {
+        "wall_ms": 232,
+        "ua": "chrome",
+        "status": 401,
+        "ms": 27,
+        "html_len": 10673,
+        "json_ld": false,
+        "og_title": false,
+        "title": "Спортмастер",
+        "price": null,
+        "image": false
+      },
+      "tg_1": {
+        "wall_ms": 5339,
+        "ua": "tg",
+        "status": 200,
+        "ms": 5138,
+        "html_len": 1689417,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские Kappa Authentic Run арт. 128809 болотный цвет — купи",
+        "price": "7499 RUB",
+        "image": true
+      },
+      "wa_1": {
+        "wall_ms": 4645,
+        "ua": "wa",
+        "status": 200,
+        "ms": 4453,
+        "html_len": 1650788,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские Kappa Authentic Run арт. 128809 болотный цвет — купи",
+        "price": "7499 RUB",
+        "image": true
+      },
+      "wa_2": {
+        "wall_ms": 4766,
+        "ua": "wa",
+        "status": 200,
+        "ms": 4537,
+        "html_len": 1683386,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские Kappa Authentic Run арт. 128809 болотный цвет — купи",
+        "price": "7499 RUB",
+        "image": true
+      },
+      "wa_3": {
+        "wall_ms": 5057,
+        "ua": "wa",
+        "status": 200,
+        "ms": 4852,
+        "html_len": 1653528,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские Kappa Authentic Run арт. 128809 болотный цвет — купи",
+        "price": "7499 RUB",
+        "image": true
+      }
+    },
+    "sm_product_2": {
+      "chrome_1": {
+        "wall_ms": 206,
+        "ua": "chrome",
+        "status": 401,
+        "ms": 10,
+        "html_len": 10673,
+        "json_ld": false,
+        "og_title": false,
+        "title": "Спортмастер",
+        "price": null,
+        "image": false
+      },
+      "tg_1": {
+        "wall_ms": 3886,
+        "ua": "tg",
+        "status": 200,
+        "ms": 3670,
+        "html_len": 1638131,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские PUMA Replicatch арт. 405096 черный/белый цвет — купи",
+        "price": "4999 RUB",
+        "image": true
+      },
+      "wa_1": {
+        "wall_ms": 3612,
+        "ua": "wa",
+        "status": 200,
+        "ms": 3385,
+        "html_len": 1672382,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские PUMA Replicatch арт. 405096 черный/белый цвет — купи",
+        "price": "4999 RUB",
+        "image": true
+      },
+      "wa_2": {
+        "wall_ms": 3600,
+        "ua": "wa",
+        "status": 200,
+        "ms": 3407,
+        "html_len": 1672370,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские PUMA Replicatch арт. 405096 черный/белый цвет — купи",
+        "price": "4999 RUB",
+        "image": true
+      },
+      "wa_3": {
+        "wall_ms": 3702,
+        "ua": "wa",
+        "status": 200,
+        "ms": 3499,
+        "html_len": 1640155,
+        "json_ld": false,
+        "og_title": true,
+        "title": "Кроссовки мужские PUMA Replicatch арт. 405096 черный/белый цвет — купи",
+        "price": "4999 RUB",
+        "image": true
+      }
+    }
+  },
+  "coverage": {
+    "lamoda": {
+      "listing": "https://www.lamoda.ru/c/17/shoes-men/",
+      "note": "listing fetch error: HTTP Error 403: Forbidden"
+    },
+    "zara": {
+      "listing": "https://www.zara.com/es/en/man-shirts-l737.html",
+      "note": "no product link found (len=2226)"
+    },
+    "hm": {
+      "listing": "https://www2.hm.com/en_gb/men/shop-by-product/t-shirts-and-tanks.html",
+      "note": "listing fetch error: HTTP Error 403: Forbidden"
+    },
+    "uniqlo": {
+      "listing": "https://www.uniqlo.com/eu-pl/en/men/tops",
+      "note": "listing fetch error: HTTP Error 403: Forbidden"
+    },
+    "mytheresa": {
+      "listing": "https://www.mytheresa.com/gb/en/men/shoes/sneakers",
+      "note": "no product link found (len=9834)"
+    },
+    "asos": {
+      "listing": "https://www.asos.com/men/shoes-boots-trainers/cat/?cid=4209",
+      "product_url": "https://www.asos.com/new-balance/new-balance-530-unisex-trainers-in-off-white-and-beige/prd/204936689#colourWayId-204936690",
+      "chrome": {
+        "wall_ms": 1183,
+        "ua": "chrome",
+        "status": 200,
+        "ms": 980,
+        "html_len": 574456,
+        "json_ld": true,
+        "og_title": true,
+        "title": "New Balance 530 unisex trainers in off white and beige",
+        "price": null,
+        "image": true
+      },
+      "tg": {
+        "wall_ms": 12223,
+        "ua": "tg",
+        "error": "The operation was aborted due to timeout",
+        "ms": 12002
+      }
+    },
+    "nike": {
+      "listing": "https://www.nike.com/w/mens-shoes-nik1zy7ok",
+      "product_url": "https://www.nike.com/t/air-jordan-1-high-og-royal-mens-shoes-p8vLeLAd/IQ5495-005",
+      "chrome": {
+        "wall_ms": 1056,
+        "ua": "chrome",
+        "status": 200,
+        "ms": 843,
+        "html_len": 735004,
+        "json_ld": true,
+        "og_title": true,
+        "title": "Air Jordan 1 High OG \"Royal\" Men's Shoes",
+        "price": "$185",
+        "image": true
+      },
+      "tg": {
+        "wall_ms": 223,
+        "ua": "tg",
+        "status": 403,
+        "ms": 22,
+        "html_len": 469,
+        "json_ld": false,
+        "og_title": false,
+        "title": null,
+        "price": null,
+        "image": false
+      }
+    },
+    "adidas": {
+      "listing": "https://www.adidas.com/us/men-shoes",
+      "note": "listing fetch error: HTTP Error 403: Forbidden"
+    },
+    "netaporter": {
+      "listing": "https://www.net-a-porter.com/en-gb/shop/clothing",
+      "note": "listing fetch error: HTTP Error 403: Forbidden"
+    },
+    "12storeez": {
+      "listing": "https://12storeez.com/catalog/",
+      "note": "listing fetch error: HTTP Error 404: Not Found"
+    },
+    "aliexpress": {
+      "listing": "https://www.aliexpress.com/w/wholesale-sneakers.html",
+      "note": "no product link found (len=907571)"
+    }
+  }
+}
