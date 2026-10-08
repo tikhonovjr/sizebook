@@ -664,7 +664,7 @@ async function parseWildberries(url) {
 
     // Цена идёт через Firecrawl(RU) и не зависит от basket scan — стартуем
     // запрос сразу, чтобы два медленных шага шли параллельно, а не подряд.
-    const pricePromise = parseViaFirecrawl(url, { waitFor: 6000, country: 'RU' })
+    const pricePromise = parseViaRu(url)
       .then(fc => (fc && fc.price) || null)
       .catch(e => { console.log(`[wb] Firecrawl(RU) ошибка: ${e.message}`); return null; });
 
@@ -710,7 +710,7 @@ async function parseWildberries(url) {
 
     if (!card) {
       console.log(`[wb] basket-01..60 не нашли card.json для nm=${nm} (vol=${vol}, part=${part}). Пробуем Firecrawl`);
-      const fc = await parseViaFirecrawl(url, { waitFor: 6000, country: 'RU' });
+      const fc = await parseViaRu(url);
       return { title: fc?.title || null, price: fc?.price || (await pricePromise) || null, image: fc?.image || null, _wb_from_firecrawl: true, _wb_price_source: 'firecrawl_ru' };
     }
     console.log(`[wb] нашли basket-${foundBasket}, ключи:`, Object.keys(card).slice(0, 8));
@@ -782,6 +782,98 @@ async function parseViaIframely(url) {
 }
 
 // Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
+// ── Scrape.do (основной платный провайдер) ───────────────────────────────────
+const SD_DAILY_LIMIT = Number(process.env.SCRAPEDO_DAILY_LIMIT || 300); // запросов super (по 10 кредитов) в сутки
+const sdUsage = { day: '', n: 0 };
+function sdAllowed() {
+  const d = new Date().toISOString().slice(0, 10);
+  if (sdUsage.day !== d) { sdUsage.day = d; sdUsage.n = 0; }
+  if (sdUsage.n >= SD_DAILY_LIMIT) return false;
+  sdUsage.n++; return true;
+}
+const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|not found|404|403|доступ ограничен|подтвердите|проверка)/i;
+
+async function parseViaScrapedo(url, { geo = null } = {}) {
+  if (!process.env.SCRAPEDO_TOKEN) return null;
+  if (!sdAllowed()) { console.log('[scrapedo] дневной лимит исчерпан'); return null; }
+  const r = await fetchViaScrapedo(url, { super: true, geo, timeout: 45000 });
+  console.log(`[scrapedo] ${new URL(url).hostname} http=${r.http} ms=${r.ms} cost=${r.cost} remaining=${r.remaining} ${r.error || ''}`);
+  if (!r.html || r.http !== 200) return null;
+  const p = parseProductFromHtml(r.html, url);
+  if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
+  return p;
+}
+
+// ── Стратегии по магазинам ───────────────────────────────────────────────────
+// tiers: порядок источников. direct = обычный fetch, wa = fetch под превью-ботом мессенджера, sd = Scrape.do.
+// Результаты замеров 08.10.2026 (/debug coverage probe). Неизвестный хост: direct+wa параллельно -> sd.
+const HOST_STRATEGY = {
+  'lamoda.ru': { tiers: ['sd'], geo: 'ru' }, 'aliexpress.ru': { tiers: ['sd'], geo: 'ru' },
+  'kupivip.ru': { tiers: ['sd'], geo: 'ru' }, 'gloria-jeans.ru': { tiers: ['direct', 'sd'], geo: 'ru' },
+  '12storeez.com': { tiers: ['direct', 'sd'], geo: 'ru' }, 'market.yandex.ru': { tiers: ['direct', 'sd'], geo: 'ru' },
+  'farfetch.com': { tiers: ['sd'], geo: null }, 'hm.com': { tiers: ['sd'], geo: null },
+  'ssense.com': { tiers: ['wa', 'sd'], geo: null }, 'asos.com': { tiers: ['wa', 'sd'], geo: null },
+  'net-a-porter.com': { tiers: ['sd'], geo: null }, 'uniqlo.com': { tiers: ['direct', 'sd'], geo: null },
+  'amazon.com': { tiers: ['direct', 'sd'], geo: null },
+  'befree.ru': { tiers: ['direct'] }, 'brandshop.ru': { tiers: ['direct'] }, 'street-beat.ru': { tiers: ['direct'] },
+  'detmir.ru': { tiers: ['direct', 'wa'] }, 'bask.ru': { tiers: ['direct'] }, 'nike.com': { tiers: ['direct', 'sd'], geo: null },
+};
+function strategyFor(host) {
+  const h = host.replace(/^www\d?\./, '');
+  const key = Object.keys(HOST_STRATEGY).find(k => h === k || h.endsWith('.' + k));
+  if (key) return HOST_STRATEGY[key];
+  return { tiers: ['direct+wa', 'sd'], geo: h.endsWith('.ru') ? 'ru' : null };
+}
+
+const WA_UA = 'WhatsApp/2.23.20.0 A';
+async function fetchParse(url, ua) {
+  try {
+    const r = await fetch(url, { headers: { ...FETCH_HEADERS, ...(ua ? { 'User-Agent': ua } : {}) }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
+    if (!r.ok && r.status >= 500) return null;
+    const p = parseProductFromHtml(await r.text(), url);
+    if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
+    return p;
+  } catch (_) { return null; }
+}
+
+// Универсальный каскад по стратегии магазина. Идём дальше, только если нет названия, картинки или цены.
+async function parseByStrategy(url, host, t) {
+  const st = strategyFor(host);
+  let acc = { title: null, price: null, image: null };
+  const complete = (a) => a.title && a.image && a.price;
+  for (const tier of st.tiers) {
+    if (complete(acc)) break;
+    let r = null;
+    if (tier === 'direct') r = await fetchParse(url, null);
+    else if (tier === 'wa') r = await fetchParse(url, WA_UA);
+    else if (tier === 'direct+wa') {
+      const [a, b] = await Promise.all([fetchParse(url, null), fetchParse(url, WA_UA)]);
+      r = mergeParseResults(a, b);
+    } else if (tier === 'sd') r = await parseViaScrapedo(url, { geo: st.geo });
+    t.mark('tier:' + tier, { title: !!r?.title, price: !!r?.price, image: !!r?.image });
+    acc = mergeParseResults(acc, r);
+  }
+  // Запасной вариант на Firecrawl, если Scrape.do недоступен/не сработал и нет названия
+  if (!acc.title && process.env.FIRECRAWL_API_KEY) {
+    const fc = await parseViaFirecrawl(url, { waitFor: 4000, country: st.geo === 'ru' ? 'RU' : null });
+    t.mark('tier:firecrawl', { title: !!fc?.title, price: !!fc?.price, image: !!fc?.image });
+    acc = mergeParseResults(acc, fc);
+  }
+  // Последний шанс для названия/картинки: внешние OG-парсеры (цену не отдают)
+  if (!acc.title || !acc.image) {
+    const jl = await parseViaJsonlink(url);
+    t.mark('tier:jsonlink', { title: !!jl?.title, image: !!jl?.image });
+    acc = mergeParseResults(acc, jl);
+  }
+  return acc;
+}
+
+async function parseViaRu(url) {
+  const sd = await parseViaScrapedo(url, { geo: 'ru' });
+  if (sd && (sd.title || sd.price)) return sd;
+  return parseViaFirecrawl(url, { waitFor: 6000, country: 'RU' });
+}
+
 async function parseViaFirecrawl(url, { waitFor = 4000, country = null, proxy = null } = {}) {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) { console.log('[firecrawl] FIRECRAWL_API_KEY не задан в env'); return null; }
@@ -1046,73 +1138,9 @@ async function parseHandler(req, res) {
     return res.json(withTiming(clean));
   }
 
-  const BOT_PROTECTED = host.includes('net-a-porter') || host.includes('matchesfashion') || host.includes('farfetch') || host.includes('sportmaster');
-
-  // Шаг a: прямой fetch + HTML-парсер
-  let accumulated = { title: null, price: null, image: null };
-  try {
-    const response = await fetch(url, {
-      headers: FETCH_HEADERS,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15000),
-    });
-    const html = await response.text();
-    const direct = parseProductFromHtml(html, url);
-    t.mark('direct-fetch', { title: !!direct.title, price: !!direct.price, image: !!direct.image });
-    accumulated = mergeParseResults(accumulated, direct);
-
-    // Для обычных сайтов — если что-то нашли, сразу отдаём
-    if (!BOT_PROTECTED && (accumulated.title || accumulated.price || accumulated.image)) {
-      return res.json(withTiming(accumulated));
-    }
-  } catch (e) {
-    t.mark('direct-fetch:error', { err: e.message });
-    if (e.name === 'TimeoutError' && !BOT_PROTECTED)
-      return res.status(504).json({ error: 'Сайт не ответил', _ms: t.total(), _steps: t.steps() });
-  }
-
-  // Для обычных сайтов без результата — возвращаем null
-  if (!BOT_PROTECTED) {
-    return res.json(withTiming(accumulated));
-  }
-
-  // Шаг b: BOT_PROTECTED — пробуем Playwright (умеет price из JSON-LD/og:price/DOM).
-  // Для Farfetch этот шаг по опыту всегда возвращает пусто (антибот на уровне
-  // рендера через headless Chromium) — пропускаем его и экономим ~2.5 сек,
-  // сразу переходя к Firecrawl, который реально справляется с Farfetch.
-  const skipPlaywright = host.includes('farfetch');
-  if (!skipPlaywright && (!accumulated.title || !accumulated.price)) {
-    const playwright = await parseViaPlaywright(url);
-    t.mark('playwright', { title: !!playwright?.title, price: !!playwright?.price, image: !!playwright?.image });
-    accumulated = mergeParseResults(accumulated, playwright);
-  } else if (skipPlaywright) {
-    t.mark('playwright:skipped-known-dead-for-farfetch');
-  }
-
-  // Шаг c: Firecrawl — обходит антибот лучше Playwright, умеет и price
-  if (!accumulated.title || !accumulated.price) {
-    const firecrawl = await parseViaFirecrawl(url, { waitFor: host.includes('farfetch') ? 3000 : 4000 });
-    t.mark('firecrawl', { title: !!firecrawl?.title, price: !!firecrawl?.price, image: !!firecrawl?.image });
-    accumulated = mergeParseResults(accumulated, firecrawl);
-  }
-
-  // Шаг d: если всё ещё нет title или image — дополняем через внешние OG-парсеры
-  // (они умеют title/image, но не price — поэтому идут последними)
-  if (!accumulated.title || !accumulated.image) {
-    const jsonlink = await parseViaJsonlink(url);
-    t.mark('jsonlink', { title: !!jsonlink?.title, image: !!jsonlink?.image });
-    accumulated = mergeParseResults(accumulated, jsonlink);
-
-    if (!accumulated.title || !accumulated.image) {
-      const iframely = await parseViaIframely(url);
-      t.mark('iframely', { title: !!iframely?.title, image: !!iframely?.image });
-      accumulated = mergeParseResults(accumulated, iframely);
-    }
-  }
-
-  // Шаг e: отдаём что есть (price может быть null — это нормально, если ни один метод не нашёл)
+  const accumulated = await parseByStrategy(url, host, t);
   t.mark('done');
-  console.log(`[parse] final result (${host}) за ${t.total()}ms:`, accumulated, t.steps());
+  console.log(`[parse] ${host} за ${t.total()}ms:`, accumulated, t.steps());
   res.json(withTiming(accumulated));
 }
 
