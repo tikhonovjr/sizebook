@@ -1,0 +1,44 @@
+{
+ "https://12storeez.com/catalog/verhnaa-odezda/womencollection/puhovik-repino-s-vorotnikom-iz-meha-139725": {
+  "parse": {
+   "title": "Пуховик Repino с воротником из меха",
+   "price": "49 000 ₽",
+   "image": "https://image.12storeez.com/images/800xP_90_out/uploads/images/september26/peresem/139725/6abd4a053ba06-23-09-26-ani17207.jpg"
+  },
+  "steps": [
+   "12storeez:direct-fetch",
+   "12storeez:firecrawl"
+  ],
+  "img_no_referer": {
+   "status": 200,
+   "type": "image/jpeg",
+   "len": "110710"
+  },
+  "img_with_site_referer": {
+   "status": 200,
+   "type": "image/jpeg",
+   "len": "110710"
+  }
+ },
+ "https://www.tsum.ru/product/7128763-palto-iz-shersti-i-kashemira-brunello-cucinelli-seryi/": {
+  "parse": {
+   "title": "Пальто из шерсти и кашемира Brunello Cucinelli",
+   "price": "799500 RUB",
+   "image": "https://st-cdn.tsum.com/sig/cfffee78bf1aa3940c75587329ddf45c/width/400/i/89/2d/1f/01/ef160061-4e45-4647-86da-c85e871c52f3.jpg"
+  },
+  "steps": [
+   "tier:direct+wa",
+   "done"
+  ],
+  "img_no_referer": {
+   "status": 200,
+   "type": "image/jpeg; charset=utf-8",
+   "len": null
+  },
+  "img_with_site_referer": {
+   "status": 200,
+   "type": "image/jpeg; charset=utf-8",
+   "len": null
+  }
+ }
+}
