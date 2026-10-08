@@ -978,9 +978,17 @@ async function parseWildberries(url) {
 
     // Цена идёт через Firecrawl(RU) и не зависит от basket scan — стартуем
     // запрос сразу, чтобы два медленных шага шли параллельно, а не подряд.
-    const pricePromise = parseViaRu(url)
-      .then(fc => (fc && fc.price) || null)
-      .catch(e => { console.log(`[wb] Firecrawl(RU) ошибка: ${e.message}`); return null; });
+    // Цена: сервис fetcher (браузер ловит JSON карточки WB, ~4–10 с). Если он недоступен —
+    // старый путь через Scrape.do/Firecrawl с российским IP.
+    let priceSource = 'none';
+    const fetcherPromise = viaFetcher(url, 50000);
+    const pricePromise = fetcherPromise.then(async (d) => {
+      if (d && d.price) { priceSource = 'fetcher'; return fmtRub(d.price); }
+      if (FETCHER_URL && d === null) console.log('[wb] fetcher не дал цену, пробуем Scrape.do/Firecrawl');
+      const fc = await parseViaRu(url).catch(() => null);
+      if (fc && fc.price) { priceSource = 'scrapedo_or_firecrawl'; return fc.price; }
+      return null;
+    }).catch(e => { console.log(`[wb] цена ошибка: ${e.message}`); return null; });
 
     // Параллельный перебор basket-01..basket-60: не зависим от устаревшей
     // таблицы порогов (WB регулярно добавляет новые basket-сервера, из-за
@@ -1024,8 +1032,9 @@ async function parseWildberries(url) {
 
     if (!card) {
       console.log(`[wb] basket-01..60 не нашли card.json для nm=${nm} (vol=${vol}, part=${part}). Пробуем Firecrawl`);
-      const fc = await parseViaRu(url);
-      return { title: fc?.title || null, price: fc?.price || (await pricePromise) || null, image: fc?.image || null, _wb_from_firecrawl: true, _wb_price_source: 'firecrawl_ru' };
+      const d = await fetcherPromise;
+      const price = await pricePromise;
+      return { title: d?.title || null, price, image: null, _wb_from_firecrawl: false, _wb_price_source: priceSource };
     }
     console.log(`[wb] нашли basket-${foundBasket}, ключи:`, Object.keys(card).slice(0, 8));
     const base = `https://basket-${foundBasket}.wbbasket.ru/vol${vol}/part${part}/${nm}`;
@@ -1033,18 +1042,15 @@ async function parseWildberries(url) {
     const image = `${base}/images/big/1.webp`;
 
     if (!title) {
-      console.log(`[wb] imt_name пустой, пробуем Firecrawl для title`);
-      const fc = await parseViaFirecrawl(url);
-      return { title: fc?.title || null, price: fc?.price || null, image };
+      const d = await fetcherPromise;
+      return { title: d?.title || null, price: await pricePromise, image, _wb_price_source: priceSource };
     }
 
     // ── ЦЕНА WB ──────────────────────────────────────────────────────────
-    // Прямые API недоступны: card.wb.ru отдаёт 403 с любого IP, search.wb.ru —
-    // постоянный 429 с датацентровых IP (проверено: proxy6.net и Timeweb).
-    // Рабочий путь: Firecrawl с location.country='RU' рендерит страницу товара
-    // с российского резидентного IP — цена присутствует в HTML.
+    // card.wb.ru / search.wb.ru не отдают данные «голым» запросам с серверных IP (403/429,
+    // в т.ч. с TLS-отпечатком браузера). Цену берём из сервиса fetcher: настоящий браузер
+    // открывает страницу товара и перехватывает JSON карточки, который WB сам себе загружает.
     const price = await pricePromise;
-    const priceSource = price ? 'firecrawl_ru' : 'none';
     console.log(`[wb] цена: ${price || 'не найдена'} (${priceSource})`);
 
     return { title, price, image, _wb_price_source: priceSource };
@@ -1054,21 +1060,43 @@ async function parseWildberries(url) {
   }
 }
 
-// Ozon — прямой fetch (Ozon отдаёт JSON-LD и og-теги в статическом HTML)
+// ── Fetcher: отдельный сервис с настоящим браузером (Camoufox) для Ozon и WB ──
+// Сервис `fetcher` в том же проекте Railway, ходим по внутренней сети.
+// Он проходит JS-проверку антибота как обычный посетитель и отдаёт название/цену/картинку.
+const FETCHER_URL = (process.env.FETCHER_URL || '').replace(/\/$/, '');
+const FETCHER_SECRET = process.env.FETCHER_SECRET || '';
+const fmtRub = (n) => (n == null ? null : `${Math.round(Number(n))} ₽`);
+
+async function viaFetcher(url, timeoutMs = 75000) {
+  if (!FETCHER_URL || !FETCHER_SECRET) return null;
+  const t0 = Date.now();
+  try {
+    const r = await fetch(`${FETCHER_URL}/product`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-fetcher-secret': FETCHER_SECRET },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const d = await r.json().catch(() => null);
+    console.log(`[fetcher] ${new URL(url).hostname} http=${r.status} ok=${d && d.ok} ms=${Date.now() - t0} err=${d && d.error || ''}`);
+    return d && d.ok ? d : null;
+  } catch (e) {
+    console.log(`[fetcher] ошибка: ${e.message} (ms=${Date.now() - t0})`);
+    return null;
+  }
+}
+
+// Ozon: закрыт JS-антиботом и слайдер-капчей для «голых» HTTP-запросов (fetch, Firecrawl,
+// Scrape.do — проверено 09–10.2026). Работает только настоящий браузер → сервис fetcher.
 async function parseOzon(url) {
-  // Ozon закрыт для автоматического парсинга. Проверено (см. probe-сессию):
-  //   - прямой fetch / cookie-цепочка → 403 после антибот-редиректа __rr=1
-  //   - composer-api / entrypoint-api, домены .ru/.by/.kz → то же самое
-  //   - Playwright с РФ-прокси и без → пустая страница
-  //   - Firecrawl: plain / location:RU / proxy:stealth (waitFor до 25s)
-  //     → страница "Antibot Captcha", HTTP 403
-  // Единственный оставшийся путь — внешний сервис с решением капчи (платный).
-  // Пока его нет, возвращаемся сразу: тратить 8-20 секунд на заведомо
-  // безуспешный каскад хуже, чем честно отдать пустой результат.
-  console.log('[ozon] пропущен: требуется обход капчи, см. комментарий в parseOzon');
+  const d = await viaFetcher(url);
+  if (!d) return { title: null, price: null, image: null, _ozon_steps: [{ step: 'fetcher', ok: false }] };
   return {
-    title: null, price: null, image: null,
-    _ozon_steps: [{ step: 'skipped', reason: 'antibot_captcha_requires_solver' }],
+    title: d.title || null,
+    // Показываем цену, которую Ozon выводит крупно (по Ozon-карте), как видит её пользователь в приложении
+    price: fmtRub(d.card_price || d.price),
+    image: d.image || null,
+    _ozon_steps: [{ step: 'fetcher', ok: true, ms: d.ms, price: d.price || null, card_price: d.card_price || null }],
   };
 }
 
