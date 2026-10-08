@@ -1498,6 +1498,41 @@ app.get('/debug/fcspeed', async (req, res) => {
   } catch (err) { res.json({ error: err.message.slice(0, 120), ms: Date.now() - t0 }); }
 });
 
+// Scrape.do — провайдер скрейпинга (параметры: render, super, geo, wait)
+async function fetchViaScrapedo(url, o = {}) {
+  const token = process.env.SCRAPEDO_TOKEN;
+  if (!token) return { error: 'no SCRAPEDO_TOKEN' };
+  const p = new URLSearchParams({ token, url });
+  if (o.render) p.set('render', 'true');
+  if (o.super) p.set('super', 'true');
+  if (o.geo) p.set('geoCode', o.geo);
+  if (o.wait) { p.set('waitUntil', 'networkidle2'); }
+  if (o.customWait) p.set('customWait', String(o.customWait));
+  const t0 = Date.now();
+  try {
+    const r = await fetch('https://api.scrape.do/?' + p.toString(), { signal: AbortSignal.timeout(o.timeout || 60000) });
+    const html = await r.text();
+    return { http: r.status, ms: Date.now() - t0, html, cost: r.headers.get('scrape.do-request-cost'), remaining: r.headers.get('scrape.do-remaining-credits') };
+  } catch (e) { return { error: e.message.slice(0, 120), ms: Date.now() - t0 }; }
+}
+
+app.get('/debug/sdprobe', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.json({ error: 'url required' });
+  const r = await fetchViaScrapedo(url, {
+    render: req.query.render === '1', super: req.query.super === '1', geo: req.query.geo || null,
+    wait: req.query.wait === '1', customWait: Number(req.query.cw) || 0,
+  });
+  const e = { http: r.http, ms: r.ms, cost: r.cost, remaining: r.remaining, error: r.error };
+  if (r.html) {
+    e.html_len = r.html.length;
+    const p = parseProductFromHtml(r.html, url);
+    e.title = p.title ? p.title.slice(0, 60) : null; e.price = p.price; e.image = !!p.image;
+    if (!p.title && !p.price) e.head = r.html.slice(0, 160).replace(/\s+/g, ' ');
+  }
+  res.json(e);
+});
+
 // /debug/uaprobe?url=...&ua=chrome|tg|fb|google|wa — прямой fetch с Railway-IP под разными User-Agent
 app.get('/debug/uaprobe', async (req, res) => {
   const url = req.query.url;
