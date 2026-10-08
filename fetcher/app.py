@@ -49,7 +49,11 @@ class Browser:
         t = time.time()
         self.cm = AsyncCamoufox(headless='virtual', os='windows', locale='ru-RU', block_webrtc=True,
                                 humanize=False, i_know_what_im_doing=True,
-                                firefox_user_prefs={'media.autoplay.default': 5})
+                                firefox_user_prefs={'media.autoplay.default': 5,
+                                                    'browser.cache.memory.capacity': 32768,
+                                                    'browser.sessionhistory.max_total_viewers': 0,
+                                                    'browser.sessionhistory.max_entries': 2,
+                                                    'dom.ipc.processCount': 2})
         self.br = await self.cm.__aenter__()
         self.ctx = {}
         self.pages_opened = 0
@@ -81,7 +85,18 @@ class Browser:
                     await self.ctx[key].route(re.compile(r'\.(png|jpe?g|webp|gif|avif|mp4|webm|woff2?|ttf)(\?|$)', re.I),
                                               lambda route: route.abort())
             self.pages_opened += 1
+            self.last_used = time.time()
             return self.ctx[key]
+
+    async def idle_reaper(self, idle_s):
+        """Браузер для WB нужен только в момент запроса — без дела закрываем, экономим память."""
+        while True:
+            await asyncio.sleep(60)
+            if self.br is not None and self.active == 0 and time.time() - getattr(self, 'last_used', 0) > idle_s:
+                async with self.lock:
+                    if self.active == 0:
+                        await self._stop()
+                        log('BROWSER', event='idle_stop')
 
     async def reset_context(self, key):
         async with self.lock:
@@ -606,6 +621,7 @@ async def on_start(app):
             log('ERROR', err=traceback.format_exc()[-1500:])
     if os.environ.get('PROBE') == '1':
         asyncio.create_task(run_probes())
+    asyncio.create_task(BROWSER.idle_reaper(int(os.environ.get('WB_BROWSER_IDLE', '600'))))
     if os.environ.get('OZON_KEEPER', '1') == '1':
         asyncio.create_task(OZON.keeper())
 
