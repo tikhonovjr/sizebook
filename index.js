@@ -995,6 +995,7 @@ async function parseWildberries(url) {
     const fetcherPromise = viaFetcher(url, 50000);
     const pricePromise = fetcherPromise.then(async (d) => {
       if (d && d.price) { priceSource = 'fetcher'; return fmtRub(d.price); }
+      if (d && d.available === false) { priceSource = 'fetcher'; return 'Нет в наличии'; }
       if (FETCHER_URL && d === null) console.log('[wb] fetcher не дал цену, пробуем Scrape.do/Firecrawl');
       const fc = await parseViaRu(url).catch(() => null);
       if (fc && fc.price) { priceSource = 'scrapedo_or_firecrawl'; return fc.price; }
@@ -1105,7 +1106,7 @@ async function parseOzon(url) {
   return {
     title: d.title || null,
     // Показываем цену, которую Ozon выводит крупно (по Ozon-карте), как видит её пользователь в приложении
-    price: fmtRub(d.card_price || d.price),
+    price: (d.card_price || d.price) ? fmtRub(d.card_price || d.price) : (d.available === false ? 'Нет в наличии' : null),
     image: d.image || null,
     _ozon_steps: [{ step: 'fetcher', ok: true, ms: d.ms, price: d.price || null, card_price: d.card_price || null }],
   };
