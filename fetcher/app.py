@@ -678,10 +678,10 @@ async def scenarios():
 
 
 EXP_CONFIGS = {
-    'A_win_msk': ({}, {'timezone_id': 'Europe/Moscow'}),
-    'B_win_geoip': ({'geoip': True}, {}),
     'C_mac_geoip': ({'geoip': True, 'os': 'macos'}, {}),
-    'D_win_geoip_human': ({'geoip': True, 'humanize': True}, {}),
+    'E_mac_geoip_en': ({'geoip': True, 'os': 'macos', 'locale': 'en-US'}, {}),
+    'F_mac_geoip_webrtc': ({'geoip': True, 'os': 'macos', 'block_webrtc': False}, {}),
+    'G_mac_geoip_ruen': ({'geoip': True, 'os': 'macos', 'locale': ['ru-RU', 'en-US']}, {}),
 }
 
 
@@ -694,7 +694,7 @@ async def exp_configs():
             ok, why = False, None
             try:
                 await br.context('_boot')
-                ctx = await br.br.new_context(locale='ru-RU', viewport={'width': 1366, 'height': 900}, **copts)
+                ctx = await br.br.new_context(viewport={'width': 1440, 'height': 900}, **copts)
                 page = await ctx.new_page()
                 try:
                     await page.goto(OZON_WARM_URL, wait_until='domcontentloaded', timeout=20000)
