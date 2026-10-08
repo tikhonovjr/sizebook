@@ -201,6 +201,16 @@ async function initDB() {
     );
     CREATE INDEX IF NOT EXISTS idx_items_user_zone ON items(user_id, zone);
   `);
+  // Вещи v2: ссылка/фото/магазин, посадка (small|true|large), откуда добавлена, связь с вишлистом
+  await pool.query(`
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS url TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS image TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS shop TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS fit TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS source TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS wishlist_id INTEGER;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+  `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
 
@@ -415,27 +425,75 @@ async function addWishlistFromText(userId, raw) {
   let host;
   try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return { error: 'Некорректная ссылка' }; }
   const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
-  if (dup.rows[0]) return { duplicate: true, host };
+  if (dup.rows[0]) return { duplicate: true, host, id: dup.rows[0].id };
   const r = await pool.query(
     "INSERT INTO wishlist (user_id,title,shop,url,parse_status) VALUES ($1,$2,$3,$4,'pending') RETURNING id",
     [userId, host, host, url]
   );
-  return { host, url, enrich: () => enrichWishlistItem(r.rows[0].id, userId, url, host) };
+  return { host, url, id: r.rows[0].id, enrich: () => enrichWishlistItem(r.rows[0].id, userId, url, host) };
 }
 
 // ── TELEGRAM-БОТ: «Поделиться» → Telegram → SizeBook ─────────────────────────
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TG_BOT = (process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '');
 const TG_SECRET = TG_TOKEN ? crypto.createHash('sha256').update(TG_TOKEN + JWT_SECRET).digest('hex').slice(0, 32) : '';
-async function tgSend(chatId, text) {
-  if (!TG_TOKEN) return;
+async function tgApi(method, body) {
+  if (!TG_TOKEN) return null;
   try {
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
     });
-  } catch (e) { console.log('[tg] send error', e.message); }
+    return await r.json().catch(() => null);
+  } catch (e) { console.log('[tg]', method, 'error', e.message); return null; }
+}
+async function tgSend(chatId, text, keyboard) {
+  const body = { chat_id: chatId, text, disable_web_page_preview: true };
+  if (keyboard) body.reply_markup = { inline_keyboard: keyboard };
+  return tgApi('sendMessage', body);
+}
+// Кнопка «Уже моё» под товаром из вишлиста
+const tgOwnKeyboard = (wid) => [[{ text: 'Уже моё — в мои вещи', callback_data: 'own:' + wid }]];
+const TG_ZONE_SIZES = {
+  tops: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], outer: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  bottoms: ['XS', 'S', 'M', 'L', 'XL', 'W28', 'W30', 'W32', 'W34', 'W36'],
+  shoes: ['EU 36', 'EU 37', 'EU 38', 'EU 39', 'EU 40', 'EU 41', 'EU 42', 'EU 43', 'EU 44', 'EU 45', 'EU 46'],
+  hats: ['S/M', 'L/XL', '56', '57', '58', '59', 'One Size'], acc: ['One Size', 'S', 'M', 'L'],
+};
+function tgSizeKeyboard(wid, zone) {
+  const sizes = TG_ZONE_SIZES[zone] || TG_ZONE_SIZES.tops;
+  const rows = [];
+  for (let i = 0; i < sizes.length; i += 4) rows.push(sizes.slice(i, i + 4).map(v => ({ text: v, callback_data: `sz:${wid}:${v}` })));
+  rows.push([{ text: 'Другой — укажу в приложении', callback_data: `sz:${wid}:` }]);
+  return rows;
+}
+async function tgHandleCallback(cq) {
+  const chatId = cq.message && cq.message.chat && cq.message.chat.id;
+  const answer = (text) => tgApi('answerCallbackQuery', { callback_query_id: cq.id, text: text || undefined });
+  if (!chatId) return answer();
+  const u = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
+  if (!u.rows[0]) return answer('Бот не подключён');
+  const userId = u.rows[0].id;
+  const data = String(cq.data || '');
+  let m = data.match(/^own:(\d+)$/);
+  if (m) {
+    const w = (await pool.query('SELECT id, title FROM wishlist WHERE id=$1 AND user_id=$2', [m[1], userId])).rows[0];
+    if (!w) return answer('Вещь не найдена');
+    await answer();
+    return tgSend(chatId, `Какой у вас размер?\n${w.title}`, tgSizeKeyboard(w.id, guessZone(w.title)));
+  }
+  m = data.match(/^sz:(\d+):(.{0,20})$/);
+  if (m) {
+    const out = await wishlistToItem(userId, m[1], { size: m[2] || null, source: 'tg' });
+    if (!out) return answer('Вещь не найдена');
+    if (out.existed && m[2]) {
+      await pool.query('UPDATE items SET size=$1, updated_at=NOW() WHERE id=$2 AND user_id=$3', [m[2], out.item.id, userId]);
+    }
+    await answer('Готово');
+    await tgApi('editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } });
+    return tgSend(chatId, `✓ В ваших вещах: ${out.item.name}${m[2] ? ', размер ' + m[2] : ''}.\nПосадку (маломерит / в размер) можно отметить в приложении.`);
+  }
+  return answer();
 }
 async function tgSetWebhook() {
   const domain = process.env.PUBLIC_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
@@ -443,7 +501,7 @@ async function tgSetWebhook() {
   try {
     const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/setWebhook`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: `${domain}/tg/webhook/${TG_SECRET}`, allowed_updates: ['message'] }),
+      body: JSON.stringify({ url: `${domain}/tg/webhook/${TG_SECRET}`, allowed_updates: ['message', 'callback_query'] }),
       signal: AbortSignal.timeout(10000),
     });
     console.log('[tg] setWebhook', r.status);
@@ -475,6 +533,7 @@ app.post('/tg/webhook/:secret', async (req, res) => {
   if (!TG_SECRET || req.params.secret !== TG_SECRET) return res.sendStatus(404);
   res.sendStatus(200); // Telegram ждёт быстрый ответ, остальное делаем после
   try {
+    if (req.body && req.body.callback_query) return await tgHandleCallback(req.body.callback_query);
     const msg = req.body && req.body.message;
     if (!msg || !msg.chat || msg.chat.type !== 'private') return;
     const chatId = msg.chat.id;
@@ -500,11 +559,11 @@ app.post('/tg/webhook/:secret', async (req, res) => {
     if (!u.rows[0]) return tgSend(chatId, 'Бот ещё не подключён. Откройте SizeBook → Вишлист → «Подключить Telegram».');
     const out = await addWishlistFromText(u.rows[0].id, text);
     if (out.error) return tgSend(chatId, 'Не нашёл ссылку на товар в сообщении. Пришлите её через «Поделиться» в приложении магазина.');
-    if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`);
+    if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`, tgOwnKeyboard(out.id));
     await tgSend(chatId, `Добавил: ${out.host}. Подтягиваю название и цену…`);
     const e = await out.enrich();
-    if (e && e.found) await tgSend(chatId, `✓ ${e.title}${e.price ? ' — ' + e.price : ''}`);
-    else await tgSend(chatId, 'Вещь сохранена, но название и цену магазин не отдал. Они могут появиться позже в приложении.');
+    if (e && e.found) await tgSend(chatId, `✓ ${e.title}${e.price ? ' — ' + e.price : ''}`, tgOwnKeyboard(out.id));
+    else await tgSend(chatId, 'Вещь сохранена, но название и цену магазин не отдал. Они могут появиться позже в приложении.', tgOwnKeyboard(out.id));
   } catch (e) { console.error('[tg] webhook', e.message); }
 });
 
@@ -617,6 +676,15 @@ app.get('/share/:token', async (req, res) => {
         );
       }
       result.sizes = sizesData;
+      // Размеры по брендам из «Моих вещей» (без заметок, ссылок и фото); отключается sections.items === false
+      if (sections.items !== false) {
+        const ir = await pool.query(
+          `SELECT brand, zone, name, size, fit FROM items
+           WHERE user_id=$1 AND COALESCE(brand,'')<>'' AND COALESCE(size,'')<>''
+           ORDER BY lower(brand), zone, id`, [link.user_id]
+        );
+        result.brand_sizes = ir.rows;
+      }
     }
 
     if (sections.wishlist) {
@@ -634,26 +702,65 @@ app.get('/share/:token', async (req, res) => {
 });
 
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
+const ITEM_FITS = ['small', 'true', 'large'];
+const ITEM_SOURCES = ['manual', 'link', 'wishlist', 'tg'];
+function cleanItemFields(b) {
+  const str = (v, n) => (v === undefined ? undefined : (v === null ? null : String(v).trim().slice(0, n) || null));
+  const out = {
+    zone: str(b.zone, 40), name: str(b.name, 200), brand: str(b.brand, 80), size: str(b.size, 40),
+    note: str(b.note, 500), shop: str(b.shop, 80), fit: str(b.fit, 10),
+    url: str(b.url, 2000), image: str(b.image, 2000),
+  };
+  for (const k of ['url', 'image']) {
+    if (out[k] && !/^https?:\/\//i.test(out[k])) out[k] = null;
+  }
+  if (out.fit && !ITEM_FITS.includes(out.fit)) out.fit = null;
+  return out;
+}
+
 app.get('/items', authenticateToken, async (req, res) => {
   try {
     const zone = req.query.zone;
-    if (!zone) return res.status(400).json({ error: 'zone required' });
-    const r = await pool.query(
-      'SELECT * FROM items WHERE user_id=$1 AND zone=$2 ORDER BY id ASC',
-      [req.user.id, zone]
-    );
+    const r = zone
+      ? await pool.query('SELECT * FROM items WHERE user_id=$1 AND zone=$2 ORDER BY id ASC', [req.user.id, zone])
+      : await pool.query('SELECT * FROM items WHERE user_id=$1 ORDER BY id ASC', [req.user.id]);
     res.json(r.rows);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 app.post('/items', authenticateToken, async (req, res) => {
   try {
-    const { zone, name, brand, size, note } = req.body;
-    if (!zone || !name) return res.status(400).json({ error: 'zone и name обязательны' });
+    const f = cleanItemFields(req.body || {});
+    if (!f.zone || !f.name) return res.status(400).json({ error: 'zone и name обязательны' });
+    const source = ITEM_SOURCES.includes(req.body.source) ? req.body.source : 'manual';
     const r = await pool.query(
-      'INSERT INTO items (user_id, zone, name, brand, size, note) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [req.user.id, zone, name, brand || null, size || null, note || null]
+      `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [req.user.id, f.zone, f.name, f.brand || null, f.size || null, f.note || null,
+       f.url || null, f.image || null, f.shop || null, f.fit || null, source]
     );
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+// Правка вещи: меняются только присланные поля
+app.patch('/items/:id', authenticateToken, async (req, res) => {
+  try {
+    const f = cleanItemFields(req.body || {});
+    const cols = ['zone', 'name', 'brand', 'size', 'note', 'url', 'image', 'shop', 'fit'];
+    const sets = [], vals = [];
+    for (const c of cols) {
+      if (f[c] === undefined) continue;
+      if ((c === 'zone' || c === 'name') && !f[c]) return res.status(400).json({ error: c + ' не может быть пустым' });
+      vals.push(f[c]); sets.push(`${c}=$${vals.length}`);
+    }
+    if (!sets.length) return res.status(400).json({ error: 'Нечего менять' });
+    vals.push(req.params.id, req.user.id);
+    const r = await pool.query(
+      `UPDATE items SET ${sets.join(', ')}, updated_at=NOW() WHERE id=$${vals.length - 1} AND user_id=$${vals.length} RETURNING *`,
+      vals
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -663,6 +770,51 @@ app.delete('/items/:id', authenticateToken, async (req, res) => {
     await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+// Категория вещи по названию товара (для ссылки, вишлиста и бота). null — не угадали.
+const ZONE_GUESS = [
+  ['shoes', /кроссовк|кед[ыа ]|ботин|сапог|туфл|лофер|мокасин|сандал|босонож|шлепан|слипон|сникер|дерби|оксфорд|челси|угги|sneaker|trainer|\bshoes?\b|\bboots?\b|loafer|sandal|\bmules?\b/i],
+  ['hats', /шапк|кепк|бейсболк|панам|берет|шляп|\bhat\b|\bcap\b|beanie|bucket/i],
+  ['outer', /куртк|пуховик|пальто|плащ|парк[аи]|тренч|ветровк|бомбер|жилет|анорак|дублен|шуб|jacket|coat|parka|puffer|trench|bomber|gilet|vest\b/i],
+  ['bottoms', /джинс|брюк|штан|шорт|юбк|леггин|лосин|чинос|карго|jeans|trouser|pants|shorts|skirt|legging|chino/i],
+  ['tops', /футболк|рубашк|поло|лонгслив|свитшот|худи|толстовк|свитер|джемпер|кардиган|водолазк|топ\b|майк|блуз|t-shirt|tee\b|shirt|polo|hoodie|sweatshirt|sweater|jumper|cardigan|blouse|\btop\b/i],
+  ['acc', /ремень|ремн|кольц|сумк|рюкзак|шарф|перчатк|носк|очки|часы|\bbelt|\bring\b|\bbag\b|backpack|scarf|glove|\bsocks?\b|sunglass|\bwatch\b/i],
+];
+function guessZone(title) {
+  const t = String(title || '');
+  for (const [zone, re] of ZONE_GUESS) if (re.test(t)) return zone;
+  return null;
+}
+
+// Вишлист → «Мои вещи»: создаёт вещь из записи вишлиста (и отмечает её полученной)
+async function wishlistToItem(userId, wishlistId, extra) {
+  const w = (await pool.query('SELECT * FROM wishlist WHERE id=$1 AND user_id=$2', [wishlistId, userId])).rows[0];
+  if (!w) return null;
+  const ex = (await pool.query('SELECT * FROM items WHERE user_id=$1 AND wishlist_id=$2 LIMIT 1', [userId, wishlistId])).rows[0];
+  if (ex) return { item: ex, existed: true };
+  const f = cleanItemFields(extra || {});
+  const zone = f.zone || guessZone(w.title) || 'tops';
+  const r = await pool.query(
+    `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    [userId, zone, f.name || w.title, f.brand || null, f.size || w.size || null, f.note || null,
+     w.url || null, w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id]
+  );
+  await pool.query('UPDATE wishlist SET received_at=COALESCE(received_at, NOW()) WHERE id=$1 AND user_id=$2', [w.id, userId]);
+  return { item: r.rows[0], existed: false };
+}
+
+app.post('/wishlist/:id/to-items', authenticateToken, async (req, res) => {
+  try {
+    const out = await wishlistToItem(req.user.id, req.params.id, req.body || {});
+    if (!out) return res.status(404).json({ error: 'Не найдено' });
+    res.json(out);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+app.post('/items/guess-zone', authenticateToken, (req, res) => {
+  res.json({ zone: guessZone(req.body && req.body.title) });
 });
 
 // ── ПАРСЕР ────────────────────────────────────────────────────────────────────
@@ -1386,7 +1538,7 @@ app.get('/img', async (req, res) => {
   try {
     const u = String(req.query.u || '');
     if (!/^https?:\/\//i.test(u) || u.length > 2000) return res.status(400).end();
-    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 LIMIT 1', [u]);
+    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 UNION ALL SELECT 1 FROM items WHERE image=$1 LIMIT 1', [u]);
     if (!known.rowCount) return res.status(404).end();
     const host = new URL(u).hostname;
     const addrs = await _dns.lookup(host, { all: true });

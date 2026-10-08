@@ -74,6 +74,14 @@
     font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
   }
 
+  .bs-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); align-items: baseline; }
+  .bs-row:last-child { border-bottom: none; }
+  .bs-brand { font-size: 15px; font-weight: 600; width: 38%; flex-shrink: 0; word-break: break-word; }
+  .bs-sizes { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .bs-item { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .bs-size { font-size: 17px; font-weight: 600; }
+  .bs-meta { font-size: 12px; color: var(--text3); }
+
   #loading { text-align: center; padding: 60px 0; color: var(--text3); font-size: 14px; }
 </style>
 </head>
@@ -202,6 +210,29 @@ function renderData(data) {
       html += `<span class="tag">${esc(formatSizeKey(k))}: ${esc(val)}</span>`;
     });
     html += '</div></div>';
+  }
+
+  if (data.brand_sizes && data.brand_sizes.length) {
+    const ZONES = { tops: 'Верх', bottoms: 'Низ', outer: 'Верхняя одежда', shoes: 'Обувь', hats: 'Головной убор', acc: 'Аксессуар',
+      formal_jacket: 'Пиджак', formal_pants: 'Брюки', formal_shirt: 'Рубашка' };
+    const FIT = { small: 'маломерит', true: 'в размер', large: 'большемерит' };
+    const byBrand = {};
+    data.brand_sizes.forEach(it => {
+      const b = String(it.brand).trim();
+      const key = b.toLowerCase();
+      (byBrand[key] = byBrand[key] || { brand: b, rows: [] }).rows.push(it);
+    });
+    html += '<div class="card">';
+    html += '<div class="section-label">Размеры по брендам</div>';
+    Object.values(byBrand).forEach(g => {
+      // одинаковые зона+размер+посадка внутри бренда показываем один раз
+      const seen = new Set();
+      const rows = g.rows.filter(r => { const k = r.zone + '|' + r.size + '|' + (r.fit || ''); if (seen.has(k)) return false; seen.add(k); return true; });
+      html += `<div class="bs-row"><div class="bs-brand">${esc(g.brand)}</div><div class="bs-sizes">` +
+        rows.map(r => `<div class="bs-item"><span class="bs-size">${esc(r.size)}</span><span class="bs-meta">${esc(ZONES[r.zone] || r.name || '')}${FIT[r.fit] ? ' · ' + FIT[r.fit] : ''}</span></div>`).join('') +
+        '</div></div>';
+    });
+    html += '</div>';
   }
 
   if (data.wishlist && data.wishlist.length) {

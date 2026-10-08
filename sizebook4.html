@@ -485,6 +485,32 @@
   .add-idea-form-row > div { flex: 1; }
   .add-idea-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
+
+  /* ITEM SHEET (вещь: добавление/правка) */
+  .is-modal { max-width: 440px !important; max-height: 92vh; overflow-y: auto; }
+  .is-modal h3 { margin-bottom: .25rem; }
+  .is-sub { font-size: 12px; color: var(--text3); margin-bottom: 1rem; }
+  .is-label { font-size: 12px; color: var(--text2); margin: 14px 0 6px; }
+  .is-input { width: 100%; padding: 9px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    font-size: 14px; color: var(--text); background: var(--bg); outline: none; box-sizing: border-box; font-family: inherit; }
+  .is-input:focus { border-color: var(--text); }
+  .is-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .is-chip { padding: 6px 11px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--surface);
+    color: var(--text2); font-size: 13px; cursor: pointer; line-height: 1.2; font-family: inherit; }
+  .is-chip.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .is-fit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .is-fit .is-chip { text-align: center; border-radius: var(--radius-sm); padding: 9px 4px; }
+  .is-preview { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  .is-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; }
+  .is-note { font-size: 12px; color: var(--text3); margin-top: 6px; min-height: 0; }
+  .is-note.ok { color: #2e7d32; }
+  .is-error { font-size: 12px; color: #c0392b; margin-top: 10px; display: none; }
+  .is-btns { display: flex; gap: 8px; margin-top: 1.25rem; }
+  .is-btns .btn-ghost, .is-btns .btn-primary { flex: 1; justify-content: center; }
+  .is-del { background: none; border: none; color: #c0392b; font-size: 13px; cursor: pointer; margin-top: 12px; padding: 6px 0; font-family: inherit; }
+  .item-entry.clickable { cursor: pointer; }
+  .item-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .item-fit { font-size: 11px; color: var(--text3); }
   /* MODAL */
   .modal-overlay {
     display: none; position: fixed; inset: 0;
@@ -1541,6 +1567,58 @@
   </div>
 </div>
 
+<div class="wl-modal-overlay" id="item-sheet" onclick="if(event.target===this)closeItemSheet()">
+  <div class="wl-modal is-modal" onclick="event.stopPropagation()">
+    <h3 id="is-title">Новая вещь</h3>
+    <div class="is-sub" id="is-sub">Главное — бренд, размер и как сидит. Остальное по желанию.</div>
+
+    <div id="is-link-block">
+      <div class="is-label" style="margin-top:0">Ссылка на товар <span style="color:var(--text3)">(необязательно)</span></div>
+      <div class="wl-url-row">
+        <input class="is-input" id="is-url" type="url" inputmode="url" placeholder="Вставь ссылку — заполним сами"
+          onpaste="setTimeout(isParseUrl,50)" onblur="isParseUrl()" onkeydown="if(event.key==='Enter')isParseUrl()">
+        <div class="wl-fetch-spinner" id="is-spinner" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+      </div>
+      <div class="is-note" id="is-parse-note"></div>
+    </div>
+    <div class="is-preview" id="is-preview" style="display:none"></div>
+
+    <div class="is-label">Категория</div>
+    <div class="is-chips" id="is-zones"></div>
+
+    <div class="is-label">Что за вещь</div>
+    <input class="is-input" id="is-name" type="text" list="is-name-list" placeholder="Например: Джинсы">
+    <datalist id="is-name-list"></datalist>
+
+    <div class="is-label">Бренд</div>
+    <input class="is-input" id="is-brand" type="text" list="is-brand-list" placeholder="Zara, Nike, Uniqlo…" autocapitalize="words">
+    <datalist id="is-brand-list"></datalist>
+
+    <div class="is-label">Размер</div>
+    <div class="is-chips" id="is-sizes"></div>
+    <input class="is-input" id="is-size" type="text" placeholder="Или впиши свой: 48, W32 L34…" style="margin-top:8px" oninput="isSyncSizeChips()">
+
+    <div class="is-label">Как сидит</div>
+    <div class="is-fit" id="is-fit">
+      <button type="button" class="is-chip" data-fit="small" onclick="isSetFit('small')">Маломерит</button>
+      <button type="button" class="is-chip" data-fit="true" onclick="isSetFit('true')">В размер</button>
+      <button type="button" class="is-chip" data-fit="large" onclick="isSetFit('large')">Большемерит</button>
+    </div>
+
+    <div class="is-label">Заметка <span style="color:var(--text3)">(необязательно)</span></div>
+    <input class="is-input" id="is-note" type="text" placeholder="Например: рукава коротковаты">
+
+    <div class="is-error" id="is-error"></div>
+    <div class="is-btns">
+      <button class="btn-ghost" onclick="closeItemSheet()">Отмена</button>
+      <button class="btn-primary" id="is-save" onclick="saveItemSheet()">Сохранить</button>
+    </div>
+    <button class="is-del" id="is-delete" style="display:none" onclick="deleteItemFromSheet()">Удалить вещь</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <h3>Добавить размер</h3>
@@ -2468,10 +2546,10 @@ function renderZonePanelItems(items) {
         const sub = [item.brand, item.note].filter(Boolean).join(' · ');
         return "<div style=\"display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);\">" +
           "<div style=\"flex:1;min-width:0;\">" +
-          "<div style=\"font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">" + item.name + "</div>" +
-          (sub ? "<div style=\"font-size:11px;color:var(--text3);\">" + sub + "</div>" : "") +
+          "<div style=\"font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">" + escapeHtml(item.name) + "</div>" +
+          (sub ? "<div style=\"font-size:11px;color:var(--text3);\">" + escapeHtml(sub) + "</div>" : "") +
           "</div>" +
-          (item.size ? "<span style=\"font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0\">" + item.size + "</span>" : "") +
+          (item.size ? "<span style=\"font-size:11px;padding:2px 7px;border-radius:20px;background:var(--text);color:var(--surface);font-weight:500;white-space:nowrap;flex-shrink:0\">" + escapeHtml(item.size) + "</span>" : "") +
           "</div>";
       }).join("")
     : "<div style=\"font-size:12px;color:var(--text3);padding:4px 0;\">Нет вещей</div>";
@@ -2676,16 +2754,252 @@ document.addEventListener('click', handleSilTouchEvent);
 
 let _currentItemZone = null;
 
+const ITEM_FIT_LABELS = { small: 'маломерит', true: 'в размер', large: 'большемерит' };
+const _itemCache = {};
+function _itemImgHtml(src, cls) {
+  return `<img class="${cls}" referrerpolicy="no-referrer" loading="lazy" src="${escapeHtml(src)}" onerror="if(!this.dataset.p){this.dataset.p=1;this.src=API+'/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.remove()">`;
+}
 function renderItemRow(item) {
-  const meta = [item.brand, item.size].filter(Boolean).join(' · ');
-  return `<div class="item-entry" id="item-row-${item.id}">
-    <div>
-      <div class="item-name">${item.name}</div>
-      ${meta ? `<div class="item-brand">${meta}</div>` : ''}
-      ${item.note ? `<div class="item-brand" style="color:var(--text3)">${item.note}</div>` : ''}
+  _itemCache[item.id] = item;
+  const meta = [item.brand, item.size].filter(Boolean).map(escapeHtml).join(' · ');
+  const fit = ITEM_FIT_LABELS[item.fit] || '';
+  return `<div class="item-entry clickable" id="item-row-${item.id}" onclick="openItemSheet(_itemCache[${item.id}])">
+    ${item.image ? _itemImgHtml(item.image, 'item-thumb') : ''}
+    <div style="flex:1;min-width:0">
+      <div class="item-name">${escapeHtml(item.name)}</div>
+      ${meta ? `<div class="item-brand">${meta}${fit ? ' · <span class="item-fit">' + fit + '</span>' : ''}</div>` : (fit ? `<div class="item-fit">${fit}</div>` : '')}
+      ${item.note ? `<div class="item-brand" style="color:var(--text3)">${escapeHtml(item.note)}</div>` : ''}
     </div>
-    <button onclick="deleteItem(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0;line-height:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <button onclick="event.stopPropagation();deleteItem(${item.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;flex-shrink:0;line-height:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   </div>`;
+}
+
+// ── Форма вещи (шторка): добавление, правка, перевод из вишлиста ──────────────
+const ITEM_BASE_ZONES = ['tops','bottoms','outer','shoes','hats','acc'];
+const ITEM_FORMAL_ZONES = ['formal_jacket','formal_pants','formal_shirt'];
+const ITEM_DEFAULT_NAMES = {
+  tops: 'Верх', bottoms: 'Низ', outer: 'Верхняя одежда', shoes: 'Обувь', hats: 'Головной убор', acc: 'Аксессуар',
+  formal_jacket: 'Пиджак', formal_pants: 'Брюки', formal_shirt: 'Рубашка',
+};
+let _is = null;
+let _isParseAbort = null;
+
+function _isBrandGuess(title) {
+  const t = ' ' + String(title || '').toLowerCase() + ' ';
+  const all = [...new Set(Object.values(brandOptions).flat())].sort((a, b) => b.length - a.length);
+  for (const b of all) {
+    const x = b.toLowerCase();
+    const i = t.indexOf(x);
+    if (i > 0 && !/[a-zа-яё0-9]/i.test(t[i - 1]) && !/[a-zа-яё0-9]/i.test(t[i + x.length] || ' ')) return b;
+  }
+  return '';
+}
+
+function _isRenderZones() {
+  const zones = ITEM_FORMAL_ZONES.includes(_is.zone) ? [...ITEM_FORMAL_ZONES, ...ITEM_BASE_ZONES] : ITEM_BASE_ZONES;
+  document.getElementById('is-zones').innerHTML = zones.map(z =>
+    `<button type="button" class="is-chip${z === _is.zone ? ' on' : ''}" onclick="isSetZone('${z}', true)">${escapeHtml(itemListTitles[z] || z)}</button>`
+  ).join('');
+}
+function _isRenderSizes() {
+  const cur = document.getElementById('is-size').value.trim();
+  document.getElementById('is-sizes').innerHTML = (zoneSizeOptions[_is.zone] || []).map(v =>
+    `<button type="button" class="is-chip${v === cur ? ' on' : ''}" data-v="${escapeHtml(v)}" onclick="isPickSize(this.dataset.v)">${escapeHtml(v)}</button>`
+  ).join('');
+}
+function _isRenderLists() {
+  document.getElementById('is-name-list').innerHTML = (zoneItemNames[_is.zone] || []).map(n => `<option value="${escapeHtml(n)}">`).join('');
+  const group = sectionBrandGroup[_is.zone] || ({ shoes: 'shoes', hats: 'hats', acc: 'acc' })[_is.zone] || 'clothing';
+  const brands = [...new Set([...(_is.userBrands || []), ...(brandOptions[group] || brandOptions.clothing)])];
+  document.getElementById('is-brand-list').innerHTML = brands.map(b => `<option value="${escapeHtml(b)}">`).join('');
+}
+function isSetZone(zone, byUser) {
+  _is.zone = zone;
+  if (byUser) _is.zoneTouched = true;
+  _isRenderZones(); _isRenderSizes(); _isRenderLists();
+}
+function isPickSize(v) {
+  const inp = document.getElementById('is-size');
+  inp.value = inp.value.trim() === v ? '' : v;
+  isSyncSizeChips();
+}
+function isSyncSizeChips() {
+  const cur = document.getElementById('is-size').value.trim();
+  document.querySelectorAll('#is-sizes .is-chip').forEach(c => c.classList.toggle('on', c.dataset.v === cur));
+}
+function isSetFit(fit) {
+  _is.fit = _is.fit === fit ? null : fit;
+  document.querySelectorAll('#is-fit .is-chip').forEach(c => c.classList.toggle('on', c.dataset.fit === _is.fit));
+}
+function _isRenderPreview() {
+  const box = document.getElementById('is-preview');
+  if (!_is.image && !_is.shop) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'flex';
+  box.innerHTML = (_is.image ? _itemImgHtml(_is.image, '') : '') +
+    `<div style="font-size:12px;color:var(--text3)">${escapeHtml(_is.shop || '')}</div>`;
+}
+
+// opts: вещь из базы (правка) | { zone } (новая) | { wishlist: запись вишлиста }
+function openItemSheet(opts) {
+  opts = opts || {};
+  const isEdit = !!opts.id && !opts.wishlist;
+  const w = opts.wishlist || null;
+  _is = {
+    mode: isEdit ? 'edit' : (w ? 'wishlist' : 'add'),
+    id: isEdit ? opts.id : null,
+    wishlistId: w ? w.id : null,
+    zone: opts.zone || _currentItemZone || 'tops',
+    zoneTouched: isEdit,
+    fit: isEdit ? (opts.fit || null) : null,
+    image: isEdit ? opts.image : (w ? w.image : null),
+    shop: isEdit ? opts.shop : (w ? w.shop : null),
+    url: isEdit ? opts.url : (w ? w.url : null),
+    userBrands: [],
+  };
+  _cancelIsParse();
+  document.getElementById('is-title').textContent = isEdit ? 'Изменить вещь' : (w ? 'Получили? Добавьте в свои вещи' : 'Новая вещь');
+  document.getElementById('is-sub').textContent = w
+    ? 'Так дарители будут знать ваш размер в этом бренде.'
+    : 'Главное — бренд, размер и как сидит. Остальное по желанию.';
+  document.getElementById('is-link-block').style.display = (isEdit || w) ? 'none' : '';
+  document.getElementById('is-url').value = '';
+  document.getElementById('is-parse-note').textContent = '';
+  document.getElementById('is-name').value = isEdit ? (opts.name || '') : (w ? (w.title || '') : '');
+  document.getElementById('is-brand').value = isEdit ? (opts.brand || '') : (w ? _isBrandGuess(w.title) : '');
+  document.getElementById('is-size').value = isEdit ? (opts.size || '') : (w ? (w.size || '') : '');
+  document.getElementById('is-note').value = isEdit ? (opts.note || '') : '';
+  document.getElementById('is-error').style.display = 'none';
+  document.getElementById('is-delete').style.display = isEdit ? '' : 'none';
+  document.querySelector('#item-sheet .btn-ghost').textContent = w ? 'Не сейчас' : 'Отмена';
+  document.querySelectorAll('#is-fit .is-chip').forEach(c => c.classList.toggle('on', c.dataset.fit === _is.fit));
+  isSetZone(_is.zone, false);
+  _isRenderPreview();
+  document.getElementById('item-sheet').classList.add('open');
+  if (w && !opts.zone) {
+    fetch(API + '/items/guess-zone', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ title: w.title }) })
+      .then(r => r.ok ? r.json() : {}).then(d => { if (_is && !_is.zoneTouched && d.zone) isSetZone(d.zone, false); }).catch(() => {});
+  }
+  // бренды, которые человек уже вводил, — первыми в подсказках
+  fetch(API + '/items', { headers: apiHeaders() }).then(r => r.ok ? r.json() : []).then(items => {
+    if (!_is) return;
+    _is.userBrands = [...new Set(items.map(i => i.brand).filter(Boolean))];
+    _isRenderLists();
+  }).catch(() => {});
+}
+
+function closeItemSheet() {
+  _cancelIsParse();
+  document.getElementById('item-sheet').classList.remove('open');
+  _is = null;
+}
+function _cancelIsParse() { if (_isParseAbort) { _isParseAbort.abort(); _isParseAbort = null; } }
+
+async function isParseUrl() {
+  if (!_is || _is.mode !== 'add') return;
+  const url = document.getElementById('is-url').value.trim();
+  if (!/^https?:\/\//i.test(url) || url === _is.parsedUrl) return;
+  _cancelIsParse();
+  const ctrl = _isParseAbort = new AbortController();
+  const spinner = document.getElementById('is-spinner');
+  const note = document.getElementById('is-parse-note');
+  spinner.style.display = 'block'; note.className = 'is-note'; note.textContent = 'Смотрим товар…';
+  _is.url = url;
+  try { _is.shop = new URL(url).hostname.replace(/^(www|m)\./, ''); } catch (_) {}
+  try {
+    const r = await fetch(API + '/parse', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ url }), signal: ctrl.signal });
+    if (ctrl.signal.aborted || !_is) return;
+    const m = r.ok ? await r.json() : {};
+    if (document.getElementById('is-url').value.trim() !== url) return;
+    _is.parsedUrl = url;
+    const filled = [];
+    if (m.title && !document.getElementById('is-name').value.trim()) { document.getElementById('is-name').value = m.title; filled.push('название'); }
+    const brand = _isBrandGuess(m.title);
+    if (brand && !document.getElementById('is-brand').value.trim()) { document.getElementById('is-brand').value = brand; filled.push('бренд'); }
+    if (m.image) { _is.image = m.image; filled.push('фото'); }
+    _isRenderPreview();
+    if (m.title && !_is.zoneTouched) {
+      const g = await fetch(API + '/items/guess-zone', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ title: m.title }) })
+        .then(x => x.ok ? x.json() : {}).catch(() => ({}));
+      if (_is && !_is.zoneTouched && g.zone) { isSetZone(g.zone, false); filled.push('категория'); }
+    }
+    note.className = filled.length ? 'is-note ok' : 'is-note';
+    note.textContent = filled.length ? '✓ Заполнили: ' + filled.join(', ') + '. Осталось выбрать размер.' : 'Магазин не отдал данные — заполни вручную.';
+  } catch (e) {
+    if (!ctrl.signal.aborted) note.textContent = 'Не получилось открыть ссылку — заполни вручную.';
+  } finally {
+    if (_isParseAbort === ctrl) { _isParseAbort = null; spinner.style.display = 'none'; }
+  }
+}
+
+async function saveItemSheet() {
+  if (!_is) return;
+  const errEl = document.getElementById('is-error');
+  const name = document.getElementById('is-name').value.trim();
+  const brand = document.getElementById('is-brand').value.trim();
+  const size = document.getElementById('is-size').value.trim();
+  const note = document.getElementById('is-note').value.trim();
+  if (!name && !brand && !size && !_is.url) {
+    errEl.textContent = 'Укажи хотя бы бренд или размер';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  const body = {
+    zone: _is.zone, name: name || ITEM_DEFAULT_NAMES[_is.zone] || 'Вещь', brand, size, note, fit: _is.fit,
+  };
+  let url, method;
+  if (_is.mode === 'edit') { url = '/items/' + _is.id; method = 'PATCH'; }
+  else if (_is.mode === 'wishlist') { url = '/wishlist/' + _is.wishlistId + '/to-items'; method = 'POST'; }
+  else {
+    url = '/items'; method = 'POST';
+    Object.assign(body, { url: _is.url, image: _is.image, shop: _is.shop, source: _is.url ? 'link' : 'manual' });
+  }
+  const btn = document.getElementById('is-save');
+  btn.disabled = true;
+  try {
+    const r = await fetch(API + url, { method, headers: apiHeaders(), body: JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { errEl.textContent = 'Ошибка: ' + (d.error || r.status); errEl.style.display = 'block'; return; }
+    // уже была добавлена из этой записи вишлиста — применяем правки к ней
+    if (_is.mode === 'wishlist' && d.existed && d.item) {
+      await fetch(API + '/items/' + d.item.id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify(body) });
+    }
+    const wasWishlist = _is.mode === 'wishlist';
+    const zones = [_is.zone, (d.item || d).zone];
+    closeItemSheet();
+    afterItemsChanged(zones);
+    if (wasWishlist && typeof loadWishlist === 'function') loadWishlist();
+    if (typeof showToast === 'function') showToast(wasWishlist ? 'Добавлено в ваши вещи' : 'Сохранено');
+  } catch (e) {
+    errEl.textContent = 'Ошибка сети'; errEl.style.display = 'block';
+  } finally { btn.disabled = false; }
+}
+
+async function deleteItemFromSheet() {
+  if (!_is || !_is.id || !confirm('Удалить эту вещь?')) return;
+  const id = _is.id, zone = _is.zone;
+  closeItemSheet();
+  await deleteItem(id);
+  afterItemsChanged([zone]);
+}
+
+// Обновить открытый список вещей и счётчики на карточках
+async function afterItemsChanged(zones) {
+  (zones || []).forEach(z => { delete _zonePanelCache[z]; });
+  const els = getActiveItemEls();
+  if (_currentItemZone && els.panel && els.panel.style.display !== 'none' && els.content) {
+    try {
+      const r = await fetch(API + '/items?zone=' + encodeURIComponent(_currentItemZone), { headers: apiHeaders() });
+      if (r.ok) {
+        const items = await r.json();
+        els.content.innerHTML = items.length ? items.map(renderItemRow).join('')
+          : '<div style="font-size:12px;color:var(--text3);padding:8px 0;">Нет вещей</div>';
+        updateCardCount(_currentItemZone);
+      }
+    } catch (e) {}
+  }
+  _icLast = 0;
+  loadItemCounts();
 }
 
 async function showItemList(zone) {
@@ -2763,6 +3077,10 @@ function hideItemList() {
 }
 
 function showItemAddForm() {
+  openItemSheet({ zone: _currentItemZone });
+}
+
+function showItemAddFormLegacy() {
   const els = getActiveItemEls();
   if (els.addForm) els.addForm.style.display = 'block';
   if (els.addBtn) els.addBtn.style.display = 'none';
@@ -3444,7 +3762,7 @@ function renderWishlist() {
     if (wlArchiveOpen) archivedItems.forEach(item => {
       const row = document.createElement('div');
       row.className = 'wl-arch-row';
-      row.innerHTML = `<span class="t">${_escWl(item.title)}</span><button onclick="markWlReceived(${item.id}, false)">Вернуть</button><button onclick="confirmDeleteWl(${item.id})">Удалить</button>`;
+      row.innerHTML = `<span class="t">${_escWl(item.title)}</span><button onclick="openItemSheet({ wishlist: wlItems.find(i => i.id === ${item.id}) })">В мои вещи</button><button onclick="markWlReceived(${item.id}, false)">Вернуть</button><button onclick="confirmDeleteWl(${item.id})">Удалить</button>`;
       container.appendChild(row);
     });
   }
@@ -3500,6 +3818,8 @@ async function markWlReceived(id, received) {
   try {
     const r = await fetch(API + '/wishlist/' + id, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ received }) });
     if (!r.ok) throw new Error('bad');
+    // получили вещь → сразу предложить записать её размер в «Мои вещи»
+    if (received && it) openItemSheet({ wishlist: it });
   } catch (e) { await loadWishlist(); }
 }
 function confirmDeleteWl(id) {
