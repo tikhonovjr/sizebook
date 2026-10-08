@@ -1,0 +1,291 @@
+{
+ "wildberries.ru": {
+  "wall_ms": 2140,
+  "title": "Кроссовки мужские высокие  зимние утепленные Merre",
+  "price": null,
+  "image": true,
+  "steps": [
+   "wildberries:done"
+  ],
+  "error": null
+ },
+ "ozon.ru": {
+  "wall_ms": 261,
+  "title": "",
+  "price": null,
+  "image": false,
+  "steps": [
+   "ozon:done"
+  ],
+  "error": null
+ },
+ "lamoda.ru": {
+  "wall_ms": 3179,
+  "title": "New Balance Кроссовки 1000",
+  "price": "12499 RUB",
+  "image": true,
+  "steps": [
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "market.yandex.ru": {
+  "wall_ms": 8915,
+  "title": "Футболка",
+  "price": "834 RUB",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "sportmaster.ru": {
+  "wall_ms": 10489,
+  "title": "",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:direct+wa",
+   "done"
+  ],
+  "error": null
+ },
+ "aliexpress.ru": {
+  "wall_ms": 7582,
+  "title": "Футболка East-1 Cosmonaut из полиэстера на AliExpr",
+  "price": null,
+  "image": true,
+  "steps": [
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "gloria-jeans.ru": {
+  "wall_ms": 19785,
+  "title": "Omnibox Commands",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:direct",
+   "tier:sd",
+   "tier:firecrawl",
+   "tier:jsonlink",
+   "done"
+  ],
+  "error": null
+ },
+ "befree.ru": {
+  "wall_ms": 1709,
+  "title": "Платье миди облегающее из сетки с пайетками",
+  "price": "499 RUB",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "sela.ru": {
+  "wall_ms": 14317,
+  "title": "Страница не найдена",
+  "price": "3 999 ₽",
+  "image": true,
+  "steps": [
+   "tier:direct+wa",
+   "tier:sd",
+   "tier:firecrawl",
+   "done"
+  ],
+  "error": null
+ },
+ "12storeez.com": {
+  "wall_ms": 1569,
+  "title": "Платье из шелка",
+  "price": "9 800 ₽",
+  "image": true,
+  "steps": [
+   "12storeez:direct-fetch",
+   "12storeez:firecrawl"
+  ],
+  "error": null
+ },
+ "brandshop.ru": {
+  "wall_ms": 1141,
+  "title": "Мужские кроссовки New Balance MR530ADC, MR530ADC",
+  "price": "9940 RUB",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "street-beat.ru": {
+  "wall_ms": 1817,
+  "title": "Мужские кроссовки District 2",
+  "price": "3199 RUB",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "tsum.ru": {
+  "wall_ms": 10619,
+  "title": "",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:direct+wa",
+   "done"
+  ],
+  "error": null
+ },
+ "detmir.ru": {
+  "wall_ms": 2108,
+  "title": "Куртка Reima цвет розовый 5100084A-4230 купить по ",
+  "price": "9 546 ₽",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "kupivip.ru": {
+  "wall_ms": 3255,
+  "title": "Купить платье PATRIZIA PEPE 8A1061K9J5, цвет Желты",
+  "price": "45 900 ₽",
+  "image": true,
+  "steps": [
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "ru.puma.com": {
+  "wall_ms": 1008,
+  "title": "",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:direct+wa",
+   "done"
+  ],
+  "error": null
+ },
+ "bask.ru": {
+  "wall_ms": 3205,
+  "title": "TAIMYR V4 ЧЕРНЫЙ",
+  "price": "66300 RUB",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "farfetch.com": {
+  "wall_ms": 2136,
+  "title": "FARFETCH - The Global Destination For Modern Luxur",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:sd",
+   "tier:firecrawl",
+   "tier:jsonlink",
+   "done"
+  ],
+  "error": null
+ },
+ "asos.com": {
+  "wall_ms": 4305,
+  "title": "ASOS DESIGN essentials muscle fit T-shirt in black",
+  "price": null,
+  "image": true,
+  "steps": [
+   "tier:wa",
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "hm.com": {
+  "wall_ms": 4861,
+  "title": "Men’s Black/New York Loose Fit Printed T-shirt | H",
+  "price": "$8.99",
+  "image": true,
+  "steps": [
+   "tier:sd",
+   "done"
+  ],
+  "error": null
+ },
+ "uniqlo.com": {
+  "wall_ms": 17433,
+  "title": "UNIQLO homeUNIQLO home",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:direct",
+   "tier:sd",
+   "tier:firecrawl",
+   "tier:jsonlink",
+   "done"
+  ],
+  "error": null
+ },
+ "net-a-porter.com": {
+  "wall_ms": 4728,
+  "title": "NET-A-PORTER | Not Found | Designer fashion for wo",
+  "price": null,
+  "image": false,
+  "steps": [
+   "tier:sd",
+   "tier:firecrawl",
+   "tier:jsonlink",
+   "done"
+  ],
+  "error": null
+ },
+ "ssense.com": {
+  "wall_ms": 992,
+  "title": "Silver & Black Shox BB4 Sneakers",
+  "price": "185 USD",
+  "image": true,
+  "steps": [
+   "tier:wa",
+   "done"
+  ],
+  "error": null
+ },
+ "nike.com": {
+  "wall_ms": 568,
+  "title": "Nike Air Force 1 '07 Men's Shoes",
+  "price": "$115",
+  "image": true,
+  "steps": [
+   "tier:direct",
+   "done"
+  ],
+  "error": null
+ },
+ "amazon.com": {
+  "wall_ms": 7855,
+  "title": "True Classic Mens T",
+  "price": "$69.99",
+  "image": false,
+  "steps": [
+   "tier:direct",
+   "tier:sd",
+   "tier:jsonlink",
+   "done"
+  ],
+  "error": null
+ }
+}
