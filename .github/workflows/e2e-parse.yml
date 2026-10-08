@@ -1,0 +1,54 @@
+name: E2E parse (prod)
+
+# Ручной запуск: прогоняет боевой /parse по списку ссылок и кладёт результат в ветку e2e-results.
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Ссылки через запятую"
+        required: true
+      tag:
+        description: "Метка прогона"
+        required: false
+        default: "run"
+
+permissions:
+  contents: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, time, urllib.request
+          BASE = "https://desirable-cat-production-6c28.up.railway.app"
+          out = {"tag": os.environ.get("TAG"), "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "results": []}
+          for u in [x.strip() for x in os.environ["URLS"].split(",") if x.strip()]:
+              t = time.time()
+              req = urllib.request.Request(BASE + "/parse", data=json.dumps({"url": u}).encode(),
+                                           headers={"Content-Type": "application/json"})
+              try:
+                  with urllib.request.urlopen(req, timeout=170) as r:
+                      b = json.loads(r.read().decode("utf-8", "replace"))
+              except Exception as e:
+                  b = {"error": str(e)[:200]}
+              row = {"url": u, "wall_ms": int((time.time() - t) * 1000),
+                     **{k: b.get(k) for k in ("title", "price", "image", "error", "_ms", "_cached")}}
+              out["results"].append(row)
+              print(json.dumps(row, ensure_ascii=False), flush=True)
+          json.dump(out, open("/tmp/e2e.json", "w"), ensure_ascii=False, indent=1)
+          PYEOF
+      - name: Push results
+        run: |
+          git config user.name ci; git config user.email ci@example.com
+          git fetch origin e2e-results || true
+          git checkout --orphan tmp-e2e && git rm -rf . -q || true
+          cp /tmp/e2e.json "e2e_${{ github.event.inputs.tag }}.json"
+          git add e2e_*.json && git commit -qm "e2e ${{ github.event.inputs.tag }}"
+          git push -f origin HEAD:e2e-results
