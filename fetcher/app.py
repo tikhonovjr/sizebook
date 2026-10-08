@@ -18,7 +18,7 @@ from aiohttp import web
 SECRET = os.environ.get('FETCHER_SECRET', '')
 PORT = int(os.environ.get('PORT', '8080'))
 MAX_PAGES = int(os.environ.get('FETCHER_MAX_PAGES', '2'))
-RECYCLE_AFTER = int(os.environ.get('FETCHER_RECYCLE_AFTER', '150'))  # перезапуск браузера каждые N страниц
+RECYCLE_AFTER = int(os.environ.get('FETCHER_RECYCLE_AFTER', '1000'))  # перезапуск браузера каждые N страниц
 
 CAPTCHA_RE = re.compile(r'<title>Antibot Captcha</title>|fab_cp_|Сопоставьте пазл', re.I)
 
@@ -214,27 +214,168 @@ def parse_ozon(html):
     return res
 
 
+OZON_WARM_URL = os.environ.get('OZON_WARM_URL', 'https://www.ozon.ru/product/noski-muzhskie-muzhskie-5-par-3148849655/')
+OZON_MINT_TRIES = int(os.environ.get('OZON_MINT_TRIES', '8'))
+OZON_PASS_WAIT = float(os.environ.get('OZON_PASS_WAIT', '12'))
+
+
+class OzonSession:
+    """Ozon пропускает «нового посетителя» не всегда: часть свежих сессий сразу получает
+    слайдер-капчу, часть проходит JS-проверку сама (по замерам ~40%). Прошедшая сессия
+    дальше работает быстро (1–2 с на товар) — её и держим. Если она «протухла» —
+    открываем новую, как это сделал бы новый посетитель. Капчу не решаем."""
+
+    def __init__(self):
+        self.ctx = None
+        self.born = None
+        self.used = 0
+        self.lock = asyncio.Lock()
+        self.stats = {'mint_ok': 0, 'mint_fail': 0, 'hit': 0, 'stale': 0}
+
+    async def _try_ctx(self, url):
+        """Новая сессия + переход на url. Возвращает (ctx|None, html, final)."""
+        await BROWSER.context('wb')  # гарантирует, что браузер запущен
+        ctx = await BROWSER.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
+                                           viewport={'width': 1366, 'height': 900})
+        page = await ctx.new_page()
+        html, final = '', url
+        try:
+            try:
+                await page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            except Exception:
+                pass
+            deadline = time.time() + OZON_PASS_WAIT
+            while time.time() < deadline:
+                try:
+                    html = await page.content()
+                except Exception:
+                    await asyncio.sleep(0.4); continue
+                if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+                    break
+                await asyncio.sleep(0.5)
+            final = page.url
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
+        if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+            return ctx, html, final
+        await ctx.close()
+        return None, html, final
+
+    async def mint(self, url=None, steps=None):
+        """Создаёт прошедшую проверку сессию. Если передан url — заодно возвращает его страницу."""
+        url = url or OZON_WARM_URL
+        fails = 0
+        for i in range(OZON_MINT_TRIES):
+            t = time.time()
+            ctx, html, final = await self._try_ctx(url)
+            ok = ctx is not None
+            if steps is not None:
+                steps.append({'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000)})
+            if ok:
+                self.stats['mint_ok'] += 1
+                old, self.ctx, self.born, self.used = self.ctx, ctx, time.time(), 0
+                if old:
+                    try:
+                        await old.close()
+                    except Exception:
+                        pass
+                return html, final
+            self.stats['mint_fail'] += 1
+            fails += 1
+            if fails % 4 == 0 and BROWSER.active == 0:
+                # серия неудач — перезапускаем браузер (новый отпечаток)
+                async with BROWSER.lock:
+                    await BROWSER._stop()
+        return None, None
+
+    async def fetch(self, url, steps):
+        """Страница url через живую сессию; при «протухании» — новая сессия."""
+        async with self.lock:
+            if self.ctx is None:
+                html, final = await self.mint(url, steps)
+                return html, final
+            ctx = self.ctx
+        html, final = '', url
+        t = time.time()
+        try:
+            page = await ctx.new_page()
+        except Exception:  # браузер перезапускался — сессия умерла
+            page = None
+        try:
+            if page is None:
+                raise RuntimeError('dead context')
+            try:
+                await page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            except Exception:
+                pass
+            deadline = time.time() + 10
+            while time.time() < deadline:
+                try:
+                    html = await page.content()
+                except Exception:
+                    await asyncio.sleep(0.3); continue
+                if ozon_ready(html) and not CAPTCHA_RE.search(html[:30000]):
+                    break
+                await asyncio.sleep(0.4)
+            final = page.url
+        except RuntimeError:
+            pass
+        finally:
+            try:
+                if page:
+                    await page.close()
+            except Exception:
+                pass
+        ok = ozon_ready(html) and not CAPTCHA_RE.search(html[:30000])
+        steps.append({'session': 'reuse', 'ok': ok, 'ms': int((time.time() - t) * 1000),
+                      'age_s': int(time.time() - (self.born or time.time()))})
+        if ok:
+            self.used += 1
+            self.stats['hit'] += 1
+            return html, final
+        self.stats['stale'] += 1
+        async with self.lock:
+            if self.ctx is ctx:
+                self.ctx = None
+                try:
+                    await ctx.close()
+                except Exception:
+                    pass
+            return await self.mint(url, steps)
+
+    async def keeper(self):
+        """Фоном держим сессию живой, чтобы запрос пользователя шёл сразу в «тёплую»."""
+        await asyncio.sleep(3)
+        while True:
+            try:
+                steps = []
+                if self.ctx is None:
+                    async with self.lock:
+                        if self.ctx is None:
+                            await self.mint(None, steps)
+                else:
+                    await self.fetch(OZON_WARM_URL, steps)
+                log('OZON_KEEP', alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
+                    used=self.used, stats=self.stats, steps=steps)
+            except Exception:
+                log('ERROR', where='keeper', err=traceback.format_exc()[-1200:])
+            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '300')))
+
+
+OZON = OzonSession()
+
+
 async def ozon_product(url):
     steps = []
     short = OZON_SHORT_RE.match(url)
-    target = f'https://www.ozon.ru/t/{short.group(1)}' if short else url
-    html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
-    steps += st
-    if CAPTCHA_RE.search(html[:30000]):
-        # Слайдер-капчу Ozon показывает «холодному» посетителю. Заходим на главную (обычная
-        # JS-проверка, проходит сама), получаем куки и повторяем.
-        steps.append({'retry': 'warmup'})
-        await open_page('ozon', 'https://www.ozon.ru/', ready=lambda h: 'ozon' in h.lower(), timeout=20)
-        html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
-        steps += st
-    if CAPTCHA_RE.search(html[:30000]):
-        steps.append({'retry': 'fresh_context'})
-        await BROWSER.reset_context('ozon')
-        await open_page('ozon', 'https://www.ozon.ru/', ready=lambda h: 'ozon' in h.lower(), timeout=20)
-        html, final, status, st = await open_page('ozon', target, ready=ozon_ready)
-        steps += st
-    if CAPTCHA_RE.search(html[:30000]):
-        return {'ok': False, 'error': 'captcha', 'final_url': final, 'steps': steps}
+    # короткая ссылка: без www Ozon сам редиректит на товар
+    target = f'https://ozon.ru/t/{short.group(1)}' if short else url
+    html, final = await OZON.fetch(target, steps)
+    if not html:
+        return {'ok': False, 'error': 'antibot', 'steps': steps}
     r = parse_ozon(html)
     final_clean = re.sub(r'\?.*$', '', final or url)
     return {'ok': bool(r['title']), **r, 'final_url': final_clean, 'steps': steps}
@@ -309,7 +450,7 @@ async def product(url):
     shop = shop_of(url)
     try:
         if shop == 'ozon':
-            r = await asyncio.wait_for(ozon_product(url), 70)
+            r = await asyncio.wait_for(ozon_product(url), 150)
         elif shop == 'wb':
             r = await asyncio.wait_for(wb_product(url), 45)
         else:
@@ -328,7 +469,7 @@ async def product(url):
 # ── HTTP ─────────────────────────────────────────────────────────────────────
 async def h_health(req):
     return web.json_response({'ok': True, 'browser': BROWSER.br is not None, 'active': BROWSER.active,
-                              'pages': BROWSER.pages_opened})
+                              'pages': BROWSER.pages_opened, 'ozon_alive': OZON.ctx is not None, 'ozon': OZON.stats})
 
 
 async def h_product(req):
@@ -423,8 +564,8 @@ async def on_start(app):
             log('ERROR', err=traceback.format_exc()[-1500:])
     if os.environ.get('PROBE') == '1':
         asyncio.create_task(run_probes())
-    else:
-        asyncio.create_task(warm())
+    if os.environ.get('OZON_KEEPER', '1') == '1':
+        asyncio.create_task(OZON.keeper())
 
 
 def main():
