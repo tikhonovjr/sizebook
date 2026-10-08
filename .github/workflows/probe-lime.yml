@@ -1,0 +1,28 @@
+name: Probe Lime Image
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch image
+        run: |
+          U='https://a.cdn.lime-shine.com/p/a9554b33683d518da9edb0ab88747ea7.jpeg'
+          B='https://desirable-cat-production-6c28.up.railway.app/'
+          UA='Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 Version/26.6.1 Mobile/15E148 Safari/604.1'
+          {
+          echo "--- no referer"; curl -s -o /dev/null -w "%{http_code} %{content_type} %{size_download}\n" -A "$UA" "$U"
+          echo "--- site referer"; curl -s -o /dev/null -w "%{http_code} %{content_type} %{size_download}\n" -A "$UA" -e "$B" "$U"
+          echo "--- headers"; curl -sI -A "$UA" "$U"
+          } > lime_results.txt 2>&1
+          cat lime_results.txt
+      - name: Push
+        run: |
+          git config user.name ci; git config user.email ci@example.com
+          git checkout --orphan probe-lime
+          git rm -rf . -q || true
+          git add lime_results.txt
+          git commit -qm "lime results" && git push -f origin probe-lime
