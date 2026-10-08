@@ -72,9 +72,11 @@ async def get_browser(use_proxy=True):
         return _browser[1]
 
 
-async def browser_get(url, wait_selector=None, timeout=30, settle=2.5):
+async def browser_get(url, wait_selector=None, timeout=30, settle=2.5, use_proxy=None):
     t = time.time()
-    br = await get_browser()
+    if use_proxy is None:
+        use_proxy = os.environ.get('BROWSER_PROXY', '0') == '1'
+    br = await get_browser(use_proxy)
     ctx = await br.new_context(locale='ru-RU')
     page = await ctx.new_page()
     out = {}
@@ -137,14 +139,7 @@ async def run_probes():
     wb_card = f'https://card.wb.ru/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&nm={WB_NM}'
     wb_int = f'https://www.wildberries.ru/__internal/u-card/cards/v4/detail?appType=1&curr=rub&dest=-1257786&spp=30&ab_testing=false&lang=ru&nm={WB_NM}'
     cases = []
-    for imp in ('chrome', 'safari_ios'):
-        for px in (None, RU_PROXY):
-            cases.append(('wb_card_v4', wb_card, imp, px))
-    cases.append(('wb_internal', wb_int, 'chrome', None))
-    cases.append(('wb_internal_ru', wb_int, 'chrome', RU_PROXY))
-    for ou in OZON_URLS:
-        for imp in ('chrome', 'safari_ios'):
-            cases.append(('ozon_page', ou, imp, RU_PROXY))
+    for ou in OZON_URLS[:1]:
         cases.append(('ozon_page_noproxy', ou, 'chrome', None))
     for name, url, imp, px in cases:
         r = await asyncio.to_thread(cffi_get, url, imp, px)
@@ -162,21 +157,25 @@ async def run_probes():
                 extra = {'json_err': str(e)}
         log('PROBE', case=name, imp=imp, proxy=bool(px), status=r.get('status'), ms=r.get('ms'),
             final=r.get('final_url'), err=r.get('error'), cookies=r.get('cookies'), **s, **extra)
+        if s.get('captcha'):
+            txt = re.sub(r'\s+', ' ', r.get('text', ''))
+            for i in range(0, min(len(txt), 10500), 3500):
+                log('PROBE_RAW', part=i, text=txt[i:i + 3500])
 
     # браузер
     for ou in OZON_URLS:
         try:
-            r = await browser_get(ou, wait_selector='[data-widget="webPrice"]')
-            log('PROBE', case='ozon_camoufox_ru', status=r.get('first_status'), ms=r.get('ms'),
+            r = await browser_get(ou, wait_selector='[data-widget="webPrice"]', timeout=40)
+            log('PROBE', case='ozon_camoufox_direct', status=r.get('first_status'), ms=r.get('ms'),
                 final=r.get('final_url'), err=r.get('error'), page_title=r.get('title'), **summarize(r.get('html'), 400))
         except Exception as e:
             log('PROBE', case='ozon_camoufox_ru', err=traceback.format_exc()[-800:])
     try:
         r = await browser_get(f'https://www.wildberries.ru/catalog/{WB_NM}/detail.aspx', wait_selector='ins.price-block__final-price, .price-block__wallet-price')
-        log('PROBE', case='wb_camoufox_ru', status=r.get('first_status'), ms=r.get('ms'), final=r.get('final_url'),
+        log('PROBE', case='wb_camoufox_direct', status=r.get('first_status'), ms=r.get('ms'), final=r.get('final_url'),
             err=r.get('error'), page_title=r.get('title'), **summarize(r.get('html'), 200))
     except Exception:
-        log('PROBE', case='wb_camoufox_ru', err=traceback.format_exc()[-800:])
+        log('PROBE', case='wb_camoufox_direct', err=traceback.format_exc()[-800:])
     log('PROBE_END')
 
 
