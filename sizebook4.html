@@ -2,7 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
 <title>SizeBook</title>
 
 <style>
@@ -612,6 +616,63 @@
     background: var(--surface2); cursor: default;
   }
   .user-badge b { color: var(--text); }
+
+  /* ───────── МОБИЛЬНАЯ ВЕРСИЯ (iPhone) ───────── */
+  html { -webkit-text-size-adjust: 100%; }
+  .tabbar { display: none; }
+  @media (max-width: 820px) {
+    body { overflow-x: hidden; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+    input, select, textarea { font-size: 16px !important; } /* iOS не зумит поля */
+    button, .nav-item, .size-card, .add-card { -webkit-tap-highlight-color: transparent; }
+
+    .topnav { height: calc(52px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 1rem 0; gap: .5rem; }
+    .top-actions .user-badge, .top-actions button[onclick*="'share'"], .top-actions button[onclick*="'wishlist'"] { display: none !important; }
+    #nav-logout-btn { font-size: 0; padding: 9px 11px; min-width: 40px; min-height: 40px; justify-content: center; }
+
+    .layout { flex-direction: column; min-height: 0; }
+    .sidebar {
+      width: 100%; height: auto; position: sticky; top: calc(52px + env(safe-area-inset-top)); z-index: 90;
+      display: flex; flex-direction: row; gap: 6px; overflow-x: auto; overflow-y: hidden;
+      padding: 8px 1rem; border-right: none; border-bottom: 0.5px solid var(--border);
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+    .sidebar > div, .sidebar .sidebar-label { display: none !important; }
+    .sidebar .nav-item { width: auto; flex: 0 0 auto; white-space: nowrap; border: 0.5px solid var(--border2); border-radius: 999px; padding: 8px 14px; min-height: 40px; background: var(--surface); }
+    .sidebar .nav-item.active { background: var(--text); color: var(--surface); border-color: var(--text); }
+    body[data-page="wishlist"] .sidebar, body[data-page="share"] .sidebar, body[data-page="profile"] .sidebar { display: none; }
+    .sidebar .nav-item[onclick*="'wishlist'"], .sidebar .nav-item[onclick*="'share'"], .sidebar .nav-item[onclick*="'profile'"] { display: none; }
+
+    .main { padding: 1rem 1rem 1.5rem; max-width: 100%; width: 100%; }
+    .page-title { font-size: 20px; }
+    [style*="420px"], .size-page-grid { grid-template-columns: 1fr !important; }
+    [style*="1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .btn-ghost, .btn-primary, .add-btn { min-height: 44px; }
+
+    /* окна — шторкой снизу */
+    .wl-modal-overlay, .modal-overlay { align-items: flex-end; }
+    .wl-modal, .modal {
+      width: 100% !important; max-width: 100% !important; border-radius: 18px 18px 0 0;
+      max-height: 92vh; overflow-y: auto;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+
+    /* нижняя панель вкладок */
+    .tabbar {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+      background: rgba(255,255,255,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+      border-top: 0.5px solid var(--border);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    .tabbar button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: none; border: none; color: var(--text3); font-size: 10.5px; padding: 4px 0; cursor: pointer; min-height: 48px;
+    }
+    .tabbar button.active { color: var(--text); font-weight: 600; }
+    .tabbar svg { width: 24px; height: 24px; }
+  }
+  @media (max-width: 820px) and (prefers-color-scheme: dark) { .tabbar { background: rgba(30,30,30,.94); } }
 </style>
 </head>
 <body>
@@ -645,6 +706,13 @@
     <div class="auth-footer">Твои размеры будут сохранены и доступны по ссылке</div>
   </div>
 </div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-tab="daily" class="active" onclick="showPage('daily')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2"/></svg>Размеры</button>
+  <button data-tab="wishlist" onclick="showPage('wishlist')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.572L12 21l-7.5-7.428A5 5 0 1 1 12 6.006a5 5 0 1 1 7.5 7.566z"/></svg>Вишлист</button>
+  <button data-tab="share" onclick="showPage('share')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Поделиться</button>
+  <button data-tab="profile" onclick="showPage('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Профиль</button>
+</nav>
 
 <!-- TOP NAV -->
 <nav class="topnav">
@@ -1305,7 +1373,7 @@
 
         <div class="section-label" style="margin-top:0;">Основное</div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem; align-items:end;">
           <div>
             <label style="font-size:12px; color:var(--text2); display:block; margin-bottom:5px;">Имя</label>
             <input id="profile-name-input" type="text" placeholder="Имя" oninput="debounceProfileNameSave()" style="width:100%; padding:9px 12px; border:0.5px solid var(--border2); border-radius:var(--radius-sm); background:var(--bg); font-size:14px; color:var(--text); outline:none; font-family:inherit;">
@@ -1317,7 +1385,7 @@
         </div>
 
         <div class="section-label">Пол</div>
-        <div style="display:flex; gap:10px; margin-bottom:1rem;" id="gender-selector">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:1rem;" id="gender-selector">
           <button class="gender-btn active" onclick="selectGender(this, 'male')">
             <span style="display:inline-flex;align-items:center;line-height:1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="5"/><path d="M19 5l-5.4 5.4M19 5h-5m5 0v5"/></svg></span> Мужской
           </button>
@@ -2079,6 +2147,12 @@ function showPage(name) {
   if (SIZE_PAGES.includes(name)) loadItemCounts();
   updateSilPanel(name);
   if (name === 'profile') setProfileWelcomeVisible(_profileWelcomeVisible);
+  document.body.dataset.page = name;
+  const tabFor = ['wishlist','share','profile'].includes(name) ? name : 'daily';
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabFor));
+  const act = document.querySelector('.sidebar .nav-item.active');
+  if (act && act.scrollIntoView) { try { act.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) {} }
+  window.scrollTo(0, 0);
 }
 
 // ---- РЕЛЕВАНТНЫЕ КАТЕГОРИИ ПО РАЗДЕЛАМ ----
@@ -3254,15 +3328,17 @@ async function loadWishlist() {
 function formatPrice(raw) {
   if (!raw) return '';
   const s = String(raw);
-  const num = parseFloat(s.replace(/[^\d.]/g, ''));
+  // «6 800,00 ₽» → 6800.00; «1,299.50» → 1299.50
+  const norm = s.replace(/\s|\u00a0/g, '').replace(/,(\d{1,2})(?!\d)/, '.$1').replace(/,/g, '');
+  const num = parseFloat(norm.replace(/[^\d.]/g, ''));
   if (isNaN(num)) return s;
   const currency = /₽/.test(s) || /\bRUB\b/i.test(s) ? '₽'
     : /€/.test(s) || /\bEUR\b/i.test(s) ? '€'
     : /£/.test(s) || /\bGBP\b/i.test(s) ? '£'
     : /\$/.test(s) || /\bUSD\b/i.test(s) ? '$'
     : /₸/.test(s) || /\bKZT\b/i.test(s) ? '₸'
-    : '₸';
-  return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
+    : '';
+  return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (currency ? ' ' + currency : '');
 }
 
 let _wlPollTimer = null, _wlPollCount = 0;
@@ -3325,7 +3401,7 @@ function _cancelWlParse() {
 
 async function openShareSetup() {
   document.getElementById('ios-modal').classList.add('open');
-  document.getElementById('ios-url').value = location.origin + '/wishlist/quick';
+  document.getElementById('ios-url').value = API + '/wishlist/quick';
   const k = document.getElementById('ios-key');
   k.value = 'загрузка…';
   try {
