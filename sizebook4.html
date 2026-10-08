@@ -1187,6 +1187,10 @@
         Добавить по ссылке
       </button>
 
+      <button class="add-btn" onclick="openShareSetup()" style="margin-bottom:1rem;background:transparent;border:1px dashed var(--border, #444);color:var(--text2, inherit)">
+        Добавлять из приложений магазинов («Поделиться»)
+      </button>
+
       <div class="section-label">Хочу получить в подарок</div>
 
       <div id="wishlist-items"></div>
@@ -1375,6 +1379,31 @@
 
 <!-- MODAL -->
 <!-- WISHLIST MODAL -->
+<div class="wl-modal-overlay" id="ios-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="wl-modal" onclick="event.stopPropagation()" style="max-height:90vh;overflow:auto">
+    <h3>Добавлять через «Поделиться»</h3>
+    <div style="font-size:13px;line-height:1.5;color:var(--text2)">
+      В приложении Ozon, Wildberries, Lamoda и т.д. жмёте «Поделиться» → «В SizeBook». Вещь сразу попадает в вишлист, данные подтягиваются сами. Настройка один раз на iPhone, около минуты:
+      <ol style="padding-left:18px;margin:10px 0">
+        <li>Откройте приложение «Команды» → «+» (новая команда). Название: «В SizeBook».</li>
+        <li>Кнопка (i) внизу → включите «Показывать в меню Поделиться» и оставьте типы «URL» и «Текст».</li>
+        <li>Добавьте действие «Получить содержимое URL» и вставьте адрес ниже.</li>
+        <li>Нажмите «Показать больше»: Метод — POST. Заголовки: добавьте <b>X-Add-Key</b> со значением ключа ниже. Тело запроса — JSON: поле <b>text</b>, значение — «Входные данные команды».</li>
+        <li>Добавьте действие «Показать уведомление»: «Добавлено в вишлист». Готово.</li>
+      </ol>
+    </div>
+    <div class="wl-field-label">Адрес</div>
+    <input class="wl-url-input" id="ios-url" readonly onclick="this.select()">
+    <div class="wl-field-label" style="margin-top:10px">Ключ (X-Add-Key)</div>
+    <input class="wl-url-input" id="ios-key" readonly onclick="this.select()">
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="add-btn" style="flex:1" onclick="copyIos('ios-url')">Копировать адрес</button>
+      <button class="add-btn" style="flex:1" onclick="copyIos('ios-key')">Копировать ключ</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-top:10px">Ключ позволяет только добавлять вещи в ваш вишлист, войти в аккаунт с ним нельзя. Не показывайте его другим; если он утёк, <a href="#" onclick="rotateAddKey();return false">выпустить новый</a> (старая команда перестанет работать).</div>
+  </div>
+</div>
+
 <div class="wl-modal-overlay" id="wl-modal" onclick="closeWishlistModal(event)">
   <div class="wl-modal" onclick="event.stopPropagation()">
     <h3>Добавить вещь</h3>
@@ -3280,6 +3309,29 @@ async function deleteWlItem(id) {
 
 function _cancelWlParse() {
   if (_wlParseAbort) { _wlParseAbort.abort(); _wlParseAbort = null; }
+}
+
+async function openShareSetup() {
+  document.getElementById('ios-modal').classList.add('open');
+  document.getElementById('ios-url').value = location.origin + '/wishlist/quick';
+  const k = document.getElementById('ios-key');
+  k.value = 'загрузка…';
+  try {
+    const r = await fetch(API + '/me/add-key', { headers: apiHeaders() });
+    k.value = r.ok ? (await r.json()).key : 'ошибка, войдите заново';
+  } catch (e) { k.value = 'ошибка сети'; }
+}
+async function rotateAddKey() {
+  if (!confirm('Выпустить новый ключ? Старая команда перестанет работать.')) return;
+  try {
+    const r = await fetch(API + '/me/add-key/rotate', { method: 'POST', headers: apiHeaders() });
+    if (r.ok) document.getElementById('ios-key').value = (await r.json()).key;
+  } catch (e) {}
+}
+function copyIos(id) {
+  const el = document.getElementById(id);
+  el.select();
+  try { navigator.clipboard.writeText(el.value); } catch (e) { document.execCommand('copy'); }
 }
 
 function openWishlistModal() {

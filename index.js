@@ -108,6 +108,8 @@ async function initDB() {
       added_at TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_status TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS add_key TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_add_key_idx ON users(add_key);
     CREATE TABLE IF NOT EXISTS sizes (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -377,6 +379,64 @@ app.post('/wishlist', authenticateToken, async (req, res) => {
     res.json(r.rows[0]);
     if (needsEnrich) enrichWishlistItem(r.rows[0].id, req.user.id, url, autotitle ? title : null);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+});
+
+// ── БЫСТРОЕ ДОБАВЛЕНИЕ ИЗ «ПОДЕЛИТЬСЯ» (iOS Команды / Android) ───────────────
+// Личный ключ добавления: даёт право ТОЛЬКО добавлять товары в свой вишлист (не логин).
+app.get('/me/add-key', authenticateToken, async (req, res) => {
+  try {
+    let r = await pool.query('SELECT add_key FROM users WHERE id=$1', [req.user.id]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'Не найден' });
+    let key = r.rows[0].add_key;
+    if (!key) {
+      key = crypto.randomBytes(18).toString('hex');
+      await pool.query('UPDATE users SET add_key=$1 WHERE id=$2', [key, req.user.id]);
+    }
+    res.json({ key });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+app.post('/me/add-key/rotate', authenticateToken, async (req, res) => {
+  try {
+    const key = crypto.randomBytes(18).toString('hex');
+    await pool.query('UPDATE users SET add_key=$1 WHERE id=$2', [key, req.user.id]);
+    res.json({ key });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+
+const quickHits = new Map(); // key -> [timestamps]
+app.post('/wishlist/quick', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const key = String(req.headers['x-add-key'] || b.key || '').trim();
+    if (!/^[0-9a-f]{36}$/.test(key)) return res.status(401).json({ error: 'Неверный ключ' });
+    const now = Date.now();
+    const hits = (quickHits.get(key) || []).filter(t => now - t < 60000);
+    if (hits.length >= 30) return res.status(429).json({ error: 'Слишком часто' });
+    hits.push(now); quickHits.set(key, hits);
+    if (quickHits.size > 2000) quickHits.delete(quickHits.keys().next().value);
+
+    const u = await pool.query('SELECT id FROM users WHERE add_key=$1', [key]);
+    if (!u.rows[0]) return res.status(401).json({ error: 'Неверный ключ' });
+    const userId = u.rows[0].id;
+
+    // Из «Поделиться» часто приходит текст вида «Смотри, что нашёл: https://…» — берём первую ссылку
+    const raw = String(b.url || b.text || b.link || '');
+    const m = raw.match(/https?:\/\/[^\s<>"']+/i);
+    if (!m) return res.status(400).json({ error: 'Ссылка не найдена' });
+    const url = m[0].replace(/[).,;]+$/, '');
+    let host;
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return res.status(400).json({ error: 'Некорректная ссылка' }); }
+
+    const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
+    if (dup.rows[0]) return res.json({ ok: true, duplicate: true, shop: host });
+
+    const r = await pool.query(
+      "INSERT INTO wishlist (user_id,title,shop,url,parse_status) VALUES ($1,$2,$3,$4,'pending') RETURNING id",
+      [userId, host, host, url]
+    );
+    res.json({ ok: true, shop: host });
+    enrichWishlistItem(r.rows[0].id, userId, url, host);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
