@@ -529,6 +529,17 @@ async def h_health(req):
                               'pages': BROWSER.pages_opened, 'ozon_alive': OZON.ctx is not None, 'ozon': OZON.stats})
 
 
+STARTED = time.time()
+
+
+async def h_ready(req):
+    """Для деплоя без простоя: новый контейнер принимает трафик, когда сессия Ozon уже готова
+    (или через 4 минуты, чтобы не блокировать деплой навсегда)."""
+    if OZON.ctx is not None or time.time() - STARTED > 240 or os.environ.get('OZON_KEEPER', '1') != '1':
+        return web.json_response({'ready': True})
+    return web.json_response({'ready': False}, status=503)
+
+
 async def h_product(req):
     if not SECRET or req.headers.get('x-fetcher-secret') != SECRET:
         return web.json_response({'error': 'forbidden'}, status=403)
@@ -629,6 +640,7 @@ async def on_start(app):
 def main():
     app = web.Application(client_max_size=256 * 1024)
     app.router.add_get('/health', h_health)
+    app.router.add_get('/ready', h_ready)
     app.router.add_post('/product', h_product)
     app.on_startup.append(on_start)
     web.run_app(app, host='::', port=PORT, access_log=None)
