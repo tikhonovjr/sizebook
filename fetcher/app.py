@@ -124,7 +124,6 @@ class Browser:
 
 
 BROWSER = Browser()      # WB и прочее
-BROWSER_OZ = Browser(use_proxy=True)   # отдельный браузер для Ozon: его перезапуск (смена отпечатка) не мешает WB
 
 
 async def open_page(key, url, *, on_response=None, timeout=25, ready=None):
@@ -271,23 +270,37 @@ async def egress_ip():
 
 
 class OzonSession:
-    """Ozon пропускает «нового посетителя» не всегда: часть свежих сессий сразу получает
-    слайдер-капчу, часть проходит JS-проверку сама (по замерам ~40%). Прошедшая сессия
-    дальше работает быстро (1–2 с на товар) — её и держим. Если она «протухла» —
-    открываем новую, как это сделал бы новый посетитель. Капчу не решаем."""
+    """Живая сессия Ozon.
+
+    Замеры 08.10.2026 (Railway, Амстердам):
+    - свежая сессия проходит JS-проверку примерно в 1 случае из 2–3, остальные получают слайдер;
+      повторные попытки в том же запуске браузера почти всегда неудачны → каждая попытка
+      делается в новом запуске браузера (новый отпечаток);
+    - прошедшая сессия отдаёт товар за ~1 с, но живёт около 4,5 минут;
+    - поэтому новую сессию готовим заранее (в возрасте ~3,5 мин), пока старая ещё обслуживает запросы.
+    Капчу не решаем: если проверку не прошли, просто пробуем как новый посетитель.
+    """
 
     def __init__(self):
+        self.br = None      # Browser текущей сессии
         self.ctx = None
         self.born = None
         self.used = 0
-        self.lock = asyncio.Lock()
-        self.stats = {'mint_ok': 0, 'mint_fail': 0, 'hit': 0, 'stale': 0}
+        self.lock = asyncio.Lock()        # одновременно готовится только одна новая сессия
+        self.last_demand = 0.0
+        self.stats = {'mint_ok': 0, 'mint_fail': 0, 'hit': 0, 'stale': 0, 'refresh': 0}
 
-    async def _try_ctx(self, url):
-        """Новая сессия + переход на url. Возвращает (ctx|None, html, final)."""
-        await BROWSER_OZ.context('_boot')  # гарантирует, что браузер запущен
-        ctx = await BROWSER_OZ.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
-                                           viewport={'width': 1366, 'height': 900})
+    @staticmethod
+    async def _try(url):
+        """Новый запуск браузера + переход на url. Возвращает (browser, ctx, html, final) или (None, None, html, final)."""
+        br = Browser(use_proxy=True)
+        try:
+            await br.context('_boot')
+            ctx = await br.br.new_context(locale='ru-RU', timezone_id='Europe/Moscow',
+                                          viewport={'width': 1366, 'height': 900})
+        except Exception:
+            await br._stop()
+            return None, None, '', url
         page = await ctx.new_page()
         html, final = '', url
         try:
@@ -305,7 +318,7 @@ class OzonSession:
                     await asyncio.sleep(0.4); continue
                 if ozon_ready(html):
                     break
-                if ozon_page_passed(html):  # прошли, но цены пока нет (или товара нет в наличии)
+                if ozon_page_passed(html):
                     passed_at = passed_at or time.time()
                     if time.time() - passed_at > 4:
                         break
@@ -326,78 +339,71 @@ class OzonSession:
             except Exception:
                 pass
         if ozon_page_passed(html):
-            return ctx, html, final
-        await ctx.close()
-        return None, html, final
+            return br, ctx, html, final
+        await br._stop()
+        return None, None, html, final
 
-    async def mint(self, url=None, steps=None, tries=None):
-        """Создаёт прошедшую проверку сессию. Если передан url — заодно возвращает его страницу."""
-        url = url or OZON_WARM_URL
-        fails = 0
-        for i in range(tries or OZON_MINT_TRIES):
+    async def _mint(self, url, steps, tries):
+        """Готовит новую сессию (не трогая текущую). Возвращает (br, ctx, html, final) или Nones."""
+        for i in range(tries):
             if i:
                 await asyncio.sleep(min(2 + 2 * i, 8))
-            # Замер 08.10: первая сессия в только что запущенном браузере проходит проверку заметно
-            # чаще, повторные в том же браузере — почти никогда (у браузера тот же отпечаток).
-            # Поэтому каждая попытка — в свежем запуске (новый отпечаток), это 1–2 с.
-            async with BROWSER_OZ.lock:
-                await BROWSER_OZ._stop()
-            self.ctx = None
             t = time.time()
-            ctx, html, final = await self._try_ctx(url)
+            br, ctx, html, final = await self._try(url)
             ok = ctx is not None
-            if steps is not None:
-                ipm = re.search(r'id="captcha-ip"[^>]*value="([^"]+)"', html or '')
-                st = {'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000),
-                      'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')}
-                if not ok:
-                    tm = re.search(r'<title[^>]*>([^<]*)', html or '')
-                    st.update(title=(tm.group(1)[:60] if tm else None), len=len(html or ''), url=(final or '')[:120],
-                              slider='captcha-container' in (html or ''))
-                steps.append(st)
+            ipm = re.search(r'id="captcha-ip"[^>]*value="([^"]+)"', html or '')
+            st = {'mint': i + 1, 'ok': ok, 'ms': int((time.time() - t) * 1000),
+                  'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')}
+            if not ok:
+                tm = re.search(r'<title[^>]*>([^<]*)', html or '')
+                st.update(title=(tm.group(1)[:60] if tm else None), slider='captcha-container' in (html or ''))
+            steps.append(st)
             if ok:
                 self.stats['mint_ok'] += 1
-                # проверка пройдена — дальше картинки/шрифты/видео этой сессии не нужны
+                # проверка пройдена — картинки/шрифты/видео этой сессии больше не нужны
                 try:
                     await ctx.route(re.compile(r'\.(png|jpe?g|webp|gif|avif|svg|mp4|webm|woff2?|ttf)(\?|$)', re.I),
                                     lambda route: route.abort())
                 except Exception:
                     pass
-                self.ctx, self.born, self.used = ctx, time.time(), 0
-                try:
-                    now = time.time()
-                    ck = await ctx.cookies()
-                    log('OZON_COOKIES', c={c['name']: (int(c['expires'] - now) if c.get('expires', -1) > 0 else 'session')
-                                           for c in ck if 'ozon' in c.get('domain', '')})
-                except Exception:
-                    pass
-                # «Якорная» вкладка: скрипты Ozon в ней сами продлевают токены сессии
-                try:
-                    self.anchor = await ctx.new_page()
-                    await self.anchor.goto('https://www.ozon.ru/', wait_until='domcontentloaded', timeout=20000)
-                except Exception:
-                    pass
-                return html, final
+                return br, ctx, html, final
             self.stats['mint_fail'] += 1
-            fails += 1
-        return None, None
+        return None, None, None, None
 
-    async def fetch(self, url, steps, _retried=False):
-        """Страница url через живую сессию; при «протухании» — новая сессия."""
+    def _install(self, br, ctx):
+        old_br = self.br
+        self.br, self.ctx, self.born, self.used = br, ctx, time.time(), 0
+        if old_br:
+            async def close_later():
+                await asyncio.sleep(30)  # даём дорабатывать запросам, начатым в старой сессии
+                await old_br._stop()
+            asyncio.create_task(close_later())
+
+    async def _drop(self, ctx):
+        if self.ctx is ctx and ctx is not None:
+            br = self.br
+            self.br = self.ctx = None
+            if br:
+                await br._stop()
+
+    async def ensure(self, url, steps, tries=None):
+        """Нет живой сессии → создать (заодно получив страницу url). Возвращает (html, final) от url или (None, None)."""
         async with self.lock:
-            if self.ctx is None:
-                html, final = await self.mint(url, steps)
-                return html, final
-            ctx = self.ctx
+            if self.ctx is not None:
+                return None, None
+            br, ctx, html, final = await self._mint(url, steps, tries or OZON_MINT_TRIES)
+            if ctx is None:
+                return None, None
+            self._install(br, ctx)
+            return html, final
+
+    async def _get(self, ctx, url):
         html, final = '', url
-        t = time.time()
         try:
             page = await ctx.new_page()
-        except Exception:  # браузер перезапускался — сессия умерла
-            page = None
+        except Exception:
+            return '', url
         try:
-            if page is None:
-                raise RuntimeError('dead context')
             try:
                 await page.goto(url, wait_until='domcontentloaded', timeout=20000)
             except Exception:
@@ -411,59 +417,66 @@ class OzonSession:
                     await asyncio.sleep(0.3); continue
                 if ozon_ready(html):
                     break
-                if ozon_page_passed(html):  # прошли, но цены пока нет (или товара нет в наличии)
+                if ozon_page_passed(html):
                     passed_at = passed_at or time.time()
                     if time.time() - passed_at > 4:
                         break
                 await asyncio.sleep(0.4)
             final = page.url
-        except RuntimeError:
-            pass
         finally:
             try:
-                if page:
-                    await page.close()
+                await page.close()
             except Exception:
                 pass
-        ok = ozon_page_passed(html)
-        steps.append({'session': 'reuse', 'ok': ok, 'ms': int((time.time() - t) * 1000),
-                      'age_s': int(time.time() - (self.born or time.time()))})
-        if ok:
-            self.used += 1
-            self.stats['hit'] += 1
-            return html, final
-        self.stats['stale'] += 1
-        async with self.lock:
-            fresh = self.ctx is not None and self.ctx is not ctx
-        if fresh and not _retried:
-            # пока мы ждали, сессию уже пересоздал другой запрос — пробуем в ней
-            return await self.fetch(url, steps, _retried=True)
-        async with self.lock:
-            if self.ctx is ctx:
-                self.ctx = None
-                try:
-                    await ctx.close()
-                except Exception:
-                    pass
-            return await self.mint(url, steps)
+        return html, final
+
+    async def fetch(self, url, steps):
+        self.last_demand = time.time()
+        for attempt in range(2):
+            ctx = self.ctx
+            if ctx is None:
+                html, final = await self.ensure(url, steps)
+                if html:
+                    return html, final
+                ctx = self.ctx
+                if ctx is None:
+                    return None, None
+            t = time.time()
+            html, final = await self._get(ctx, url)
+            ok = ozon_page_passed(html)
+            steps.append({'session': 'reuse', 'ok': ok, 'ms': int((time.time() - t) * 1000),
+                          'age_s': int(time.time() - (self.born or time.time()))})
+            if ok:
+                self.used += 1
+                self.stats['hit'] += 1
+                return html, final
+            self.stats['stale'] += 1
+            async with self.lock:
+                await self._drop(ctx)
+        return None, None
 
     async def keeper(self):
-        """Фоном держим сессию живой, чтобы запрос пользователя шёл сразу в «тёплую»."""
+        """Фоном: держим сессию живой и готовим следующую до того, как текущая истечёт."""
         await asyncio.sleep(3)
+        refresh_age = int(os.environ.get('OZON_REFRESH_AGE', '200'))
+        hot_window = int(os.environ.get('OZON_HOT_WINDOW', str(24 * 3600)))
         while True:
+            steps = []
             try:
-                steps = []
+                idle = time.time() - self.last_demand > hot_window and self.last_demand > 0
                 if self.ctx is None:
+                    await self.ensure(OZON_WARM_URL, steps, tries=int(os.environ.get('OZON_KEEP_TRIES', '3')))
+                elif not idle and time.time() - self.born > refresh_age:
                     async with self.lock:
-                        if self.ctx is None:
-                            await self.mint(None, steps, tries=int(os.environ.get('OZON_KEEP_TRIES', '2')))
-                else:
-                    await self.fetch(OZON_WARM_URL, steps)
-                log('OZON_KEEP', ip=await egress_ip(), alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
+                        br, ctx, _, _ = await self._mint(OZON_WARM_URL, steps, int(os.environ.get('OZON_KEEP_TRIES', '3')))
+                        if ctx is not None:
+                            self.stats['refresh'] += 1
+                            self._install(br, ctx)
+                log('OZON_KEEP', alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
                     used=self.used, stats=self.stats, steps=steps)
             except Exception:
                 log('ERROR', where='keeper', err=traceback.format_exc()[-1200:])
-            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '90')))
+            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '60')))
 
 
 OZON = OzonSession()
