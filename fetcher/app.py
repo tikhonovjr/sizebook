@@ -245,6 +245,16 @@ OZON_MINT_TRIES = int(os.environ.get('OZON_MINT_TRIES', '8'))
 OZON_PASS_WAIT = float(os.environ.get('OZON_PASS_WAIT', '12'))
 
 
+async def egress_ip():
+    import aiohttp
+    try:
+        async with aiohttp.ClientSession() as cs:
+            async with cs.get('https://api.ipify.org', timeout=aiohttp.ClientTimeout(total=5)) as r:
+                return (await r.text()).strip()
+    except Exception:
+        return None
+
+
 class OzonSession:
     """Ozon пропускает «нового посетителя» не всегда: часть свежих сессий сразу получает
     слайдер-капчу, часть проходит JS-проверку сама (по замерам ~40%). Прошедшая сессия
@@ -321,6 +331,12 @@ class OzonSession:
                               'ip': ipm.group(1) if ipm else None, 'at': time.strftime('%H:%M:%S')})
             if ok:
                 self.stats['mint_ok'] += 1
+                # проверка пройдена — дальше картинки/шрифты/видео этой сессии не нужны
+                try:
+                    await ctx.route(re.compile(r'\.(png|jpe?g|webp|gif|avif|svg|mp4|webm|woff2?|ttf)(\?|$)', re.I),
+                                    lambda route: route.abort())
+                except Exception:
+                    pass
                 old, self.ctx, self.born, self.used = self.ctx, ctx, time.time(), 0
                 if old:
                     try:
@@ -411,11 +427,11 @@ class OzonSession:
                             await self.mint(None, steps, tries=int(os.environ.get('OZON_KEEP_TRIES', '2')))
                 else:
                     await self.fetch(OZON_WARM_URL, steps)
-                log('OZON_KEEP', alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
+                log('OZON_KEEP', ip=await egress_ip(), alive=self.ctx is not None, age_s=int(time.time() - self.born) if self.born else None,
                     used=self.used, stats=self.stats, steps=steps)
             except Exception:
                 log('ERROR', where='keeper', err=traceback.format_exc()[-1200:])
-            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '300')))
+            await asyncio.sleep(int(os.environ.get('OZON_KEEP_EVERY', '90')))
 
 
 OZON = OzonSession()
