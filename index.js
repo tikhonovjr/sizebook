@@ -108,6 +108,7 @@ async function initDB() {
       added_at TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_status TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS parse_attempts INTEGER DEFAULT 0;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS received_at TIMESTAMP;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS add_key TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_chat_id BIGINT;
@@ -452,6 +453,16 @@ async function tgSend(chatId, text, keyboard) {
   if (keyboard) body.reply_markup = { inline_keyboard: keyboard };
   return tgApi('sendMessage', body);
 }
+// Карточка вещи: фото + название и цена; если Telegram не смог загрузить фото — просто текст
+async function tgSendItem(chatId, e, wid, prefix = '✓ ') {
+  const text = `${prefix}${e.title}${e.price ? ' — ' + e.price : ''}`;
+  if (e.image) {
+    const r = await tgApi('sendPhoto', { chat_id: chatId, photo: e.image, caption: text.slice(0, 1000),
+      reply_markup: { inline_keyboard: tgOwnKeyboard(wid) } });
+    if (r && r.ok) return r;
+  }
+  return tgSend(chatId, text, tgOwnKeyboard(wid));
+}
 // Кнопка «Уже моё» под товаром из вишлиста
 const tgOwnKeyboard = (wid) => [[{ text: 'Уже моё — в мои вещи', callback_data: 'own:' + wid }]];
 const TG_ZONE_SIZES = {
@@ -562,8 +573,8 @@ app.post('/tg/webhook/:secret', async (req, res) => {
     if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`, tgOwnKeyboard(out.id));
     await tgSend(chatId, `Добавил: ${out.host}. Подтягиваю название и цену…`);
     const e = await out.enrich();
-    if (e && e.found) await tgSend(chatId, `✓ ${e.title}${e.price ? ' — ' + e.price : ''}`, tgOwnKeyboard(out.id));
-    else await tgSend(chatId, 'Вещь сохранена, но название и цену магазин не отдал. Они могут появиться позже в приложении.', tgOwnKeyboard(out.id));
+    if (e && e.found) await tgSendItem(chatId, e, out.id);
+    else await tgSend(chatId, 'Вещь сохранена. Магазин пока не отдал название и цену — попробую ещё раз в ближайшие минуты и напишу сюда.', tgOwnKeyboard(out.id));
   } catch (e) { console.error('[tg] webhook', e.message); }
 });
 
@@ -1534,7 +1545,9 @@ function runParse(url) {
     parseHandler({ body: { url } }, fakeRes).catch(e => resolve({ error: e.message, _status: 500 }));
   }).then(r => {
     if (r._status === 200 && (r.title || r.price || r.image)) {
-      PARSE_CACHE.set(url, { at: Date.now(), data: r });
+      // неполный результат (нет цены) держим недолго — повторная попытка может дать больше
+      const ttl = (r.title && r.price) ? PARSE_CACHE_TTL : 2 * 60 * 1000;
+      PARSE_CACHE.set(url, { at: Date.now() - (PARSE_CACHE_TTL - ttl), data: r });
       if (PARSE_CACHE.size > 500) PARSE_CACHE.delete(PARSE_CACHE.keys().next().value);
     }
     return r;
@@ -1587,6 +1600,7 @@ app.get('/img', async (req, res) => {
 
 async function enrichWishlistItem(id, userId, url, fallbackTitle) {
   try {
+    await pool.query('UPDATE wishlist SET parse_attempts=COALESCE(parse_attempts,0)+1 WHERE id=$1', [id]);
     const m = await runParse(url);
     const cur = (await pool.query('SELECT title, price, image FROM wishlist WHERE id=$1 AND user_id=$2', [id, userId])).rows[0];
     if (!cur) return null; // удалили, пока парсили
@@ -1597,13 +1611,43 @@ async function enrichWishlistItem(id, userId, url, fallbackTitle) {
       [titleEmpty && m.title ? m.title : cur.title, m.price || null, m.image || null,
        (m.title || m.price || m.image) ? 'done' : 'failed', id, userId]
     );
-    return { title: newTitle, price: cur.price || m.price || null, found: !!(m.title || m.price || m.image) };
+    return { title: newTitle, price: cur.price || m.price || null, image: cur.image || m.image || null, found: !!(m.title || m.price || m.image) };
   } catch (e) {
     console.error('[enrich]', e.message);
     try { await pool.query("UPDATE wishlist SET parse_status='failed' WHERE id=$1 AND parse_status='pending'", [id]); } catch (_) {}
     return null;
   }
 }
+
+// ── Повторное дополнение: Ozon/WB иногда не отдают данные с первого раза (антибот,
+// перезапуск сервиса). Раз в 5 минут добираем пустые название/цену у свежих вещей
+// и сообщаем в Telegram, если вещь добавляли через бота.
+const RETRY_HOSTS_RE = /(ozon\.ru|wildberries\.ru|wb\.ru)/i;
+async function retryWishlistEnrichment() {
+  try {
+    const r = await pool.query(
+      `SELECT w.id, w.user_id, w.url, w.shop, w.title, w.price, u.tg_chat_id
+         FROM wishlist w JOIN users u ON u.id = w.user_id
+        WHERE w.url ~* '(ozon\.ru|wildberries\.ru|wb\.ru)'
+          AND (w.parse_status = 'failed' OR w.price IS NULL OR w.price = '' OR w.title = w.shop)
+          AND COALESCE(w.parse_attempts, 0) < 4
+          AND COALESCE(w.added_at, NOW()) > NOW() - INTERVAL '3 days'
+          AND w.received_at IS NULL
+        ORDER BY w.id DESC LIMIT 5`);
+    for (const w of r.rows) {
+      if (!RETRY_HOSTS_RE.test(w.url || '')) continue;
+      const hadPrice = !!w.price, hadTitle = w.title && w.title !== w.shop;
+      const e = await enrichWishlistItem(w.id, w.user_id, w.url, w.shop);
+      if (!e || !e.found) continue;
+      const gained = (!hadPrice && e.price) || (!hadTitle && e.title && e.title !== w.shop);
+      console.log(`[retry] wishlist ${w.id}: ${gained ? 'дополнено' : 'без изменений'}`);
+      if (gained && w.tg_chat_id) {
+        await tgSendItem(w.tg_chat_id, e, w.id, '✓ Подтянул: ');
+      }
+    }
+  } catch (e) { console.error('[retry]', e.message); }
+}
+setTimeout(() => { retryWishlistEnrichment(); setInterval(retryWishlistEnrichment, 5 * 60 * 1000); }, 60 * 1000);
 
 
 
