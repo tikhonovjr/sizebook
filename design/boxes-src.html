@@ -134,7 +134,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .v-black .emb{position:absolute;left:0;right:0;bottom:10px;font:800 74px/1 var(--cond);letter-spacing:.04em;color:#0e0e0e;text-shadow:0 1px 0 rgba(255,255,255,.05),0 -1px 0 rgba(0,0,0,.9);text-align:center;pointer-events:none;white-space:nowrap}
 .v-black .lt h2{font:800 32px var(--cond);text-transform:uppercase;letter-spacing:.02em}
 .v-black .lt button{font:600 13px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--b-2)}
-.v-black .label{position:relative;z-index:1;background:#f6f5f1;color:#111;margin:8px 0 74px;display:grid;grid-template-columns:10px 1fr;box-shadow:0 18px 30px -14px rgba(0,0,0,.9)}
+.v-black .label{position:relative;z-index:1;background:#f6f5f1;color:#111;margin:8px 0 6px;display:grid;grid-template-columns:10px 1fr;box-shadow:0 18px 30px -14px rgba(0,0,0,.9)}
 .v-black .label .bar{background:var(--b-acc)}
 .v-black .label .in{padding:12px 14px 10px}
 .v-black .r1{display:flex;justify-content:space-between;align-items:baseline;font:500 10px var(--mono);color:#77756f;letter-spacing:.06em}
@@ -216,25 +216,21 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
 .v-ship .lt h2{font:900 30px "Archivo",sans-serif;text-transform:uppercase;letter-spacing:-.02em}
 .v-ship .lt button{font:700 12px var(--mono);text-transform:uppercase;background:var(--s-label);padding:6px 10px;border:2px solid var(--s-ink)}
-.v-ship .label{background:var(--s-label);border:3px solid var(--s-ink);box-shadow:0 14px 26px -12px rgba(0,0,0,.45);transform:rotate(.6deg)}
-.v-ship .zone{border-bottom:3px solid var(--s-ink);padding:7px 10px}
-.v-ship .r1{display:grid;grid-template-columns:1fr auto;padding:0;border-bottom:3px solid var(--s-ink)}
-.v-ship .r1 .z1{padding:7px 10px;font:500 10px var(--mono);line-height:1.45}
-.v-ship .r1 .z1 b{display:block;font:900 22px/1.05 "Archivo",sans-serif;text-transform:uppercase;margin-top:2px;letter-spacing:-.01em}
-.v-ship .r1 .route{background:var(--s-ink);color:#fff;display:grid;place-items:center;padding:4px 12px;font:900 40px/1 "Archivo",sans-serif}
-.v-ship .r1 .route small{font:600 9px var(--mono);letter-spacing:.14em}
-.v-ship .grid{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:3px solid var(--s-ink)}
-.v-ship .cell{padding:6px 8px;text-align:left;border-right:2px solid var(--s-ink);border-bottom:2px solid var(--s-ink)}
-.v-ship .cell:nth-child(3n){border-right:0}
-.v-ship .cell:nth-child(n+4){border-bottom:0}
-.v-ship .cell span{display:block;font:600 9px var(--mono);text-transform:uppercase}
-.v-ship .cell b{font:900 26px/1.05 "Archivo",sans-serif;letter-spacing:-.02em}
+.v-ship .label{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:var(--s-ink);border:2px solid var(--s-ink);box-shadow:0 1px 2px rgba(0,0,0,.2),0 16px 28px -14px rgba(0,0,0,.45)}
+.v-ship .label>*>*,.v-ship .label .r1>*{background:var(--s-label)}
+.v-ship .r1,.v-ship .grid,.v-ship .r3{display:contents}
+.v-ship .r1 .z1{grid-column:span 2;padding:9px 12px;font:500 10px var(--mono);line-height:1.5}
+.v-ship .r1 .z1 b{display:block;font:900 21px/1.05 "Archivo",sans-serif;text-transform:uppercase;margin:3px 0 2px;letter-spacing:-.01em}
+.v-ship .r1 .route{background:var(--s-ink);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:9px 12px;font:900 42px/1 "Archivo",sans-serif}
+.v-ship .r1 .route small{font:600 9px var(--mono);letter-spacing:.12em;margin-bottom:4px}
+.v-ship .cell{padding:8px 12px;text-align:left}
+.v-ship .cell span{display:block;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.v-ship .cell b{font:900 26px/1.1 "Archivo",sans-serif;letter-spacing:-.02em}
 .v-ship .cell:hover{background:var(--s-ink);color:#fff}
-.v-ship .r3{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:8px 10px;align-items:center}
-.v-ship .r3 .qr{color:var(--s-ink)}
-.v-ship .r3 .t{font:500 10px/1.5 var(--mono)}
+.v-ship .r3>.qr{padding:12px;color:var(--s-ink)}
+.v-ship .r3 .t{grid-column:span 2;padding:10px 12px;font:500 10px/1.5 var(--mono);display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
 .v-ship .r3 .t b{display:block;font:900 15px "Archivo",sans-serif;text-transform:uppercase;margin-bottom:2px}
-.v-ship .r3 .t button{margin-top:8px;background:var(--s-ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:6px 9px}
+.v-ship .r3 .t button{margin-top:8px;background:var(--s-ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:7px 10px}
 .v-ship .sec b{font:900 22px "Archivo",sans-serif;text-transform:uppercase;letter-spacing:-.01em}
 .v-ship .sec button{font:700 12px var(--mono);text-transform:uppercase}
 .v-ship .shead b{font:800 15px "Archivo",sans-serif;text-transform:uppercase}
@@ -364,7 +360,7 @@ const V=[
     <div class="grid">${cells()}</div>
     <div class="ft"><div class="bars">${barcode(77,34)}</div><button>Отправить</button></div>
    </div></div>
-   <div class="emb">SIZEBOOK</div></div>`},
+   </div>`},
  {k:'wall',n:'Стена коробок',insp:'стены с коробками в кроссовочных магазинах: торцы разного цвета, на каждом своя наклейка',
   idea:'Паспорт превращается в полку с коробками. Каждая категория — торец своей коробки своего цвета с наклейкой и размером. Этот цвет повторяется в категориях вещей ниже, так разделы легко различать.',
   pros:['Самый игровой и наглядный, каждая категория — отдельная «вещь»','Легко добавлять новые категории: просто ещё одна коробка'],cons:['Шесть цветов надо держать в узде, иначе станет пёстро','Нет общей сводки по системам, она открывается по нажатию'],
