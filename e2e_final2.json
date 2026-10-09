@@ -1,0 +1,66 @@
+{
+ "tag": "final2",
+ "at": "2026-10-09T03:51:39Z",
+ "results": [
+  {
+   "url": "https://ozon.ru/t/fBkpTSz",
+   "wall_ms": 201,
+   "title": "Рюкзак Dakine CAMPUS M 25L",
+   "price": "7998 ₽",
+   "image": "https://ir-20.ozone.ru/s3/multimedia-1-0/11806466328.jpg",
+   "error": null,
+   "_ms": 1306,
+   "_cached": true
+  },
+  {
+   "url": "https://www.ozon.ru/product/krossovki-new-balance-2002r-1975763432/",
+   "wall_ms": 1727,
+   "title": "Кроссовки New Balance 2002R",
+   "price": "20000 ₽",
+   "image": "https://ir-20.ozone.ru/s3/multimedia-1-2/7419674702.jpg",
+   "error": null,
+   "_ms": 1567,
+   "_cached": null
+  },
+  {
+   "url": "https://www.ozon.ru/product/naushniki-3504486138/",
+   "wall_ms": 1060,
+   "title": "Наушники",
+   "price": "38477 ₽",
+   "image": "https://ir-20.ozone.ru/s3/multimedia-1-m/9027771718.jpg",
+   "error": null,
+   "_ms": 924,
+   "_cached": null
+  },
+  {
+   "url": "https://www.wildberries.ru/catalog/1099397415/detail.aspx?size=1627551612",
+   "wall_ms": 9448,
+   "title": "Зеркало настенное интерьерное в раме 40х60",
+   "price": "2765 ₽",
+   "image": "https://basket-42.wbbasket.ru/vol10993/part1099397/1099397415/images/big/1.webp",
+   "error": null,
+   "_ms": 9313,
+   "_cached": null
+  },
+  {
+   "url": "https://www.wildberries.ru/catalog/132538791/detail.aspx",
+   "wall_ms": 2677,
+   "title": "Кроссовки для бега REVOLUTION 6 NEXT NATURE W",
+   "price": "6022 ₽",
+   "image": "https://basket-10.wbbasket.ru/vol1325/part132538/132538791/images/big/1.webp",
+   "error": null,
+   "_ms": 2517,
+   "_cached": null
+  },
+  {
+   "url": "https://www.wildberries.ru/catalog/15232661/detail.aspx",
+   "wall_ms": 2385,
+   "title": "Куртка женская демисезонная короткая оверсайз вельветовая бомбер на весну повседневная для авто",
+   "price": "Нет в наличии",
+   "image": "https://basket-02.wbbasket.ru/vol152/part15232/15232661/images/big/1.webp",
+   "error": null,
+   "_ms": 2247,
+   "_cached": null
+  }
+ ]
+}
