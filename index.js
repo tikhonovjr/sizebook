@@ -226,10 +226,20 @@ async function initDB() {
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
+  for (const pair of String(process.env.SEED_USERS || '').split(',').map(x => x.trim()).filter(Boolean)) {
+    const [u, p] = pair.split(':');
+    if (!u || !p) continue;
+    try {
+      const ex = await pool.query('SELECT id FROM users WHERE lower(username)=lower($1)', [u]);
+      if (ex.rows[0]) continue;
+      await pool.query('INSERT INTO users (username, email, password_hash) VALUES ($1,$2,$3)', [u.toLowerCase(), u.toLowerCase() + '@sizebook.test', await bcrypt.hash(p, 10)]);
+      console.log('[seed] создан тестовый аккаунт', u);
+    } catch (e) { console.log('[seed] тестовый аккаунт', u, e.message); }
+  }
   try {
-    const wl = await pool.query("SELECT id, title, url FROM wishlist WHERE COALESCE(brand,'')='' AND url IS NOT NULL");
+    const wl = await pool.query("SELECT id, title, url FROM wishlist WHERE COALESCE(brand,'')=''");
     let n = 0;
-    for (const r of wl.rows) { const b = guessBrand(r.title, r.url); if (b) { await pool.query('UPDATE wishlist SET brand=$1 WHERE id=$2', [b, r.id]); n++; } }
+    for (const r of wl.rows) { const b = guessBrand(r.title, r.url && !/^https?:\/\/t\.me\//.test(r.url) ? r.url : null); if (b) { await pool.query('UPDATE wishlist SET brand=$1 WHERE id=$2', [b, r.id]); n++; } }
     const it = await pool.query("SELECT id, name, url FROM items WHERE COALESCE(brand,'')='' AND url IS NOT NULL");
     for (const r of it.rows) { const b = guessBrand(r.name, r.url); if (b) { await pool.query('UPDATE items SET brand=$1 WHERE id=$2', [b, r.id]); n++; } }
     if (n) console.log('[migrate] бренды заполнены у', n, 'записей');
@@ -489,6 +499,13 @@ function tgCollectLinks(msgs) {
   return out.sort((a, b) => (new URL(a).pathname.length > 1 ? 0 : 1) - (new URL(b).pathname.length > 1 ? 0 : 1));
 }
 
+// Бренд из поста: известный бренд в любом месте текста, иначе латиница в названии
+function tgBrand(info) {
+  const t = String((info && info.text) || '');
+  const known = KNOWN_BRANDS.find(b => new RegExp('(^|[^\\p{L}\\p{N}])' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[^\\p{L}\\p{N}])', 'iu').test(t));
+  if (known) return known;
+  return guessBrand(info && info.title, null);
+}
 function tgPostInfo(msgs) {
   const text = msgs.map(m => m.text || m.caption || '').filter(Boolean).join('\n').trim();
   const fwd = msgs.find(m => m.forward_origin || m.forward_from_chat) || msgs[0];
@@ -573,6 +590,7 @@ async function tgHandlePost(chatId, userId, msgs) {
         `UPDATE wishlist SET title=COALESCE($1,title), price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3),
            parse_status='done' WHERE id=$4 AND user_id=$5`,
         [fill.title || null, fill.price || null, fill.image || null, out.id, userId]);
+      const tb = tgBrand(info); if (tb) await pool.query("UPDATE wishlist SET brand=COALESCE(NULLIF(brand,''),$1) WHERE id=$2", [tb, out.id]);
       e = { title: fill.title || (e && e.title) || out.host, price: (e && e.price) || fill.price || null,
             image: (e && e.image) || fill.image || null, found: true };
     }
@@ -592,8 +610,8 @@ async function tgHandlePost(chatId, userId, msgs) {
   const title = info.title || (info.channel ? `Вещь из «${info.channel}»` : 'Вещь из Telegram');
   const shop = info.channel || 'Telegram';
   const r = await pool.query(
-    "INSERT INTO wishlist (user_id,title,shop,url,price,image,parse_status) VALUES ($1,$2,$3,$4,$5,$6,'done') RETURNING id",
-    [userId, title, shop, info.postUrl, info.price, image]);
+    "INSERT INTO wishlist (user_id,title,shop,url,price,image,parse_status,brand) VALUES ($1,$2,$3,$4,$5,$6,'done',$7) RETURNING id",
+    [userId, title, shop, info.postUrl, info.price, image, tgBrand(info)]);
   const wid = r.rows[0].id;
   const note = info.postUrl ? 'Ссылки на магазин в посте нет — сохранил ссылку на сам пост.'
                             : 'Ссылки на магазин в посте нет, канал закрытый — сохранил название, цену и фото.';
@@ -862,6 +880,8 @@ app.get('/share/:token', async (req, res) => {
     }
     const sections = link.sections || {};
     const result = { token: link.token, expires_at: link.expires_at, sections };
+    const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
+    result.owner = own.rows[0] ? own.rows[0].username : null;
 
     if (sections.sizes) {
       const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
@@ -872,7 +892,7 @@ app.get('/share/:token', async (req, res) => {
           Object.entries(sizesData).filter(([k]) => !excl.includes(k))
         );
       }
-      result.sizes = sizesData;
+      result.sizes = Object.fromEntries(Object.entries(sizesData).filter(([k]) => !k.startsWith('ui_') && k !== 'profile_age'));
       // Размеры по брендам из «Моих вещей» (без заметок, ссылок и фото); отключается sections.items === false
       if (sections.items !== false) {
         const ir = await pool.query(
@@ -1653,7 +1673,7 @@ function parseProductFromHtml(html, url) {
 
 // ── Бренд товара ──
 // Монобрендовые магазины: бренд = сам магазин
-const SHOP_BRANDS = { 'lime-shop.com': 'Lime', 'lime-shop.ru': 'Lime', '12storeez.com': '12 Storeez', 'zarina.ru': 'Zarina', 'befree.ru': 'Befree',
+const SHOP_BRANDS = { 'limestore.com': 'Lime', 'limestore.ru': 'Lime', 'lime-shop.com': 'Lime', 'lime-shop.ru': 'Lime', '12storeez.com': '12 Storeez', 'zarina.ru': 'Zarina', 'befree.ru': 'Befree',
   'gloria-jeans.ru': 'Gloria Jeans', 'loverepublic.ru': 'Love Republic', 'sela.ru': 'Sela', 'ostin.com': "O'stin", 'ushatava.ru': 'Ushatava',
   'zara.com': 'Zara', 'uniqlo.com': 'Uniqlo', 'hm.com': 'H&M', 'cos.com': 'COS', 'cosstores.com': 'COS', 'arket.com': 'ARKET', 'massimodutti.com': 'Massimo Dutti',
   'mango.com': 'Mango', 'nike.com': 'Nike', 'adidas.com': 'Adidas', 'adidas.ru': 'Adidas', 'newbalance.com': 'New Balance', 'timberland.com': 'Timberland',
@@ -1673,9 +1693,9 @@ function cleanBrand(b, url) {
   if (/^(без бренда|no brand|noname|нет бренда|ozon|wildberries|lamoda)$/i.test(b)) return null;
   return b;
 }
-const KNOWN_BRANDS = ["Tom Ford","Ermenegildo Zegna","Zegna","Brunello Cucinelli","Loro Piana","Kiton","Brioni","Canali","Corneliani","Isaia","Thom Browne","Bottega Veneta","Givenchy","Fendi","Dolce & Gabbana","Alexander Wang","Balmain","Max Mara","Jil Sander","The Row","Khaite","Toteme","Lemaire","Comme des Garçons","Junya Watanabe","Sacai","Visvim","Auralee","Aimé Leon Dore","Drake's","Officine Générale","Church's","Crockett & Jones","John Lobb","Paraboot","Red Wing","Tricker's","Santoni","Berluti","Hermès","Chanel","Louis Vuitton","Etro","Missoni","Zimmermann","Ganni","Nanushka","The Kooples","Claudie Pierlot","Vince","Theory","Polo Ralph Lauren","Ralph Lauren","Moon Boot","Mackintosh","Paul Smith","Vivienne Westwood","Marine Serre","Maison Margiela","MM6","Y-3","Mastermind","Neighborhood","Wtaps","Palm Angels","Amiri","Rhude","Casablanca","Jacquemus","Lanvin","Ami Paris","Charuel","Studio 29","Monochrome","Gate31","2Mood","Lesyanebo","Alexander Terekhov","Vassa","Ruban","Lime","Ushatava","Zarina","Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
+const KNOWN_BRANDS = ["Walter Van Beirendonck","Raf Simons","Yohji Yamamoto","Issey Miyake","Dries Van Noten","Ann Demeulemeester","Helmut Lang","Jean Paul Gaultier","Martine Rose","Craig Green","Kiko Kostadinov","Undercover","Number (N)ine","Hysteric Glamour","Kapital","Needles","Engineered Garments","Carol Christian Poell","Boris Bidjan Saberi","Julius","Guidi","Maison Mihara Yasuhiro","Bape","A Bathing Ape","C.P. Company","CP Company","Vetements","Gosha Rubchinskiy","Chrome Hearts","Neil Barrett","1017 ALYX 9SM","Alyx","A-Cold-Wall","Acronym","Sunflower","Stüssy","Dirk Bikkembergs","Martin Margiela","Jil Sander","Ralph Lauren Purple Label","Yves Saint Laurent","Christian Dior","Comme des Garçons Homme Plus","Junya Watanabe MAN","Wacko Maria","Orslow","Beams","Nanamica","Snow Peak","And Wander","Arcteryx","Gramicci","Salomon","Oakley","Prada Linea Rossa","Miharayasuhiro","Doublet","Our Legacy","Séfr","Norse Projects","Wood Wood","Han Kjøbenhavn","Soulland","Holzweiler","Filippa K","Samsøe Samsøe","Libertine-Libertine","Tom Ford","Ermenegildo Zegna","Zegna","Brunello Cucinelli","Loro Piana","Kiton","Brioni","Canali","Corneliani","Isaia","Thom Browne","Bottega Veneta","Givenchy","Fendi","Dolce & Gabbana","Alexander Wang","Balmain","Max Mara","Jil Sander","The Row","Khaite","Toteme","Lemaire","Comme des Garçons","Junya Watanabe","Sacai","Visvim","Auralee","Aimé Leon Dore","Drake's","Officine Générale","Church's","Crockett & Jones","John Lobb","Paraboot","Red Wing","Tricker's","Santoni","Berluti","Hermès","Chanel","Louis Vuitton","Etro","Missoni","Zimmermann","Ganni","Nanushka","The Kooples","Claudie Pierlot","Vince","Theory","Polo Ralph Lauren","Ralph Lauren","Moon Boot","Mackintosh","Paul Smith","Vivienne Westwood","Marine Serre","Maison Margiela","MM6","Y-3","Mastermind","Neighborhood","Wtaps","Palm Angels","Amiri","Rhude","Casablanca","Jacquemus","Lanvin","Ami Paris","Charuel","Studio 29","Monochrome","Gate31","2Mood","Lesyanebo","Alexander Terekhov","Vassa","Ruban","Lime","Ushatava","Zarina","Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
 function guessBrand(title, url) {
-  const key = shopKey(url);
+  const key = url ? shopKey(url) : '';
   if (SHOP_BRANDS[key]) return SHOP_BRANDS[key];
   const t = String(title || '');
   const known = KNOWN_BRANDS.find(b => new RegExp('(^|[^\\p{L}\\p{N}])' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[^\\p{L}\\p{N}])', 'iu').test(t));
@@ -2470,6 +2490,7 @@ app.get('/healthlog', (req, res) => {
 app.get('/proto', (req, res) => res.sendFile(__dirname + '/sizebook-proto.html'));
 // Экспериментальный вид «паспорт-термоэтикетка»; основное приложение остаётся на «/»
 app.get('/passport', (req, res) => res.sendFile(__dirname + '/passport.html'));
+app.get('/sb-common.js', (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(__dirname + '/sb-common.js'); });
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 

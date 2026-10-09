@@ -2,281 +2,166 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SizeBook — Размеры</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#a9aeb6">
+<meta name="robots" content="noindex">
+<title>SizeBook · Подарок в размер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<script src="/sb-common.js"></script>
 <style>
-  :root {
-    --bg: #f5f4f2; --surface: #ffffff; --surface2: #f0eeeb;
-    --border: rgba(0,0,0,0.10); --border2: rgba(0,0,0,0.15);
-    --text: #1a1917; --text2: #6b6965; --text3: #9c9894;
-    --radius: 12px; --radius-sm: 8px;
-    --accent: #1a1917;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); min-height: 100vh; }
-
-  .topbar {
-    background: var(--surface); border-bottom: 0.5px solid var(--border);
-    padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
-  }
-  .logo { font-size: 15px; font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
-  .install-btn {
-    font-size: 12px; color: var(--text2); background: var(--surface2);
-    border: 0.5px solid var(--border2); border-radius: 20px;
-    padding: 5px 12px; cursor: pointer; text-decoration: none;
-  }
-
-  .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
-
-  .card {
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;
-  }
-
-  .section-label {
-    font-size: 11px; color: var(--text3); text-transform: uppercase;
-    letter-spacing: 0.05em; margin-bottom: 10px; font-weight: 500;
-  }
-
-  .tags-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .tag {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--surface2); border: 0.5px solid var(--border);
-    border-radius: 20px; padding: 5px 12px; font-size: 13px; color: var(--text);
-  }
-
-  .wl-item {
-    display: flex; align-items: center; gap: 12px; padding: 10px 0;
-    border-bottom: 0.5px solid var(--border);
-  }
-  .wl-item:last-child { border-bottom: none; }
-  .wl-thumb {
-    width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
-    background: var(--surface2); flex-shrink: 0;
-  }
-  .wl-thumb-placeholder { width: 48px; height: 48px; border-radius: 8px; background: var(--surface2); flex-shrink: 0; }
-  .wl-info { flex: 1; min-width: 0; }
-  .wl-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wl-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
-  .wl-price { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; }
-
-  .status-card {
-    background: var(--surface); border: 0.5px solid var(--border);
-    border-radius: var(--radius); padding: 2.5rem 1.5rem; text-align: center;
-  }
-  .status-icon { font-size: 36px; margin-bottom: 12px; }
-  .status-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-  .status-sub { font-size: 14px; color: var(--text2); margin-bottom: 20px; }
-  .btn-primary {
-    display: inline-block; background: var(--accent); color: #fff;
-    border: none; border-radius: var(--radius-sm); padding: 10px 20px;
-    font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none;
-  }
-
-  .bs-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); align-items: baseline; }
-  .bs-row:last-child { border-bottom: none; }
-  .bs-brand { font-size: 15px; font-weight: 600; width: 38%; flex-shrink: 0; word-break: break-word; }
-  .bs-sizes { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-  .bs-item { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .bs-size { font-size: 17px; font-weight: 600; }
-  .bs-meta { font-size: 12px; color: var(--text3); }
-
-  #loading { text-align: center; padding: 60px 0; color: var(--text3); font-size: 14px; }
+/* Страница, которой делятся: паспорт-термоэтикетка, только просмотр */
+:root{--ink:#0d0d0d;--ink2:#5f6166;--ink3:#9a9ca1;--lab:#fdfdfb;--bg:#e7e8ea;--line:#c4c6ca;
+  --disp:"Archivo",-apple-system,"Helvetica Neue",Arial,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.app{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:calc(30px + var(--safe-b))}
+.num{font-variant-numeric:tabular-nums}
+.top{padding:calc(18px + var(--safe-t)) 16px 26px;background:
+  radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
+  radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
+  linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:0 2px 16px;gap:12px}
+.lt h1{margin:0;font:900 28px var(--disp);text-transform:uppercase;letter-spacing:-.02em}
+.lt span{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;background:var(--lab);border:2px solid var(--ink);padding:5px 8px}
+.label{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.2),0 16px 28px -14px rgba(0,0,0,.45)}
+.label>*{background:var(--lab);min-width:0}
+.span2{grid-column:span 2}.span3{grid-column:1/-1}
+.z1{padding:9px 12px;font:500 10px/1.5 var(--mono)}
+.z1 b{display:block;font:900 21px/1.05 var(--disp);text-transform:uppercase;margin:3px 0 2px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.route{background:var(--ink)!important;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:9px 12px;font:900 42px/1 var(--disp)}
+.route small{font:500 10px var(--mono);letter-spacing:.1em;margin-bottom:4px;opacity:.85}
+.cell{padding:8px 12px;min-height:60px}
+.cap{display:block;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.cell b{font:900 26px/1.1 var(--disp);letter-spacing:-.02em;overflow-wrap:anywhere}
+.cell b.sm{font-size:19px}
+.cell b.empty{color:#b0b2b6}
+.cell .cv{display:block;font:500 9.5px var(--mono);color:var(--ink3);margin-top:2px}
+.body{padding:0 16px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px}
+.sec h2{margin:0;font:900 22px var(--disp);text-transform:uppercase}
+.sec span{font:500 11px var(--mono);color:var(--ink2)}
+.hint{font:500 11px/1.5 var(--mono);color:var(--ink2);margin-top:6px}
+.rows{display:grid;gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:12px}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:2px;background:var(--ink)}
+.brow>*{background:var(--lab);padding:10px 12px;min-width:0}
+.brow .bn{font:800 15px/1.2 var(--disp);display:flex;align-items:center;overflow-wrap:anywhere}
+.brow .bs{display:grid;gap:4px}
+.brow .bs div{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.brow .bs b{font:900 17px var(--disp);border:2px solid var(--ink);padding:0 6px;line-height:1.3}
+.brow .bs span{font:500 10.5px var(--mono);color:var(--ink2)}
+.row{display:grid;grid-template-columns:84px minmax(0,1fr) 98px;gap:2px;background:var(--ink);text-align:left;width:100%;height:96px;text-decoration:none}
+.row>*{background:var(--lab);min-width:0}
+.th{display:grid;place-items:center;overflow:hidden;background:#fff!important;position:relative}
+.th img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:6px;mix-blend-mode:multiply}
+.ini{font:900 26px var(--disp);color:#d4d5d8;text-transform:uppercase}
+.row .tx{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.row .bd{font:700 9.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .tt{font:800 14px/1.2 var(--disp);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .mt{font:500 10px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .pr{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right}
+.row .pr b{font:900 15px/1.15 var(--disp);white-space:nowrap}
+.row .pr span{font:500 10px var(--mono);color:var(--ink3);white-space:nowrap;margin-top:2px}
+.row .pr .none{color:var(--ink3)}
+.foot{margin-top:30px;border:2px dashed var(--line);background:var(--lab);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2)}
+.foot a{display:inline-block;margin-top:10px;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:9px 12px;text-decoration:none}
+.state{padding:60px 20px;text-align:center;font:500 13px/1.6 var(--mono);color:var(--ink2)}
+.state b{display:block;font:900 24px var(--disp);text-transform:uppercase;color:var(--ink);margin-bottom:8px}
+.sk{height:300px;background:linear-gradient(90deg,#f3f3f1,#fff,#f3f3f1);background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
 </style>
 </head>
 <body>
-
-<div class="topbar">
-  <a class="logo" href="/">SizeBook</a>
-  <a class="install-btn" href="/">Открыть приложение</a>
+<div class="app" id="app">
+  <div class="top"><div class="lt"><h1>Подарок в размер</h1><span>SizeBook</span></div><div class="label"><div class="sk span3"></div></div></div>
 </div>
-
-<div class="container">
-  <div id="loading">Загрузка...</div>
-  <div id="content" style="display:none"></div>
-</div>
-
 <script>
-const API = 'https://desirable-cat-production-6c28.up.railway.app';
+const API = location.origin;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeUrl = u => { try { const x = new URL(String(u)); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (_) { return ''; } };
 
-function formatPrice(raw) {
-  if (!raw) return '';
-  const s = String(raw).trim();
-  let symbol = '₸';
-  if (/₽/.test(s) || /\bRUB\b/i.test(s)) symbol = '₽';
-  else if (/€/.test(s) || /\bEUR\b/i.test(s)) symbol = '€';
-  else if (/£/.test(s) || /\bGBP\b/i.test(s)) symbol = '£';
-  else if (/\$/.test(s) || /\bUSD\b/i.test(s)) symbol = '$';
-  else if (/₸/.test(s) || /\bKZT\b/i.test(s)) symbol = '₸';
-  const num = s.replace(/[^\d.,]/g, '').replace(',', '.');
-  const n = parseFloat(num);
-  if (isNaN(n)) return s;
-  return n.toLocaleString('ru-RU') + ' ' + symbol;
+const MAIN = [['Верх', ['daily_top']], ['Низ', ['daily_bottom']], ['Верхняя', ['outer', 'outer_jacket']], ['Обувь', ['shoes_eu', 'shoes_sneaker']], ['Шапка', ['hat', 'hat_cap']], ['Кольцо', ['ring_mm']]];
+const EXTRA = { formal_jacket: 'Пиджак', formal_pants: 'Брюки костюма', formal_shirt: 'Рубашка', outer_down: 'Пуховик', sport_top: 'Спорт верх', sport_bottom: 'Спорт низ',
+  shoes_sneaker: 'Кроссовки', shoes_dress: 'Туфли', shoes_boot: 'Сапоги', shoes_sandal: 'Сандалии', beach_one: 'Купальник', beach_two: 'Купальник раздельный', beach_swim: 'Плавки',
+  under_top: 'Бельё верх', under_bottom: 'Бельё низ', under_bra: 'Бюстгальтер', under_body: 'Боди', under_stockings: 'Чулки', under_tights: 'Колготки', under_socks: 'Носки',
+  bracelet_cm: 'Браслет, см', belt_cm: 'Ремень, см', hat_winter: 'Зимняя шапка', gloves_size: 'Перчатки', gloves: 'Перчатки', belt: 'Ремень', waist: 'Талия', chest: 'Грудь' };
+const ZONES = { tops: 'Верх', bottoms: 'Низ', outer: 'Верхняя', shoes: 'Обувь', hats: 'Головной убор', acc: 'Аксессуар', formal_jacket: 'Пиджак', formal_pants: 'Брюки', formal_shirt: 'Рубашка' };
+const FIT = { small: 'маломерит', true: 'в размер', large: 'большемерит' };
+const sval = v => v && typeof v === 'object' ? [v.value, v.brand].filter(Boolean).join(' · ') : (v == null ? '' : String(v).trim());
+
+function state(title, sub) {
+  $('app').innerHTML = `<div class="top"><div class="lt"><h1>SizeBook</h1></div></div><div class="state"><b>${esc(title)}</b>${esc(sub)}<br><br><a href="/passport" style="color:var(--ink);font-weight:700">Открыть SizeBook</a></div>`;
 }
 
-function esc(v) {
-  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function safeUrl(u) {
-  try { const x = new URL(String(u)); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; } catch (_) { return ''; }
-}
+function render(d) {
+  const S = d.sizes || {};
+  const first = (keys) => { for (const k of keys) { const v = sval(S[k]); if (v) return v; } return ''; };
+  const name = [S.profile_name, S.profile_lastname].filter(Boolean).join(' ') || d.owner || 'Владелец';
+  const meta = [S.profile_height && 'рост ' + S.profile_height, S.profile_weight && 'вес ' + S.profile_weight].filter(Boolean).join(' · ');
+  const used = new Set(MAIN.flatMap(m => m[1]));
+  const extra = Object.entries(S).filter(([k, v]) => !used.has(k) && !k.startsWith('profile_') && !k.startsWith('ui_') && sval(v) && EXTRA[k]);
+  const hasSizes = MAIN.some(m => first(m[1])) || extra.length;
+  document.title = 'SizeBook · ' + name;
 
-function formatSizeKey(k) {
-  const MAP = {
-    daily_top: 'Верх',
-    daily_bottom: 'Брюки',
-    shoes_eu: 'Обувь EU',
-    shoes_us: 'Обувь US',
-    shoes_uk: 'Обувь UK',
-    shoes_cm: 'Обувь см',
-    ring_mm: 'Кольцо',
-    hat: 'Шапка',
-    outer: 'Верхняя одежда',
-    formal_jacket: 'Пиджак',
-    formal_pants: 'Брюки',
-    formal_shirt: 'Рубашка',
-    outer_jacket: 'Куртка / пальто',
-    outer_down: 'Пуховик',
-    sport_top: 'Спорт верх',
-    sport_bottom: 'Спорт низ',
-    sport_shoes: 'Спорт обувь',
-    beach_one: 'Слитный купальник',
-    beach_two: 'Раздельный купальник',
-    beach_swim: 'Плавки / шорты',
-    gloves: 'Перчатки',
-    belt: 'Ремень',
-    waist: 'Талия',
-    chest: 'Грудь',
-    height: 'Рост',
-    weight: 'Вес',
-    under_top: 'Бельё верх',
-    under_bottom: 'Трусы / боксеры',
-    under_bra: 'Лифчик / бюстгальтер',
-    under_body: 'Боди',
-    under_stockings: 'Чулки',
-    under_tights: 'Колготки',
-    under_socks: 'Носки',
-    beach_top: 'Купальник верх',
-    beach_bottom: 'Купальник низ',
-    bracelet_cm: 'Браслет / часы',
-    belt_cm: 'Ремень',
-    hat_cap: 'Кепка / шапка',
-    hat_winter: 'Зимняя шапка',
-    gloves_size: 'Перчатки',
-    shoes_sneaker: 'Кроссовки',
-    shoes_dress: 'Туфли / ботинки',
-    shoes_boot: 'Сапоги',
-    shoes_sandal: 'Сандалии / шлёпки',
-  };
-  if (MAP[k]) return MAP[k];
-  const t = String(k).replace(/_/g, ' ').trim();
-  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
-}
+  let html = `<div class="top"><div class="lt"><h1>Подарок в размер</h1><span>SizeBook</span></div>
+    <div class="label">
+      <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta || 'точно в размер')}</span></div>
+      <div class="route num"><small>ОБУВЬ EU</small>${esc(first(['shoes_eu', 'shoes_sneaker']) || '—')}</div>
+      ${hasSizes ? MAIN.map(([t, keys]) => { const v = first(keys); return `<div class="cell"><span class="cap">${t}</span><b class="num ${v ? (v.length > 6 ? 'sm' : '') : 'empty'}">${esc(v || '—')}</b></div>`; }).join('') : '<div class="z1 span3">Размеры скрыты владельцем</div>'}
+      ${extra.map(([k, v]) => `<div class="cell"><span class="cap">${esc(EXTRA[k])}</span><b class="num sm">${esc(sval(v))}</b></div>`).join('')}
+      ${extra.length % 3 ? '<div></div>'.repeat(3 - extra.length % 3) : ''}
+    </div></div><div class="body">`;
 
-function formatSizeValue(raw) {
-  if (raw && typeof raw === 'object') {
-    const parts = [raw.value, raw.brand, raw.note].filter(v => v != null && v !== '' && typeof v !== 'object');
-    return parts.map(String).join(' · ');
-  }
-  return raw == null ? '' : String(raw);
-}
-
-function renderError(title, sub) {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('content').style.display = '';
-  document.getElementById('content').innerHTML = `
-    <div class="status-card">
-      <div class="status-icon">🔗</div>
-      <div class="status-title">${title}</div>
-      <div class="status-sub">${sub}</div>
-      <a class="btn-primary" href="/">Открыть SizeBook</a>
-    </div>`;
-}
-
-function renderData(data) {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('content').style.display = '';
-
-  let html = '';
-
-  if (data.sizes && Object.keys(data.sizes).length) {
-    html += '<div class="card">';
-    html += '<div class="section-label">Размеры</div>';
-    html += '<div class="tags-row">';
-    Object.entries(data.sizes).forEach(([k, v]) => {
-      const val = formatSizeValue(v);
-      if (!val) return;
-      html += `<span class="tag">${esc(formatSizeKey(k))}: ${esc(val)}</span>`;
-    });
-    html += '</div></div>';
+  if (d.brand_sizes && d.brand_sizes.length) {
+    const by = {};
+    d.brand_sizes.forEach(r => { const b = String(r.brand).trim(); (by[b.toLowerCase()] = by[b.toLowerCase()] || { b, rows: [] }).rows.push(r); });
+    html += `<div class="sec"><h2>По брендам</h2><span>${Object.keys(by).length}</span></div>
+      <div class="hint">Какой размер владелец носит в конкретных брендах</div>
+      <div class="rows">${Object.values(by).map(g => { const seen = new Set(); const rows = g.rows.filter(r => { const k = r.zone + '|' + r.size + '|' + (r.fit || ''); if (seen.has(k)) return false; seen.add(k); return true; });
+        return `<div class="brow"><div class="bn">${esc(g.b)}</div><div class="bs">${rows.map(r => `<div><b class="num">${esc(r.size)}</b><span>${esc([ZONES[r.zone] || '', FIT[r.fit] || ''].filter(Boolean).join(' · '))}</span></div>`).join('')}</div></div>`; }).join('')}</div>`;
   }
 
-  if (data.brand_sizes && data.brand_sizes.length) {
-    const ZONES = { tops: 'Верх', bottoms: 'Низ', outer: 'Верхняя одежда', shoes: 'Обувь', hats: 'Головной убор', acc: 'Аксессуар',
-      formal_jacket: 'Пиджак', formal_pants: 'Брюки', formal_shirt: 'Рубашка' };
-    const FIT = { small: 'маломерит', true: 'в размер', large: 'большемерит' };
-    const byBrand = {};
-    data.brand_sizes.forEach(it => {
-      const b = String(it.brand).trim();
-      const key = b.toLowerCase();
-      (byBrand[key] = byBrand[key] || { brand: b, rows: [] }).rows.push(it);
-    });
-    html += '<div class="card">';
-    html += '<div class="section-label">Размеры по брендам</div>';
-    Object.values(byBrand).forEach(g => {
-      // одинаковые зона+размер+посадка внутри бренда показываем один раз
-      const seen = new Set();
-      const rows = g.rows.filter(r => { const k = r.zone + '|' + r.size + '|' + (r.fit || ''); if (seen.has(k)) return false; seen.add(k); return true; });
-      html += `<div class="bs-row"><div class="bs-brand">${esc(g.brand)}</div><div class="bs-sizes">` +
-        rows.map(r => `<div class="bs-item"><span class="bs-size">${esc(r.size)}</span><span class="bs-meta">${esc(ZONES[r.zone] || r.name || '')}${FIT[r.fit] ? ' · ' + FIT[r.fit] : ''}</span></div>`).join('') +
-        '</div></div>';
-    });
-    html += '</div>';
+  if (d.wishlist && d.wishlist.length) {
+    html += `<div class="sec"><h2>Вишлист</h2><span>${d.wishlist.length}</span></div>
+      <div class="hint">Нажми на вещь, чтобы открыть её в магазине</div>
+      <div class="rows" id="wl">${wishRows(d.wishlist)}</div>`;
   }
-
-  if (data.wishlist && data.wishlist.length) {
-    html += '<div class="card">';
-    html += '<div class="section-label">Вишлист</div>';
-    data.wishlist.forEach(item => {
-      const imgSrc = safeUrl(item.image);
-      const img = imgSrc
-        ? `<img class="wl-thumb" src="${esc(imgSrc)}" alt="" onerror="if(!this.dataset.p){this.dataset.p=1;this.src=location.origin+'/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.className='wl-thumb-placeholder'">`
-        : `<div class="wl-thumb-placeholder"></div>`;
-      const meta = esc([item.shop, item.size].filter(Boolean).join(' · '));
-      const price = item.price ? `<div class="wl-price">${esc(formatPrice(item.price))}</div>` : '';
-      const href = safeUrl(item.url);
-      const link = href
-        ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">`
-        : '';
-      const linkClose = href ? '</a>' : '';
-      html += `<div class="wl-item">${link}${img}<div class="wl-info"><div class="wl-title">${esc(item.title)}</div>${meta ? `<div class="wl-meta">${meta}</div>` : ''}</div>${price}${linkClose}</div>`;
-    });
-    html += '</div>';
-  }
-
-  if (!html) {
-    html = '<div class="status-card"><div class="status-icon">📭</div><div class="status-title">Пусто</div><div class="status-sub">Ничего не добавлено в эту ссылку</div></div>';
-  }
-
-  document.getElementById('content').innerHTML = html;
+  html += `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/passport">Создать свой паспорт</a></div></div>`;
+  $('app').innerHTML = html;
+  window._wl = d.wishlist || [];
+}
+function wishRows(list) {
+  return list.map(w => {
+    const n = normTitle(w.title, w.shop), brand = w.brand || n.brand || '';
+    const href = safeUrl(w.url), src = safeUrl(w.image);
+    const isT = isTg(w.url);
+    const meta = [isT ? 'Telegram' : (w.shop || '').replace(/^www\./, ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
+    const im = src ? `<img referrerpolicy="no-referrer" loading="lazy" alt="" src="${API}/img?w=400&u=${encodeURIComponent(src)}" data-o="${esc(src)}" onerror="if(!this.dataset.d){this.dataset.d=1;this.src=this.dataset.o;return}this.replaceWith(Object.assign(document.createElement('span'),{className:'ini',textContent:'${esc((brand || n.name || '?')[0])}'}))">` : `<span class="ini">${esc((brand || n.name || '?')[0])}</span>`;
+    const tag = href ? 'a' : 'div';
+    return `<${tag} class="row" ${href ? `href="${esc(href)}" target="_blank" rel="noopener noreferrer"` : ''}>
+      <div class="th">${im}</div>
+      <div class="tx">${brand ? `<span class="bd">${esc(brand)}</span>` : ''}<span class="tt">${esc(n.name)}</span><span class="mt">${esc(meta)}</span></div>
+      <div class="pr">${priceHtml(w)}</div></${tag}>`;
+  }).join('');
 }
 
 async function init() {
-  const token = window.location.pathname.replace(/^\/s\//, '');
-  if (!token) { renderError('Некорректная ссылка', 'Токен не найден в URL'); return; }
-
+  const token = location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
+  if (!token) return state('Ссылка неполная', 'В адресе нет кода. Попроси прислать ссылку ещё раз.');
   try {
-    const r = await fetch(API + '/share/' + token);
-    if (r.status === 404) { renderError('Ссылка недействительна', 'Возможно, она была отозвана или никогда не существовала'); return; }
-    if (r.status === 410) { renderError('Ссылка истекла', 'Срок действия этой ссылки закончился'); return; }
-    if (!r.ok) { renderError('Ошибка', 'Не удалось загрузить данные'); return; }
-    renderData(await r.json());
-  } catch(e) {
-    renderError('Ошибка соединения', 'Проверь подключение к интернету');
-  }
+    const r = await fetch(API + '/share/' + encodeURIComponent(token));
+    if (r.status === 404) return state('Ссылка не работает', 'Её отключили или пересоздали. Попроси прислать новую.');
+    if (r.status === 410) return state('Срок ссылки истёк', 'Попроси прислать новую.');
+    if (!r.ok) return state('Не удалось открыть', 'Попробуй обновить страницу через минуту.');
+    render(await r.json());
+    fetch(API + '/rates').then(x => x.ok ? x.json() : null).then(x => { if (x) { RATES = x; const wl = $('wl'); if (wl) wl.innerHTML = wishRows(window._wl); } }).catch(() => {});
+  } catch (_) { state('Нет связи', 'Проверь интернет и обнови страницу.'); }
 }
-
 init();
 </script>
 </body>

@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="/sb-common.js"></script>
 <style>
 /* SizeBook в стиле термоэтикетки («Чек»). Экспериментальная версия, основная — «/» */
 :root{
@@ -134,6 +135,7 @@ button.cell:active,button.route:active{filter:invert(1)}
 /* формы */
 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:14px}
 .form>*{background:var(--lab)}
+.form>.btn{background:var(--ink);color:#fff;border-radius:0}
 .fld{display:flex;flex-direction:column;padding:7px 10px 6px;min-width:0}
 .fld input,.fld select{border:0;background:none;font:800 19px var(--disp);padding:2px 0 2px;color:var(--ink);outline:none;min-width:0;width:100%;border-radius:0;-webkit-appearance:none}
 .fld input::placeholder{color:#c2c4c8}
@@ -182,6 +184,31 @@ button.cell:active,button.route:active{filter:invert(1)}
 .zchips button[aria-pressed="true"]{background:var(--ink);color:#fff}
 .big{display:block;width:100%;max-height:260px;object-fit:contain;background:var(--lab);margin-top:12px}
 
+.tour{position:fixed;inset:0;z-index:40;display:none}
+.tour.on{display:block}
+.tour .shade{position:absolute;inset:0;background:rgba(10,10,10,.62)}
+.tour .spot{position:absolute;border:3px solid #ffd400;box-shadow:0 0 0 9999px rgba(10,10,10,.62);transition:all .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.tour .tcard{position:absolute;left:12px;right:12px;max-width:456px;margin:0 auto;background:var(--lab);border:2px solid var(--ink);box-shadow:0 18px 40px rgba(0,0,0,.45);transition:top .3s,bottom .3s}
+.tcard .th1{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--ink);padding:8px 12px;font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.tcard .th1 button{font:700 10px var(--mono);text-transform:uppercase;color:var(--ink2)}
+.tcard .tb2{padding:12px 14px 4px}
+.tcard h4{margin:0 0 6px;font:900 21px/1.1 var(--disp);text-transform:uppercase}
+.tcard p{margin:0;font:500 15px/1.45 var(--disp);color:#2a2b2e}
+.tcard p b{font-weight:800}
+.tcard .bar{display:flex;gap:3px;padding:10px 14px 0}
+.tcard .bar i{flex:1;height:4px;background:#d7d8db}
+.tcard .bar i.on{background:var(--ink)}
+.tcard .tf{display:flex;gap:8px;padding:12px 14px 14px}
+.tcard .tf .btn{flex:1;padding:11px}
+.check{margin-top:16px}
+.check .row2{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:11px 12px;text-align:left;width:100%;background:var(--lab)}
+.check .row2 i{width:20px;height:20px;border:2px solid var(--ink);display:grid;place-items:center}
+.check .row2.done i{background:var(--ink)}
+.check .row2.done i::after{content:"";width:8px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.check .row2 span{font:700 14px var(--disp)}
+.check .row2.done span{color:var(--ink3);text-decoration:line-through}
+.check .row2 em{font:700 10px var(--mono);font-style:normal;text-transform:uppercase;color:var(--ink2)}
+.auth{max-width:480px;margin:0 auto;min-height:100vh}
 .toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
 .center{padding:40px 20px;font:500 13px/1.6 var(--mono)}
@@ -207,6 +234,7 @@ button.cell:active,button.route:active{filter:invert(1)}
   <div class="in" id="shBody"></div>
 </div>
 <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Фото"><span class="vc">Нажми или смахни вниз, чтобы закрыть</span><button class="vx" aria-label="Закрыть" onclick="closeViewer()"><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="2.4"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="vw" id="vw"></div></div>
+<div class="tour" id="tour" role="dialog" aria-modal="true" aria-label="Обучение"><div class="spot" id="tSpot"></div><div class="tcard" id="tCard"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -265,72 +293,6 @@ function convert(c, v) {
   if (c.kind === 'hat' && !isNaN(n) && n > 50 && n < 66) { const L = [[55, 'S'], [57, 'M'], [59, 'L'], [61, 'XL'], [63, 'XXL']]; return [['СМ', fmt(n)], ['INT', (L.find(x => n <= x[0]) || L[4])[1]]]; }
   return [];
 }
-
-// ── Цены: валюта оригинала + рубли по курсу ЦБ ──
-let RATES = null;
-const CUR_RE = [[/byn|бел\.?\s?руб/i, 'BYN'], [/₽|руб|\brub\b|(?:^|\s|\d)р\.?(?=\s|$)/i, 'RUB'], [/us\$|\$|\busd\b/i, 'USD'], [/€|\beur\b|евро/i, 'EUR'], [/£|\bgbp\b/i, 'GBP'], [/₸|\bkzt\b|тенге|тг\.?$/i, 'KZT'], [/\bcny\b|юан|\brmb\b/i, 'CNY'], [/¥|\bjpy\b|иен/i, 'JPY'], [/₺|\btry\b|лир/i, 'TRY'], [/\baed\b|дирх/i, 'AED'], [/\bchf\b/i, 'CHF'], [/₩|\bkrw\b/i, 'KRW'], [/₴|\buah\b|грн/i, 'UAH'], [/\bamd\b|драм|֏/i, 'AMD'], [/\bgel\b|лари|₾/i, 'GEL']];
-const CUR_SYM = { RUB: ['', ' ₽'], USD: ['$', ''], EUR: ['€', ''], GBP: ['£', ''], JPY: ['¥', ''], CNY: ['', ' ¥'], KZT: ['', ' ₸'], TRY: ['', ' ₺'], BYN: ['', ' BYN'], UAH: ['', ' ₴'], KRW: ['₩', ''], AED: ['', ' AED'], CHF: ['', ' CHF'], AMD: ['', ' ֏'], GEL: ['', ' ₾'] };
-function parseAmount(t) {
-  const m = String(t).replace(/ | /g, ' ').match(/\d[\d\s.,']*/); if (!m) return NaN;
-  let x = m[0].replace(/[\s']/g, '').replace(/[.,]$/, '');
-  const lc = x.lastIndexOf(','), ld = x.lastIndexOf('.');
-  if (lc > -1 && ld > -1) { const dec = lc > ld ? ',' : '.'; x = x.split(dec === ',' ? '.' : ',').join('').replace(dec, '.'); }
-  else if (lc > -1 || ld > -1) { const sep = lc > -1 ? ',' : '.', parts = x.split(sep); x = (parts.length === 2 && parts[1].length !== 3) ? parts[0] + '.' + parts[1] : parts.join(''); }
-  return parseFloat(x);
-}
-function parsePrice(p, shop) {
-  if (!p) return null;
-  const n = parseAmount(p); if (!isFinite(n) || n <= 0) return null;
-  let cur = (CUR_RE.find(([re]) => re.test(p)) || [])[1];
-  if (!cur) cur = /\.(ru|su|рф)$/i.test(shop || '') || n >= 500 ? 'RUB' : null;
-  return cur ? { n, cur } : null;
-}
-const group = (n, dec) => { const [i, f] = n.toFixed(dec).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f ? ',' + f : ''); };
-function money(n, cur) { const [a, z] = CUR_SYM[cur] || ['', ' ' + cur]; const dec = cur === 'RUB' || cur === 'JPY' || cur === 'KRW' || cur === 'KZT' || cur === 'AMD' ? 0 : (Math.round(n) === n ? 0 : 2); return a + group(n, dec) + z; }
-function priceHtml(w) {
-  const p = parsePrice(w.price, w.shop);
-  if (!p) return w.price ? `<b>${esc(String(w.price).slice(0, 14))}</b>` : '<b class="none">—</b>';
-  let rub = '';
-  if (p.cur !== 'RUB' && RATES && RATES.rub[p.cur]) rub = `<span class="num">≈ ${money(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}</span>`;
-  return `<b class="num">${money(p.n, p.cur)}</b>${rub}`;
-}
-
-// ── Названия: бренд латиницей отдельно, остальное по-русски и коротко ──
-const BRANDS = ["Tom Ford","Ermenegildo Zegna","Zegna","Brunello Cucinelli","Loro Piana","Kiton","Brioni","Canali","Corneliani","Isaia","Thom Browne","Bottega Veneta","Givenchy","Fendi","Dolce & Gabbana","Alexander Wang","Balmain","Max Mara","Jil Sander","The Row","Khaite","Toteme","Lemaire","Comme des Garçons","Junya Watanabe","Sacai","Visvim","Auralee","Aimé Leon Dore","Drake's","Officine Générale","Church's","Crockett & Jones","John Lobb","Paraboot","Red Wing","Tricker's","Santoni","Berluti","Hermès","Chanel","Louis Vuitton","Etro","Missoni","Zimmermann","Ganni","Nanushka","The Kooples","Claudie Pierlot","Vince","Theory","Polo Ralph Lauren","Ralph Lauren","Moon Boot","Mackintosh","Paul Smith","Vivienne Westwood","Marine Serre","Maison Margiela","MM6","Y-3","Mastermind","Neighborhood","Wtaps","Palm Angels","Amiri","Rhude","Casablanca","Jacquemus","Lanvin","Ami Paris","Charuel","Studio 29","Monochrome","Gate31","2Mood","Lesyanebo","Alexander Terekhov","Vassa","Ruban","Lime","Ushatava","Zarina","Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
-const BRAND_RU = { 'найк': 'Nike', 'адидас': 'Adidas', 'пума': 'Puma', 'рибок': 'Reebok', 'нью баланс': 'New Balance', 'конверс': 'Converse', 'ванс': 'Vans', 'юникло': 'Uniqlo', 'зара': 'Zara', 'асикс': 'ASICS', 'саломон': 'Salomon', 'тимберленд': 'Timberland', 'левис': "Levi's", 'кархарт': 'Carhartt WIP', 'фила': 'Fila', 'лакост': 'Lacoste', 'коламбия': 'Columbia', 'норт фейс': 'The North Face', 'джордан': 'Jordan', 'стон айленд': 'Stone Island', 'гучи': 'Gucci', 'прада': 'Prada', 'баленсиага': 'Balenciaga' };
-const RU_TYPES = ['Кроссовки','Кеды','Ботинки','Сапоги','Туфли','Лоферы','Мокасины','Сандалии','Шлёпанцы','Шлепанцы','Слипоны','Угги','Худи','Толстовка','Свитшот','Футболка','Лонгслив','Рубашка','Поло','Свитер','Джемпер','Кардиган','Водолазка','Майка','Топ','Куртка','Пуховик','Пальто','Парка','Тренч','Бомбер','Ветровка','Плащ','Анорак','Жилет','Джинсы','Брюки','Чиносы','Шорты','Юбка','Платье','Джоггеры','Леггинсы','Кепка','Бейсболка','Шапка','Панама','Шляпа','Берет','Сумка','Рюкзак','Ремень','Носки','Шарф','Перчатки','Очки','Часы','Кольцо','Браслет','Комбинезон','Костюм','Пиджак','Блейзер'];
-const EN_TYPES = [[/\b(running\s+)?(sneakers?|trainers?|running shoes?)\b/i,'Кроссовки'],[/\b(high-?tops?|canvas shoes?)\b/i,'Кеды'],[/\bchelsea boots?\b/i,'Челси'],[/\bboots?\b/i,'Ботинки'],[/\bloafers?\b/i,'Лоферы'],[/\bsandals?\b/i,'Сандалии'],[/\bslides?\b/i,'Шлёпанцы'],[/\bhoodie\b/i,'Худи'],[/\bsweatshirt\b|\bcrewneck\b/i,'Свитшот'],[/\blong ?sleeve\b/i,'Лонгслив'],[/\bt-?shirt\b|\btee\b/i,'Футболка'],[/\bovershirt\b/i,'Рубашка'],[/\bpolo\b/i,'Поло'],[/\bshirt\b|\boxford\b/i,'Рубашка'],[/\bcardigan\b/i,'Кардиган'],[/\b(sweater|jumper|knit)\b/i,'Свитер'],[/\b(down jacket|puffer)\b/i,'Пуховик'],[/\bparka\b/i,'Парка'],[/\btrench\b/i,'Тренч'],[/\bbomber\b/i,'Бомбер'],[/\b(vest|gilet)\b/i,'Жилет'],[/\bjacket\b/i,'Куртка'],[/\bcoat\b/i,'Пальто'],[/\bjeans\b|\bdenim\b/i,'Джинсы'],[/\bjoggers?\b|\bsweatpants\b/i,'Джоггеры'],[/\bshorts\b/i,'Шорты'],[/\b(trousers|pants|chinos?)\b/i,'Брюки'],[/\bskirt\b/i,'Юбка'],[/\bdress\b/i,'Платье'],[/\bbeanie\b/i,'Шапка'],[/\b(cap|baseball cap)\b/i,'Кепка'],[/\bbucket hat\b/i,'Панама'],[/\bhat\b/i,'Шляпа'],[/\bbackpack\b/i,'Рюкзак'],[/\bbag\b|\btote\b/i,'Сумка'],[/\bbelt\b/i,'Ремень'],[/\bsocks?\b/i,'Носки'],[/\bscarf\b/i,'Шарф'],[/\bgloves?\b/i,'Перчатки'],[/\bblazer\b/i,'Пиджак'],[/\bshoes?\b|\bfootwear\b/i,'__shoes']];
-const SNEAKER_BRANDS = ['Nike','Jordan','Adidas','New Balance','ASICS','Puma','Reebok','Vans','Converse','Saucony','Hoka','On Running','Salomon','Mizuno','Brooks','Fila','Kappa','Yeezy'];
-const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const wordRe = x => new RegExp('(^|[^\\p{L}\\p{N}])' + reEsc(x) + '(?=$|[^\\p{L}\\p{N}])', 'iu');
-function normTitle(title, shop, knownBrand) {
-  let t = String(title || '').replace(/ /g, ' ').trim();
-  // хвосты магазинов и мусор
-  const B = '(?<![\\p{L}\\p{N}])', E = '(?![\\p{L}\\p{N}])';
-  t = t.split(/\s[|•]\s|\s[—–-]\s/)[0];
-  t = t.replace(new RegExp('\\s*[,]?\\s*' + B + '(купить|buy|заказать)' + E + '.*$', 'iu'), '').replace(/\s*(в|на)\s+(интернет[- ]магазине|официальном сайте|lamoda|ozon|wildberries).*$/iu, '');
-  t = t.replace(new RegExp(',?\\s*' + B + '(арт(икул)?|sku|art)\\.?\\s*[:№#]?\\s*[\\w-]+', 'giu'), '');
-  t = t.replace(new RegExp(B + '(?=[A-Z0-9-]*\\d)(?=[A-Z0-9-]*[A-Z])[A-Z0-9-]{6,}' + E, 'gu'), '').replace(new RegExp(B + '\\d{5,}' + E, 'gu'), '');
-  t = t.replace(/\((?=[^)]*\d)[^)]*\)/g, '').replace(new RegExp(',?\\s*' + B + '(цвет|color|colour|размер|size)' + E + '\\s*:?.*$', 'iu'), '');
-  t = t.replace(new RegExp(B + "(мужск\\p{L}*|женск\\p{L}*|детск\\p{L}*|унисекс|unisex|men'?s|women'?s|mens|womens|for (men|women))" + E, 'giu'), '');
-  // бренд
-  let brand = knownBrand || BRANDS.find(b => wordRe(b).test(t)) || null;
-  if (!brand) { const k = Object.keys(BRAND_RU).find(r => wordRe(r).test(t)); if (k) { brand = BRAND_RU[k]; t = t.replace(wordRe(k), '$1'); } }
-  if (!brand && shop) { const base = shop.replace(/^(www|m|shop|store)\./, '').split('.')[0].toLowerCase(); brand = BRANDS.find(b => b.toLowerCase().replace(/[^a-z0-9]/g, '') === base.replace(/-shop$/, '')) || null; }
-  if (!brand && /[а-яё]/i.test(t)) { const m = t.match(/(?:^|(?<=[а-яёА-ЯЁ],?\s)|(?<=[«"(]))([A-Z][A-Za-z0-9'&.\-]*(?:\s+(?:&\s+)?[A-Z][A-Za-z0-9'&.\-]*){0,2})(?=$|[\s,»")])/); if (m && !/^(XS|S|M|L|XL|XXL|EU|US|UK|RU|SALE|NEW|OG|PRO)$/i.test(m[1])) brand = m[1].trim(); }
-  if (brand) { t = t.replace(wordRe(brand), '$1'); if (brand === 'Carhartt WIP') t = t.replace(wordRe('Carhartt'), '$1'); }
-  // тип вещи по-русски
-  let type = RU_TYPES.find(x => wordRe(x).test(t)) || null;
-  if (type) t = t.replace(wordRe(type), '$1');
-  const e = EN_TYPES.find(([re]) => re.test(t));
-  if (e) { if (!type) type = e[1] === '__shoes' ? (SNEAKER_BRANDS.includes(brand) ? 'Кроссовки' : 'Обувь') : e[1]; t = t.replace(e[0], ' '); }
-  t = t.replace(/\s{2,}/g, ' ').replace(/^[\s,.;:–—\-/"«»']+|[\s,.;:–—\-/"«»']+$/g, '');
-  let name = [type, t].filter(Boolean).join(' ').trim();
-  if (!name) name = String(title || '').trim();
-  name = name.charAt(0).toUpperCase() + name.slice(1);
-  return { brand, name, type };
-}
-const isTg = u => /^https?:\/\/(t\.me|telegram\.me)\//i.test(u || '');
 
 // ── Картинки ──
 const external = u => /^https?:\/\//i.test(u || '') && !String(u).startsWith(API);
@@ -400,6 +362,7 @@ function renderWardrobe() {
     </div>
   </div>
   <div class="body">
+    ${checklistHtml()}
     <div class="sec"><h2>Мои вещи</h2><button onclick="openItemForm()">+ Добавить</button></div>
     ${withItems.length ? withItems.map(c => `
       <div class="shelf">
@@ -780,12 +743,14 @@ function renderProfile() {
     <button class="btn wide" onclick="saveProfile()">Сохранить</button>
 
     <div class="sec"><h2>Telegram</h2></div>
-    <div class="label" style="grid-template-columns:1fr">
-      <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Подключи бота @${esc(TG.bot)} и пересылай ему товары из магазинов и каналов`}</div>
+    <div class="label" id="tgBox" style="grid-template-columns:1fr">
+      <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту @${esc(TG.bot)} ссылки на товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Бот общий для всех, свой создавать не нужно. Нажми «Подключить бота», в Telegram откроется @${esc(TG.bot)}, там нажми «Старт». После этого пересылай ему ссылки и посты из каналов`}</div>
     </div>
     <div class="acts">${TG && TG.enabled ? (TG.linked ? `<a class="btn ghost" href="https://t.me/${esc(TG.bot)}" target="_blank" rel="noopener">Открыть бота</a><button class="btn ghost" onclick="confirmDel(this,unlinkTg)">Отвязать</button>` : `<a class="btn" href="${esc(TG.link)}" target="_blank" rel="noopener">Подключить бота</a>`) : ''}</div>
 
     <div class="sec"><h2>Ещё</h2></div>
+    <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>
+    <div class="acts"><button class="btn ghost" onclick="setFlag('ui_checklist_hidden','');renderAll();go('wardrobe')">Показать «С чего начать»</button></div>
     <div class="acts"><a class="btn ghost" href="/" onclick="LS.set('sb_page','daily')">Старая версия приложения</a></div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,logout)">Выйти из аккаунта</button></div>
   </div>`;
@@ -798,6 +763,72 @@ async function saveProfile() {
 }
 async function unlinkTg() { try { await api('/me/telegram/unlink', { method: 'POST' }); TG = await api('/me/telegram'); renderAll(); toast('Бот отвязан'); } catch (_) {} }
 function logout() { LS.del('sb_token'); LS.del('sb_user'); location.href = '/'; }
+
+// ══════════ С чего начать ══════════
+function setFlag(k, v) { SIZES[k] = v; api('/sizes', { method: 'POST', body: { [k]: v } }).catch(() => {}); }
+function checklist() {
+  const filled = CATS.filter(c => val(c)).length;
+  return [
+    ['Указать пол и рост', !!(SIZES.profile_gender && SIZES.profile_height), "go('profile')"],
+    ['Вписать хотя бы 3 размера', filled >= 3, `openCat('${(CATS.find(c => !val(c)) || CATS[0]).id}')`],
+    ['Добавить вещь, которая хорошо сидит', ITEMS.length > 0, 'openItemForm()'],
+    ['Добавить товар в вишлист', WISH.length > 0, "go('wishlist');openWishForm()"],
+    ['Подключить Telegram-бота', !!(TG && TG.linked), "go('profile');setTimeout(()=>$('tgBox').scrollIntoView({block:'center',behavior:'smooth'}),50)"],
+    ['Отправить ссылку близкому', !!SHARE, "go('friends')"],
+  ];
+}
+function checklistHtml() {
+  if (SIZES.ui_checklist_hidden) return '';
+  const L = checklist(), done = L.filter(x => x[1]).length;
+  if (done === L.length) return '';
+  return `<div class="check">
+    <div class="sec" style="margin-top:22px"><h2>С чего начать</h2><button onclick="setFlag('ui_checklist_hidden','1');renderAll()">Скрыть</button></div>
+    <div class="rows" style="grid-template-columns:1fr">
+      <div class="z1" style="background:var(--lab);padding:10px 12px">ГОТОВО ${done} ИЗ ${L.length}<div class="bar" style="display:flex;gap:3px;margin-top:6px">${L.map(x => `<i style="flex:1;height:4px;background:${x[1] ? 'var(--ink)' : '#d7d8db'}"></i>`).join('')}</div></div>
+      ${L.map(x => `<button class="row2 ${x[1] ? 'done' : ''}" onclick="${x[2]}"><i></i><span>${x[0]}</span><em>${x[1] ? '' : '→'}</em></button>`).join('')}
+    </div></div>`;
+}
+
+// ══════════ Обучение: шаги по вкладкам с подсветкой ══════════
+const TOUR = [
+  { v: 'wardrobe', t: 'Привет! Это SizeBook', p: 'Здесь хранятся <b>твои размеры и вещи</b>, а близкие по одной ссылке видят, что тебе подарить и какого размера. Покажу всё за минуту, это 9 коротких шагов.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Паспорт размеров', p: 'Главное в приложении. <b>Нажми на любую ячейку</b>, например «Обувь», и впиши свой размер. Если какой-то не знаешь, оставь пустым.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .route', t: 'Перевод размеров', p: 'В карточке размера видно его <b>перевод в другие системы</b>: для обуви US, UK и сантиметры, для одежды INT и RU. Перевод примерный, у брендов бывают отличия.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .sec:last-of-type, #v-wardrobe .body .sec', t: 'Мои вещи', p: 'Добавляй вещи, которые <b>хорошо сидят</b>. Вставь ссылку из магазина, и фото, название и бренд подтянутся сами. Отметь размер и посадку: маломерит, в размер или большемерит. Так друзья поймут твой размер в конкретном бренде.' },
+  { v: 'wishlist', sel: '#v-wishlist .lt .tbtn', t: 'Вишлист', p: 'Сюда добавляй то, что хочешь получить. Нажми <b>«+ По ссылке»</b> и вставь ссылку на товар из любого магазина. Цена показывается в валюте магазина и в рублях. <b>Смахни строку влево</b>, чтобы отметить «Получил» или удалить. Полученная вещь переедет в гардероб.' },
+  { v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'Бот <b>общий для всех</b>, свой создавать не нужно. В Профиле нажми «Подключить бота», в Telegram откроется наш бот, там нажми <b>«Старт»</b>. Дальше просто пересылай ему ссылки на товары и посты из каналов: всё попадёт в твой вишлист.' },
+  { v: 'friends', sel: '#v-friends .label', t: 'Ссылка для друзей', p: 'Создай ссылку и отправь близким. Они увидят <b>размеры, размеры по брендам и вишлист</b>, ровно то, что ты отметишь. Ссылку можно отключить в любой момент.' },
+  { v: 'profile', sel: '#v-profile .form', t: 'Профиль', p: 'Укажи <b>пол и рост</b>: от них зависит перевод размеров. Пройти обучение ещё раз можно кнопкой внизу Профиля.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .check', t: 'С чего начать', p: 'На главной есть список из шести шагов. Пройди его, и паспорт <b>готов к отправке</b>. Начни с размеров обуви и верха.' },
+];
+let TI = 0;
+function startTour() { TI = 0; $('tour').classList.add('on'); document.body.classList.add('lock'); showStep(); }
+function endTour() { $('tour').classList.remove('on'); document.body.classList.remove('lock'); if (SIZES.ui_tour_done !== '1') setFlag('ui_tour_done', '1'); go('wardrobe'); }
+function tourNext(d) { TI += d; if (TI >= TOUR.length) return endTour(); if (TI < 0) TI = 0; showStep(); }
+function showStep() {
+  const st = TOUR[TI];
+  if (CUR !== st.v) go(st.v);
+  if (st.v === 'wardrobe' && st.sel && st.sel.includes('.check') && SIZES.ui_checklist_hidden) { setFlag('ui_checklist_hidden', ''); renderAll(); }
+  const card = $('tCard'), spot = $('tSpot');
+  card.innerHTML = `<div class="th1"><span>Шаг ${TI + 1} из ${TOUR.length}</span><button onclick="endTour()">Пропустить</button></div>
+    <div class="bar">${TOUR.map((_, i) => `<i class="${i <= TI ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="tb2"><h4>${st.t}</h4><p>${st.p}</p></div>
+    <div class="tf">${TI ? '<button class="btn ghost" onclick="tourNext(-1)">Назад</button>' : ''}<button class="btn" onclick="tourNext(1)">${TI === TOUR.length - 1 ? 'Начать' : 'Дальше'}</button></div>`;
+  const el = st.sel ? st.sel.split(',').map(x => document.querySelector(x.trim())).find(Boolean) : null;
+  if (!el) { Object.assign(spot.style, { display: 'block', left: '50%', top: '50%', width: '0px', height: '0px', borderWidth: '0' }); card.style.top = '50%'; card.style.bottom = 'auto'; card.style.transform = 'translateY(-50%)'; return; }
+  spot.style.borderWidth = '';
+  spot.style.display = 'block'; card.style.transform = '';
+  el.scrollIntoView({ block: 'center' });
+  requestAnimationFrame(() => {
+    const r = el.getBoundingClientRect(), pad = 6, vh = innerHeight;
+    Object.assign(spot.style, { left: (r.left - pad) + 'px', top: (r.top - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px' });
+    const below = vh - r.bottom, above = r.top, ch = card.offsetHeight + 24;
+    if (below >= ch) { card.style.top = (r.bottom + 14) + 'px'; card.style.bottom = 'auto'; }
+    else if (above >= ch) { card.style.bottom = (vh - r.top + 14) + 'px'; card.style.top = 'auto'; }
+    else { card.style.top = 'auto'; card.style.bottom = 'calc(12px + env(safe-area-inset-bottom, 0px))'; }
+  });
+}
+addEventListener('resize', () => { if ($('tour').classList.contains('on')) showStep(); });
 
 // ══════════ Навигация ══════════
 const VIEWS = ['wardrobe', 'wishlist', 'friends', 'profile'];
@@ -856,17 +887,51 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet()
 })();
 
 let toastT; function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
-function showLogin(msg) { $('app').innerHTML = `<div class="center">${esc(msg)}<br><br><a class="btn" href="/">Войти</a></div>`; document.querySelector('.tb').hidden = true; }
+let AUTH_MODE = 'login';
+function showLogin(msg) {
+  if (msg && /сессия/i.test(msg)) { LS.del('sb_token'); LS.del('sb_user'); }
+  document.querySelector('.tb').hidden = true;
+  const reg = AUTH_MODE === 'register';
+  $('app').innerHTML = `<div class="auth">
+    <div class="top"><div class="lt"><h1>SizeBook</h1></div>
+      <div class="label">
+        <div class="z1 span3">ПАСПОРТ РАЗМЕРОВ:<b>${reg ? 'Новый аккаунт' : 'Вход'}</b>Твои размеры и вещи в одном месте. Друзья смотрят их по ссылке и дарят точно в размер.</div>
+      </div></div>
+    <div class="body">
+      <form class="form" style="grid-template-columns:1fr" onsubmit="doAuth(event)">
+        ${reg ? '<label class="fld"><span class="cap">Имя пользователя</span><input id="aUser" autocomplete="username" autocapitalize="none" required placeholder="ivan"></label><label class="fld"><span class="cap">Email</span><input id="aEmail" type="email" autocomplete="email" required placeholder="ivan@mail.ru"></label>'
+              : '<label class="fld"><span class="cap">Логин или email</span><input id="aLogin" autocomplete="username" autocapitalize="none" required placeholder="julia"></label>'}
+        <label class="fld"><span class="cap">Пароль</span><input id="aPass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" required></label>
+        <button class="btn wide" type="submit">${reg ? 'Создать аккаунт' : 'Войти'}</button>
+      </form>
+      <div class="msg ${msg ? 'err' : ''}" id="aMsg">${esc(msg || '')}</div>
+      <div class="acts"><button class="btn ghost" onclick="AUTH_MODE='${reg ? 'login' : 'register'}';showLogin('')">${reg ? 'У меня уже есть аккаунт' : 'Создать аккаунт'}</button></div>
+    </div></div>`;
+}
+async function doAuth(e) {
+  e.preventDefault();
+  const reg = AUTH_MODE === 'register';
+  const body = reg ? { username: $('aUser').value.trim(), email: $('aEmail').value.trim(), password: $('aPass').value } : { email: $('aLogin').value.trim(), password: $('aPass').value };
+  $('aMsg').className = 'msg'; $('aMsg').textContent = reg ? 'Создаю аккаунт…' : 'Вхожу…';
+  try {
+    const r = await fetch(API + (reg ? '/auth/register' : '/auth/login'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.token) throw new Error(j.error || 'Не получилось войти');
+    LS.set('sb_token', j.token); LS.set('sb_user', JSON.stringify(j.user || {}));
+    location.href = '/passport';
+  } catch (er) { $('aMsg').className = 'msg err'; $('aMsg').textContent = er.message === 'Failed to fetch' ? 'Нет связи с сервером. Проверь интернет' : er.message; }
+}
 
 async function load() {
-  if (!token) return showLogin('Чтобы открыть гардероб, войди в SizeBook.');
+  if (!token) return showLogin('');
   go((location.hash || '').slice(1) || 'wardrobe', false);
   try {
     const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => []), api('/wishlist').catch(() => []), api('/share').catch(() => null)]);
     SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
     renderAll(); pollWish();
+    if (SIZES.ui_tour_done !== '1' && !ITEMS.length && !WISH.length) setTimeout(startTour, 400);
     fetch(API + '/rates').then(r => r.ok ? r.json() : null).then(r => { if (r) { RATES = r; renderWishlist(); } }).catch(() => {});
-    api('/me/telegram').then(t => { TG = t; renderProfile(); }).catch(() => { TG = { enabled: false }; renderProfile(); });
+    api('/me/telegram').then(t => { TG = t; renderProfile(); renderWardrobe(); }).catch(() => { TG = { enabled: false }; renderProfile(); });
   } catch (e) { if (e.message !== 'auth') showLogin('Не удалось загрузить данные. Проверь интернет и обнови страницу.'); }
 }
 load();
