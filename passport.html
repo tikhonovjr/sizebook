@@ -217,6 +217,8 @@ button.cell:active,button.route:active{filter:invert(1)}
 .act .ev time{font:600 11px var(--mono);color:var(--ink2)}
 .act .ev em{font:700 9px var(--mono);font-style:normal;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid var(--ink);padding:1px 4px;text-align:center;white-space:nowrap}
 .act .ev span{font:600 13px/1.35 var(--disp);overflow-wrap:anywhere}
+#ptr{position:fixed;left:50%;top:calc(var(--safe-t) + 0px);transform:translate(-50%,-60px);z-index:30;background:var(--ink);color:#fff;font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;opacity:0;transition:opacity .15s;pointer-events:none;white-space:nowrap}
+#ptr.on{opacity:1}
 .auth{max-width:480px;margin:0 auto;min-height:100vh}
 .toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -454,7 +456,7 @@ function openItem(id) {
       ${link ? `<a class="btn ghost" href="${esc(link)}" target="_blank" rel="noopener">${isTg(link) ? 'Пост в Telegram' : 'Открыть в магазине'}</a>` : ''}
       <button class="btn" onclick="openItemForm(${i.id})">Изменить</button>
     </div>
-    <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delItem(${i.id}))">Удалить вещь</button></div>`);
+    <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>toWish(${i.id}),'Нажми ещё раз: вещь уйдёт в вишлист')">← Вернуть в вишлист</button><button class="btn ghost" onclick="confirmDel(this,()=>delItem(${i.id}))">Удалить вещь</button></div>`);
 }
 async function itemPhoto(id, field, el) {
   const box = el.closest('.pic');
@@ -547,8 +549,21 @@ async function saveItem() {
     renderAll(); openItem(saved.id); toast(F.id ? 'Сохранено' : 'Добавлено в гардероб');
   } catch (e) { if (e.message !== 'auth') { $('fMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('fMsg').className = 'msg err'; } }
 }
+async function toWish(id) {
+  try {
+    const r = await api('/items/' + id + '/to-wishlist', { method: 'POST' });
+    ITEMS = ITEMS.filter(x => x.id !== id);
+    WISH = [r.wish].concat(WISH.filter(w => w.id !== r.wish.id));
+    renderAll(); closeSheet(); go('wishlist'); toast('Вернул в вишлист');
+  } catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
 async function delItem(id) {
-  try { await api('/items/' + id, { method: 'DELETE' }); ITEMS = ITEMS.filter(x => x.id !== id); renderAll(); closeSheet(); toast('Вещь удалена'); }
+  try {
+    const it = ITEMS.find(x => x.id === id);
+    await api('/items/' + id, { method: 'DELETE' }); ITEMS = ITEMS.filter(x => x.id !== id);
+    if (it && it.wishlist_id) WISH = WISH.filter(w => !(w.id === it.wishlist_id && w.received_at));
+    renderAll(); closeSheet(); toast('Вещь удалена');
+  }
   catch (e) { if (e.message !== 'auth') toast('Не удалилось. Попробуй ещё раз'); }
 }
 function confirmDel(btn, fn, ask) {
@@ -610,7 +625,7 @@ document.addEventListener('touchstart', e => {
   row.addEventListener('touchmove', mv, { passive: false }); row.addEventListener('touchend', up); row.addEventListener('touchcancel', up);
 }, { passive: true });
 async function unGot(id) {
-  try { await api('/wishlist/' + id, { method: 'PATCH', body: { received: false } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: null } : w); renderAll(); toast('Вернул в «Хочу»'); }
+  try { await api('/wishlist/' + id, { method: 'PATCH', body: { received: false } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: null } : w); ITEMS = ITEMS.filter(x => x.wishlist_id !== id); renderAll(); toast('Вернул в «Хочу», из гардероба убрал'); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
 }
 function openWish(id) {
@@ -1035,12 +1050,47 @@ async function doAuth(e) {
   } catch (er) { $('aMsg').className = 'msg err'; $('aMsg').textContent = er.message === 'Failed to fetch' ? 'Нет связи с сервером. Проверь интернет' : er.message; }
 }
 
+async function fetchAll() {
+  const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => ITEMS), api('/wishlist').catch(() => WISH), api('/share').catch(() => SHARE)]);
+  SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
+  SEC = null; GEN = null;
+}
+let refreshing = false, hiddenAt = 0;
+async function refresh(silent) {
+  if (refreshing || !token) return; refreshing = true;
+  try {
+    await fetchAll(); renderAll(); pollWish();
+    api('/me/telegram').then(t => { TG = t; renderProfile(); renderWardrobe(); }).catch(() => {});
+    if (CUR === 'profile') loadActivity();
+    if (!silent) toast('Обновлено');
+  } catch (e) { if (e.message !== 'auth' && !silent) toast('Нет связи. Попробуй ещё раз'); }
+  finally { refreshing = false; }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 20000) refresh(true); });
+// потянуть вниз, чтобы обновить
+(function ptr() {
+  const ind = document.createElement('div'); ind.id = 'ptr'; document.body.appendChild(ind);
+  let y0 = null, dy = 0;
+  const blocked = t => guideOn() || $('sheet').classList.contains('on') || $('viewer').classList.contains('on') || t.closest('.strip,.sw');
+  addEventListener('touchstart', e => { if (window.scrollY > 0 || blocked(e.target) || !token) { y0 = null; return; } y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+  addEventListener('touchmove', e => {
+    if (y0 === null) return; dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) { ind.style.transform = ''; ind.classList.remove('on'); return; }
+    const p = Math.min(dy, 110); ind.classList.add('on');
+    ind.style.transform = `translate(-50%, ${p - 60}px)`; ind.textContent = dy > 80 ? 'Отпусти, чтобы обновить' : '↓ Потяни, чтобы обновить';
+  }, { passive: true });
+  addEventListener('touchend', async () => {
+    if (y0 === null) return; const go2 = dy > 80; y0 = null;
+    if (!go2) { ind.style.transform = ''; ind.classList.remove('on'); return; }
+    ind.textContent = 'Обновляю…'; ind.style.transform = 'translate(-50%, 20px)';
+    await refresh(); ind.style.transform = ''; ind.classList.remove('on');
+  });
+})();
 async function load() {
   if (!token) return showLogin('');
   go((location.hash || '').slice(1) || 'wardrobe', false);
   try {
-    const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => []), api('/wishlist').catch(() => []), api('/share').catch(() => null)]);
-    SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
+    await fetchAll();
     renderAll(); pollWish();
     if (SIZES.ui_tour_done !== '1' && !ITEMS.length && !WISH.length) setTimeout(startTour, 500);
     fetch(API + '/rates').then(r => r.ok ? r.json() : null).then(r => { if (r) { RATES = r; renderWishlist(); } }).catch(() => {});

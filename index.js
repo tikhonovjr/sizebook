@@ -862,6 +862,7 @@ app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
     res.json({ ok: true, received_at: r.rows[0].received_at });
+    if (!received) await pool.query('DELETE FROM items WHERE wishlist_id=$1 AND user_id=$2', [req.params.id, req.user.id]);
     const t = (await pool.query('SELECT title FROM wishlist WHERE id=$1', [req.params.id])).rows[0];
     logAct(req.user.id, received ? 'wish_got' : 'wish_back', (received ? 'Отмечено полученным: ' : 'Вернуто в «Хочу»: ') + shortTitle(t && t.title));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -1047,9 +1048,25 @@ app.patch('/items/:id', authenticateToken, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
+// Вещь из гардероба обратно в вишлист (если нажал «Получил» случайно или передумал)
+app.post('/items/:id/to-wishlist', authenticateToken, async (req, res) => {
+  try {
+    const it = (await pool.query('SELECT * FROM items WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id])).rows[0];
+    if (!it) return res.status(404).json({ error: 'Не найдено' });
+    let w = null;
+    if (it.wishlist_id) w = (await pool.query('UPDATE wishlist SET received_at=NULL WHERE id=$1 AND user_id=$2 RETURNING *', [it.wishlist_id, req.user.id])).rows[0];
+    if (!w) w = (await pool.query(
+      'INSERT INTO wishlist (user_id,title,shop,url,size,image,brand,parse_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+      [req.user.id, it.name, it.shop || null, it.url || null, it.size || null, it.image || null, it.brand || null, null])).rows[0];
+    await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2', [it.id, req.user.id]);
+    logAct(req.user.id, 'wish_back', 'Из гардероба обратно в вишлист: ' + shortTitle(it.name));
+    res.json({ wish: w });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
 app.delete('/items/:id', authenticateToken, async (req, res) => {
   try {
-    const d = await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2 RETURNING name', [req.params.id, req.user.id]);
+    const d = await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2 RETURNING name, wishlist_id', [req.params.id, req.user.id]);
+    if (d.rows[0] && d.rows[0].wishlist_id) await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2 AND received_at IS NOT NULL', [d.rows[0].wishlist_id, req.user.id]);
     if (d.rows[0]) logAct(req.user.id, 'item_del', 'Удалено из гардероба: ' + shortTitle(d.rows[0].name));
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
