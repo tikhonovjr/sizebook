@@ -1,0 +1,357 @@
+<title>SizeBook · Стили</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600;800&family=Archivo+Narrow:wght@500;600;700&display=swap">
+<style>
+/* Layout: витрина — сверху переключатели стиля и названия, слева «телефон», справа заметки; каждый стиль внутри телефона — свой самостоятельный мир */
+:root{
+  --bg:#f5f5f3; --surface:#fff; --line:rgba(20,20,18,.12); --text:#151513; --text2:#65655f; --text3:#9a9a93; --accent:#1f5fa6;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:18px}
+.head h1{font-size:24px;font-weight:650;letter-spacing:-.02em;margin:0 0 4px}
+.head p{margin:0;color:var(--text2);max-width:64ch;line-height:1.5}
+.ctl{display:grid;gap:10px}
+.ctl .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-weight:600}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{padding:8px 13px;border-radius:999px;background:var(--surface);border:.5px solid var(--line);font-weight:500}
+.pills button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.pills button small{opacity:.55;margin-left:4px}
+.stage{display:grid;grid-template-columns:392px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:840px){.stage{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:14px;min-width:0;padding-top:6px}
+.notes h2{margin:0;font-size:20px}
+.notes .insp{color:var(--text2);font-size:13px;margin-top:2px}
+.notes p{margin:0;line-height:1.55;max-width:60ch}
+.notes h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px;line-height:1.5}
+.box{padding:14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:grid;gap:8px}
+.hint{font-size:12px;color:var(--text3);line-height:1.5}
+
+.phone{width:392px;max-width:100%;height:812px;border-radius:46px;background:#0d0d0d;padding:10px;justify-self:center;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+@media (max-width:440px){.phone{padding:0;background:none;box-shadow:none;width:100%;height:780px}.screen{border-radius:26px;border:.5px solid var(--line)}}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--ui);position:relative;z-index:3}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.ph{position:relative;display:grid;place-items:center;overflow:hidden}
+.ph img{width:88%;height:88%;object-fit:contain;display:block}
+.num{font-variant-numeric:tabular-nums}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:84%;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.sheet .scroll{padding:4px 18px 28px}
+.grab{width:38px;height:5px;border-radius:3px;margin:8px auto 6px;flex:none;opacity:.35;background:currentColor}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.sgrid .ph{aspect-ratio:1;max-width:100%}
+.sysrow{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){.sheet,.dim{transition:none}}
+
+/* ══════ 1. Liquid Glass (iOS 26) ══════ */
+.st-glass{--g-bg:#eef0f3;--g-card:#ffffff;--g-text:#0b0b0c;--g-2:#6c6f76;--g-acc:#0a84ff;background:var(--g-bg);color:var(--g-text);font-family:var(--ui)}
+.st-glass .scroll.main{padding:0 16px 110px}
+.st-glass .lt{display:flex;justify-content:space-between;align-items:flex-end;padding:4px 2px 14px}
+.st-glass .lt h2{margin:0;font-size:34px;font-weight:700;letter-spacing:-.03em}
+.st-glass .glassbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.55);backdrop-filter:blur(20px) saturate(1.8);-webkit-backdrop-filter:blur(20px) saturate(1.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 4px 14px rgba(0,0,0,.08);border:.5px solid rgba(255,255,255,.7)}
+.st-glass .pass{border-radius:28px;padding:18px;color:#fff;position:relative;overflow:hidden;background:linear-gradient(135deg,#2c5d9c 0%,#4b3f9b 55%,#8a4b8f 100%)}
+.st-glass .pass::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.15);pointer-events:none}
+.st-glass .pass .top{display:flex;justify-content:space-between;font-size:11px;font-weight:600;opacity:.75;letter-spacing:.04em}
+.st-glass .pass .who{font-size:24px;font-weight:700;margin:22px 0 2px;letter-spacing:-.02em}
+.st-glass .pass .meta{opacity:.75;font-size:13px}
+.st-glass .pass .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.st-glass .pass .cell{background:rgba(255,255,255,.16);backdrop-filter:blur(10px);border-radius:16px;padding:10px 12px;text-align:left;border:.5px solid rgba(255,255,255,.25)}
+.st-glass .pass .cell span{display:block;font-size:11px;opacity:.8}
+.st-glass .pass .cell b{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.st-glass .pass .mrz{display:none}
+.st-glass .share{margin-top:12px;width:100%;padding:13px;border-radius:999px;background:var(--g-card);font-weight:600;color:var(--g-acc);display:flex;justify-content:center;gap:8px;align-items:center}
+.st-glass .sec{display:flex;justify-content:space-between;align-items:baseline;margin:26px 2px 10px}
+.st-glass .sec b{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.st-glass .sec button{color:var(--g-acc);font-weight:500;font-size:15px}
+.st-glass .shelf{background:var(--g-card);border-radius:24px;padding:14px 0 14px;margin-bottom:12px}
+.st-glass .shead{display:flex;align-items:center;gap:8px;padding:0 16px 10px;width:100%;text-align:left}
+.st-glass .shead b{font-size:17px;font-weight:600}
+.st-glass .shead .sz{font-size:13px;color:var(--g-2)}
+.st-glass .shead .chev{margin-left:auto;color:var(--g-2)}
+.st-glass .strip{gap:10px;padding:0 16px}
+.st-glass .it{flex:none;width:108px;text-align:left}
+.st-glass .it .ph{height:120px;border-radius:18px;background:#f2f3f5}
+.st-glass .it .badge{position:absolute;right:6px;top:6px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.75);backdrop-filter:blur(8px)}
+.st-glass .it .nm{font-size:13px;font-weight:500;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-glass .it .br{font-size:12px;color:var(--g-2)}
+.st-glass .tabbar{position:absolute;left:14px;right:14px;bottom:22px;z-index:5;height:64px;border-radius:999px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;background:rgba(255,255,255,.55);backdrop-filter:blur(24px) saturate(1.9);-webkit-backdrop-filter:blur(24px) saturate(1.9);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 30px rgba(0,0,0,.12);border:.5px solid rgba(255,255,255,.8);padding:0 6px}
+.st-glass .tabbar div{display:grid;justify-items:center;gap:1px;font-size:10px;font-weight:500;color:#3c3c43;height:52px;align-content:center;border-radius:999px}
+.st-glass .tabbar div.on{color:var(--g-acc);background:rgba(10,132,255,.12)}
+.st-glass .sheet{background:rgba(250,250,252,.92);backdrop-filter:blur(30px);border-radius:32px 32px 0 0;color:var(--g-text)}
+.st-glass .sheet h3{font-size:24px;margin:6px 0 2px;letter-spacing:-.02em}
+.st-glass .sheet .sub{color:var(--g-2)}
+.st-glass .sysrow span{padding:7px 12px;border-radius:999px;background:#fff;font-weight:600;font-size:13px}
+.st-glass .sysrow span i{font-style:normal;color:var(--g-2);font-weight:500;margin-right:4px}
+.st-glass .sgrid .ph{border-radius:20px;background:#fff}
+.st-glass .sgrid .nm{font-weight:600;font-size:13px;margin-top:6px}
+.st-glass .sgrid .br{font-size:12px;color:var(--g-2)}
+
+/* ══════ 2. Витрина (SSENSE / Zara) ══════ */
+.st-edit{--e-bg:#ffffff;--e-ink:#111;--e-2:#777;--e-photo:#f1f1f1;--e-line:#e4e4e4;background:var(--e-bg);color:var(--e-ink);font-family:"Geist",var(--ui)}
+.st-edit .scroll.main{padding:0 0 90px}
+.st-edit .lt{display:flex;justify-content:space-between;align-items:center;padding:6px 18px 18px;border-bottom:1px solid var(--e-line)}
+.st-edit .lt h2{margin:0;font:400 40px/1 "Instrument Serif",Georgia,serif;letter-spacing:-.01em}
+.st-edit .glassbtn{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:500}
+.st-edit .pass{padding:22px 18px 0}
+.st-edit .pass .top{display:flex;justify-content:space-between;font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--e-2)}
+.st-edit .pass .who{font:italic 400 34px/1.05 "Instrument Serif",Georgia,serif;margin:16px 0 4px}
+.st-edit .pass .meta{font-size:12px;color:var(--e-2);text-transform:uppercase;letter-spacing:.08em}
+.st-edit .pass .grid{display:grid;grid-template-columns:repeat(3,1fr);margin-top:20px;border-top:1px solid var(--e-ink)}
+.st-edit .pass .cell{padding:12px 0 14px;text-align:left;border-bottom:1px solid var(--e-line)}
+.st-edit .pass .cell:nth-child(3n+2),.st-edit .pass .cell:nth-child(3n+3){padding-left:12px;border-left:1px solid var(--e-line)}
+.st-edit .pass .cell span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--e-2)}
+.st-edit .pass .cell b{font:400 34px/1.1 "Instrument Serif",Georgia,serif}
+.st-edit .pass .mrz{display:none}
+.st-edit .share{margin:16px 18px 0;width:calc(100% - 36px);padding:14px;background:var(--e-ink);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.16em;font-weight:500}
+.st-edit .sec{display:flex;justify-content:space-between;align-items:baseline;margin:34px 18px 4px}
+.st-edit .sec b{font:400 28px "Instrument Serif",Georgia,serif}
+.st-edit .sec button{font-size:11px;text-transform:uppercase;letter-spacing:.12em;text-decoration:underline;text-underline-offset:3px}
+.st-edit .shelf{margin-top:18px}
+.st-edit .shead{display:flex;align-items:baseline;gap:10px;padding:0 18px 10px;width:100%;text-align:left}
+.st-edit .shead b{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:600}
+.st-edit .shead .sz{font-size:11px;color:var(--e-2);letter-spacing:.06em}
+.st-edit .shead .chev{margin-left:auto;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--e-2)}
+.st-edit .strip{gap:2px;padding:0 18px}
+.st-edit .it{flex:none;width:150px;text-align:left}
+.st-edit .it .ph{height:190px;background:var(--e-photo)}
+.st-edit .it .badge{position:absolute;left:8px;bottom:8px;font-size:10px;letter-spacing:.08em;font-weight:600}
+.st-edit .it .nm{font-size:12px;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-edit .it .br{font-size:10px;color:var(--e-2);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+.st-edit .tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid var(--e-line);padding:14px 0 26px}
+.st-edit .tabbar div{text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--e-2)}
+.st-edit .tabbar div svg{display:none}
+.st-edit .tabbar div.on{color:var(--e-ink);font-weight:600;text-decoration:underline;text-underline-offset:4px}
+.st-edit .sheet{background:#fff;color:var(--e-ink)}
+.st-edit .sheet h3{font:400 34px "Instrument Serif",Georgia,serif;margin:4px 0 0}
+.st-edit .sheet .sub{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--e-2)}
+.st-edit .sysrow{gap:0;border-top:1px solid var(--e-ink);margin-top:16px}
+.st-edit .sysrow span{flex:1;padding:10px 0;font:400 22px "Instrument Serif",serif}
+.st-edit .sysrow span i{display:block;font:500 10px "Geist",sans-serif;letter-spacing:.12em;color:var(--e-2)}
+.st-edit .sgrid{gap:2px}
+.st-edit .sgrid .ph{background:var(--e-photo)}
+.st-edit .sgrid .nm{font-size:12px;margin-top:6px}
+.st-edit .sgrid .br{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--e-2)}
+
+/* ══════ 3. Мягкий (Airbnb 2025 / Partiful) ══════ */
+.st-soft{--s-bg:#f3f1fb;--s-card:#ffffff;--s-ink:#211d33;--s-2:#736e88;--s-acc:#ff5a3c;--s-p1:#ffe1d6;--s-p2:#dcefe4;--s-p3:#e0e6ff;--s-p4:#fff1c2;background:var(--s-bg);color:var(--s-ink);font-family:"Bricolage Grotesque",var(--ui)}
+.st-soft .scroll.main{padding:0 16px 104px}
+.st-soft .lt{display:flex;justify-content:space-between;align-items:center;padding:4px 2px 14px}
+.st-soft .lt h2{margin:0;font-size:34px;font-weight:800;letter-spacing:-.035em}
+.st-soft .glassbtn{width:42px;height:42px;border-radius:14px;background:var(--s-card);display:grid;place-items:center;box-shadow:0 2px 0 rgba(33,29,51,.08)}
+.st-soft .pass{background:var(--s-card);border-radius:30px;padding:18px;box-shadow:0 2px 0 rgba(33,29,51,.06),0 16px 30px -18px rgba(33,29,51,.35)}
+.st-soft .pass .top{display:flex;justify-content:space-between;align-items:center}
+.st-soft .pass .top span:first-child{font-weight:700;font-size:13px;color:var(--s-acc)}
+.st-soft .pass .top span:last-child{font-size:12px;color:var(--s-2)}
+.st-soft .pass .who{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:10px 0 0}
+.st-soft .pass .meta{color:var(--s-2);font-size:14px;font-family:var(--ui)}
+.st-soft .pass .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.st-soft .pass .cell{border-radius:20px;padding:12px;text-align:left;transition:transform .15s}
+.st-soft .pass .cell:active{transform:scale(.96)}
+.st-soft .pass .cell:nth-child(1){background:var(--s-p3)}.st-soft .pass .cell:nth-child(2){background:var(--s-p2)}.st-soft .pass .cell:nth-child(3){background:var(--s-p1)}
+.st-soft .pass .cell:nth-child(4){background:var(--s-p4)}.st-soft .pass .cell:nth-child(5){background:var(--s-p1)}.st-soft .pass .cell:nth-child(6){background:var(--s-p3)}
+.st-soft .pass .cell span{display:block;font-size:12px;color:var(--s-2);font-weight:500}
+.st-soft .pass .cell b{font-size:26px;font-weight:800;letter-spacing:-.03em}
+.st-soft .pass .mrz{display:none}
+.st-soft .share{margin-top:12px;width:100%;padding:15px;border-radius:18px;background:var(--s-acc);color:#fff;font-weight:700;font-size:16px;display:flex;justify-content:center;gap:8px;align-items:center;box-shadow:0 3px 0 #c93a20}
+.st-soft .sec{display:flex;justify-content:space-between;align-items:center;margin:28px 2px 12px}
+.st-soft .sec b{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.st-soft .sec button{background:var(--s-card);border-radius:12px;padding:7px 12px;font-weight:700;font-size:14px}
+.st-soft .shelf{margin-bottom:18px}
+.st-soft .shead{display:flex;align-items:center;gap:8px;padding:0 2px 10px;width:100%;text-align:left}
+.st-soft .shead b{font-size:17px;font-weight:700}
+.st-soft .shead .sz{font-size:12px;font-weight:700;background:var(--s-card);padding:3px 9px;border-radius:999px}
+.st-soft .shead .chev{margin-left:auto;color:var(--s-2)}
+.st-soft .strip{gap:10px;margin:0 -16px;padding:0 16px}
+.st-soft .it{flex:none;width:118px;text-align:left}
+.st-soft .it .ph{height:130px;border-radius:24px;background:var(--s-card);box-shadow:0 2px 0 rgba(33,29,51,.06)}
+.st-soft .it:nth-child(4n+1) .ph{background:var(--s-p1)}.st-soft .it:nth-child(4n+2) .ph{background:var(--s-p2)}.st-soft .it:nth-child(4n+3) .ph{background:var(--s-p3)}.st-soft .it:nth-child(4n+4) .ph{background:var(--s-p4)}
+.st-soft .it .badge{position:absolute;left:8px;top:8px;background:var(--s-card);font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px}
+.st-soft .it .nm{font-size:14px;font-weight:700;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-soft .it .br{font-size:12px;color:var(--s-2);font-family:var(--ui)}
+.st-soft .tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);background:var(--s-card);border-radius:28px 28px 0 0;padding:10px 0 24px;box-shadow:0 -8px 30px rgba(33,29,51,.08)}
+.st-soft .tabbar div{display:grid;justify-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--s-2)}
+.st-soft .tabbar div.on{color:var(--s-acc)}
+.st-soft .sheet{background:var(--s-bg);border-radius:32px 32px 0 0;color:var(--s-ink)}
+.st-soft .sheet h3{font-size:28px;font-weight:800;letter-spacing:-.03em;margin:6px 0 0}
+.st-soft .sheet .sub{color:var(--s-2);font-family:var(--ui)}
+.st-soft .sysrow span{background:var(--s-card);border-radius:14px;padding:8px 12px;font-weight:800}
+.st-soft .sysrow span i{font-style:normal;color:var(--s-2);font-weight:600;margin-right:4px}
+.st-soft .sgrid .ph{border-radius:24px;background:var(--s-card)}
+.st-soft .sgrid .nm{font-weight:700;margin-top:6px}
+.st-soft .sgrid .br{font-size:12px;color:var(--s-2)}
+
+/* ══════ 4. Бирка (Nothing / Teenage Engineering) ══════ */
+.st-tag{--t-bg:#e9e8e4;--t-label:#fbfaf6;--t-ink:#141414;--t-2:#6e6d68;--t-acc:#ff4f00;background:var(--t-bg);color:var(--t-ink);font-family:"Archivo Narrow",var(--ui)}
+.st-tag .scroll.main{padding:0 14px 96px}
+.st-tag .lt{display:flex;justify-content:space-between;align-items:center;padding:4px 2px 14px}
+.st-tag .lt h2{margin:0;font:800 30px "JetBrains Mono",monospace;letter-spacing:-.04em;text-transform:uppercase}
+.st-tag .glassbtn{font:600 11px "JetBrains Mono",monospace;border:1.5px solid var(--t-ink);padding:6px 9px;text-transform:uppercase}
+.st-tag .pass{background:var(--t-label);padding:16px 16px 10px;position:relative;clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%);outline:1px dashed rgba(20,20,20,.25);outline-offset:-6px}
+.st-tag .pass::before{content:"";position:absolute;left:16px;top:-1px;width:56px;height:8px;background:var(--t-acc)}
+.st-tag .pass .top{display:flex;justify-content:space-between;font:600 10px "JetBrains Mono",monospace;letter-spacing:.08em;color:var(--t-2);margin-top:6px}
+.st-tag .pass .who{font-size:28px;font-weight:700;text-transform:uppercase;letter-spacing:-.01em;margin:12px 0 0;line-height:1}
+.st-tag .pass .meta{font:400 11px "JetBrains Mono",monospace;color:var(--t-2);margin-top:6px}
+.st-tag .pass .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--t-ink);border:1px solid var(--t-ink);margin-top:14px}
+.st-tag .pass .cell{background:var(--t-label);padding:8px 10px;text-align:left}
+.st-tag .pass .cell span{display:block;font:600 9px "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--t-2)}
+.st-tag .pass .cell b{font:800 26px "JetBrains Mono",monospace;letter-spacing:-.05em}
+.st-tag .pass .cell:hover b{color:var(--t-acc)}
+.st-tag .pass .mrz{font:400 9px "JetBrains Mono",monospace;letter-spacing:.08em;color:var(--t-2);margin-top:10px;white-space:nowrap;overflow:hidden}
+.st-tag .share{margin-top:10px;width:100%;padding:13px;background:var(--t-acc);color:#fff;font:700 13px "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
+.st-tag .sec{display:flex;justify-content:space-between;align-items:baseline;margin:26px 2px 8px;border-bottom:1.5px solid var(--t-ink);padding-bottom:6px}
+.st-tag .sec b{font:800 15px "JetBrains Mono",monospace;text-transform:uppercase}
+.st-tag .sec button{font:600 11px "JetBrains Mono",monospace;color:var(--t-acc);text-transform:uppercase}
+.st-tag .shelf{margin-top:12px}
+.st-tag .shead{display:flex;align-items:baseline;gap:8px;padding:0 2px 8px;width:100%;text-align:left}
+.st-tag .shead b{font-size:16px;font-weight:700;text-transform:uppercase}
+.st-tag .shead .sz{font:600 11px "JetBrains Mono",monospace;background:var(--t-ink);color:var(--t-label);padding:2px 6px}
+.st-tag .shead .chev{margin-left:auto;font:600 11px "JetBrains Mono",monospace;color:var(--t-2)}
+.st-tag .strip{gap:8px;margin:0 -14px;padding:0 14px}
+.st-tag .it{flex:none;width:120px;text-align:left;background:var(--t-label);padding:6px}
+.st-tag .it .ph{height:118px;background:#f0efea}
+.st-tag .it .badge{position:absolute;right:0;top:0;background:var(--t-acc);color:#fff;font:700 11px "JetBrains Mono",monospace;padding:3px 6px}
+.st-tag .it .nm{font-size:13px;font-weight:700;text-transform:uppercase;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-tag .it .br{font:400 10px "JetBrains Mono",monospace;color:var(--t-2)}
+.st-tag .tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);background:var(--t-ink);color:#8f8e88;padding:12px 0 26px}
+.st-tag .tabbar div{text-align:center;font:600 10px "JetBrains Mono",monospace;text-transform:uppercase;display:grid;justify-items:center;gap:4px}
+.st-tag .tabbar div.on{color:var(--t-acc)}
+.st-tag .sheet{background:var(--t-bg);color:var(--t-ink);border-top:3px solid var(--t-acc)}
+.st-tag .sheet h3{font-size:28px;font-weight:700;text-transform:uppercase;margin:6px 0 0}
+.st-tag .sheet .sub{font:400 11px "JetBrains Mono",monospace;color:var(--t-2)}
+.st-tag .sysrow{gap:1px;background:var(--t-ink);border:1px solid var(--t-ink)}
+.st-tag .sysrow span{flex:1;background:var(--t-label);padding:8px;font:800 18px "JetBrains Mono",monospace}
+.st-tag .sysrow span i{display:block;font:600 9px "JetBrains Mono",monospace;color:var(--t-2);font-style:normal}
+.st-tag .sgrid .ph{background:var(--t-label)}
+.st-tag .sgrid .nm{font-weight:700;text-transform:uppercase;margin-top:6px}
+.st-tag .sgrid .br{font:400 10px "JetBrains Mono",monospace;color:var(--t-2)}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Стили и название раздела</h1>
+    <p>Тот же паспорт и полки с вещами в четырёх стилях. Нажми на размер в паспорте или на категорию, чтобы открыть шторку. Фото вещей примерные, с вырезанным фоном.</p>
+  </header>
+  <div class="ctl">
+    <div class="lbl">Стиль</div><div class="pills" id="stylePills"></div>
+    <div class="lbl">Название раздела</div><div class="pills" id="namePills"></div>
+  </div>
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <section class="notes" id="notes"></section>
+  </div>
+</div>
+
+<script>
+const IMG=__IMGS__;
+const ICON={
+ share:'<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/>',chev:'<path d="M9 6l6 6-6 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',
+ hanger:'<path d="M12 7a2 2 0 1 1 2-2"/><path d="M12 7v2l9 7v2H3v-2l9-7"/>',heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'
+};
+const ic=(n,s=20,w=1.8)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+const CATS=[
+ {id:'tops',title:'Верх',full:'Футболки и рубашки',base:'M',sys:[['INT','M'],['RU','48'],['EU','48'],['US','38']],
+  items:[['shirt','Рубашка из поплина','COS','M'],['tee','Футболка Supima','Uniqlo','L'],['stripe','Тельняшка','Arket','S'],['polo','Поло из пике','Zara','M'],['sweat','Джемпер из мерино','COS','M']]},
+ {id:'bottoms',title:'Низ',full:'Джинсы и брюки',base:'32/32',sys:[['W/L','32/32'],['RU','48'],['EU','48']],
+  items:[['jeans','501 Original',"Levi's",'32/32'],['chino','Брюки Wide','Carhartt WIP','32/32'],['linen','Брюки из льна','Uniqlo','31']]},
+ {id:'outer',title:'Верхняя',full:'Верхняя одежда',base:'L',sys:[['INT','L'],['RU','50'],['EU','50']],
+  items:[['puffer','Пуховик Nuptse','The North Face','L'],['coat','Стёганое пальто','Mango','XL']]},
+ {id:'shoes',title:'Обувь',full:'Обувь',base:'43',sys:[['EU','43'],['US','10'],['UK','9'],['СМ','27,5']],
+  items:[['af1','Air Force 1','Nike','43'],['samba','Ultraboost','Adidas','43⅓'],['nb','Gel-Kayano','Asics','43,5'],['boots','Desert Boot','Clarks','42,5']]},
+ {id:'hats',title:'Шапка',full:'Головные уборы',base:'58',sys:[['СМ','58'],['INT','M'],['US','7¼']],
+  items:[['cap','Кепка из кожи','Stetson','58']]},
+ {id:'ring',title:'Кольцо',full:'Кольцо',base:'17,5',sys:[['ММ','17,5'],['US','7½'],['EU','55']],items:[]},
+];
+const C=id=>CATS.find(c=>c.id===id);
+const TOTAL=CATS.reduce((a,c)=>a+c.items.length,0);
+
+const NAMES=[
+ {n:'Гардероб',why:'Привычное слово для приложений с вещами (Whering, Acloset, Indyx). Сразу понятно, что внутри и размеры, и вещи.'},
+ {n:'Мой размер',why:'Сохраняет главную идею SizeBook — размер. Но вещи под паспортом в него помещаются хуже.'},
+ {n:'Шкаф',why:'Короче и теплее «Гардероба», звучит по-домашнему. Хорошо влезает в таб-бар.'},
+ {n:'Паспорт',why:'Продолжает метафору карточки: паспорт и вещи владельца. Самое «фирменное», но вещи в паспорте могут удивить.'},
+ {n:'Профиль',why:'Как в соцсетях: всё обо мне на одной странице. Тогда личные настройки уезжают в иконку шестерёнки.'},
+];
+const STYLES=[
+ {k:'glass',n:'Liquid Glass',insp:'iOS 26, «Кошелёк», победители Apple Design Awards 2026 (Moonlitt, Tide Guide)',
+  idea:'Родной вид для iPhone: большие заголовки, полупрозрачный плавающий таб-бар, паспорт как карта в Wallet с градиентом. Вещи на белых карточках-полках.',
+  pros:['Выглядит как часть iOS, когда приложение откроют с домашнего экрана','Меньше всего рискует устареть: следует за Apple'],cons:['Мало своего характера, легко спутать с любым новым приложением','Стекло на вебе тяжелее для старых телефонов']},
+ {k:'edit',n:'Витрина',insp:'SSENSE, Zara, COS, журнальная вёрстка',
+  idea:'Как модный магазин: белый фон, крупный антиквенный шрифт, вещи на серой подложке без скруглений, подписи капслоком. Вещи выглядят как каталог.',
+  pros:['Фото вещей смотрятся дороже всего','Подходит под архив винтажа и «модную» аудиторию'],cons:['Мелкие подписи хуже читаются','Строгий, менее дружелюбный для подарочного сценария']},
+ {k:'soft',n:'Мягкий',insp:'редизайн Airbnb 2025, Partiful, Duolingo',
+  idea:'Тёплый и тактильный: крупный округлый шрифт, пастельные плашки размеров, кнопки с «объёмом». Делать подарки и делиться становится игрой.',
+  pros:['Самый дружелюбный, хорошо для шеринга друзьям','Цветные плашки сразу разделяют размеры'],cons:['Может показаться слишком «детским»','Много цвета спорит с фото вещей']},
+ {k:'tag',n:'Бирка',insp:'Nothing Phone, Teenage Engineering, пришивные бирки на одежде',
+  idea:'Паспорт оформлен как пришивная бирка с размерами: моноширинный шрифт, оранжевая метка, пунктирный шов. Свой узнаваемый образ, связанный с одеждой.',
+  pros:['Самый запоминающийся и «брендовый»','Метафора бирки прямо про размеры'],cons:['Нишевая эстетика, нравится не всем','Требует аккуратности, чтобы не выглядело как техно-игрушка']},
+];
+let S=0,N=0,sheetId=null,resetTop=0;
+try{S=+localStorage.getItem('sb_st')||0;N=+localStorage.getItem('sb_nm')||0}catch(e){}
+
+function screen(){
+  const st=STYLES[S].k, name=NAMES[N].n;
+  const key=['tops','bottoms','outer','shoes','hats','ring'];
+  const tabs=[['hanger',name],['heart','Вишлист'],['users','Друзья'],N===4?['gear','Настройки']:['user','Профиль']];
+  const shareTxt=st==='tag'?`<span>Отправить по ссылке</span>${ic('share',16,2.2)}`:`${ic('share',18)} Отправить паспорт`;
+  return `<div class="status"><span class="num">17:58</span><span>●●● ▮</span></div>
+  <div class="scroll main" id="main">
+    <div class="lt"><h2>${name}</h2><button class="glassbtn" aria-label="Поделиться">${st==='edit'||st==='tag'?'Поделиться':ic('share',19)}</button></div>
+    <div class="pass">
+      <div class="top"><span>SIZEBOOK</span><span>${st==='tag'?'SIZE / РАЗМЕР':'Паспорт размеров'}</span></div>
+      <div class="who">Иван Тихонов</div>
+      <div class="meta num">182 см · 78 кг · обычная посадка</div>
+      <div class="grid">${key.map(k=>{const c=C(k);return `<button class="cell" onclick="openSheet('${k}')"><span>${c.title}</span><b class="num">${c.base}</b></button>`}).join('')}</div>
+      <div class="mrz">P&lt;SB&lt;TIKHONOV&lt;&lt;IVAN&lt;&lt;M&lt;3232&lt;L&lt;43&lt;58&lt;&lt;&lt;&lt;&lt;&lt;</div>
+    </div>
+    <button class="share">${shareTxt}</button>
+    <div class="sec"><b>Мои вещи${st==='tag'?' / '+TOTAL:''}</b><button>${st==='tag'?'+ ДОБАВИТЬ':'Добавить'}</button></div>
+    ${CATS.filter(c=>c.items.length).map(c=>`
+    <div class="shelf">
+      <button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b><span class="sz num">${st==='glass'?'размер ':''}${c.base}</span><span class="chev">${st==='edit'?'Все · '+c.items.length:st==='tag'?'['+String(c.items.length).padStart(2,'0')+'] →':ic('chev',16)}</span></button>
+      <div class="strip">${c.items.map(i=>`<button class="it" onclick="openSheet('${c.id}')"><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"><span class="badge num">${i[3]}</span></div><div class="nm">${i[1]}</div><div class="br">${i[2]}</div></button>`).join('')}</div>
+    </div>`).join('')}
+  </div>
+  <nav class="tabbar">${tabs.map((t,i)=>`<div class="${i===0?'on':''}">${ic(t[0],22)}<span>${t[1]}</span></div>`).join('')}</nav>
+  <div class="dim" id="dim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Категория"><div class="grab"></div><div class="scroll" id="sheetBody"></div></div>`;
+}
+function openSheet(id){
+  sheetId=id;const c=C(id);
+  document.getElementById('sheetBody').innerHTML=`<h3>${c.full}</h3><div class="sub">Твой размер ${c.base} · ${c.items.length?c.items.length+' в гардеробе':'вещей пока нет'}</div>
+  <div class="sysrow">${c.sys.map(s=>`<span><i>${s[0]}</i>${s[1]}</span>`).join('')}</div>
+  ${c.items.length?`<div class="sgrid">${c.items.map(i=>`<div><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]} · ${i[3]}</div><div class="br">${i[2]}</div></div>`).join('')}</div>`:''}`;
+  document.getElementById('sheet').classList.add('on');document.getElementById('dim').classList.add('on');
+}
+function closeSheet(){sheetId=null;document.getElementById('sheet').classList.remove('on');document.getElementById('dim').classList.remove('on')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+
+function render(){
+  try{localStorage.setItem('sb_st',S);localStorage.setItem('sb_nm',N)}catch(e){}
+  const scr=document.getElementById('screen');const prev=document.getElementById('main');const top=prev?prev.scrollTop:0;
+  scr.className='screen st-'+STYLES[S].k;scr.innerHTML=screen();document.getElementById('main').scrollTop=resetTop?0:top;resetTop=0;
+  if(sheetId)openSheet(sheetId);
+  document.getElementById('stylePills').innerHTML=STYLES.map((s,i)=>`<button aria-pressed="${i===S}" onclick="S=${i};resetTop=1;render()">${s.n}</button>`).join('');
+  document.getElementById('namePills').innerHTML=NAMES.map((s,i)=>`<button aria-pressed="${i===N}" onclick="N=${i};render()">${s.n}</button>`).join('');
+  const s=STYLES[S];
+  document.getElementById('notes').innerHTML=`<div><h2>${s.n}</h2><div class="insp">По мотивам: ${s.insp}</div></div><p>${s.idea}</p>
+  <div class="box" style="grid-template-columns:1fr 1fr;gap:16px"><div><h3>Плюсы</h3><ul>${s.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${s.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+  <div class="box"><h3>Название «${NAMES[N].n}»</h3><p>${NAMES[N].why}</p></div>
+  <p class="hint">Фото взяты из открытого датасета одежды, фон вырезан автоматически, бренды подписаны для примера. В приложении будут студийные фото из магазинов.</p>`;
+}
+render();
+</script>
