@@ -1,6 +1,6 @@
 <title>SizeBook · Термоэтикетка</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Roboto+Condensed:wght@400;500;700;800;900&family=Roboto+Mono:wght@400;500;700&family=Press+Start+2P&family=Unbounded:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Roboto+Condensed:wght@400;500;700;800;900&family=Roboto+Mono:wght@400;500;700&family=Press+Start+2P&family=Unbounded:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: витрина — сверху 5 вариантов шрифта и таб-бара для термоэтикетки, слева «телефон», справа заметки. Структура этикетки одна, меняются шрифт и нижняя панель */
 :root{
@@ -46,7 +46,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
 
 /* — этикетка: общая структура, шрифты из переменных скина — */
-.screen{--ink:#0d0d0d;--ink2:#5f6166;--lab:#fdfdfb}
+.screen{--ink:#0d0d0d;--ink2:#5f6166;--lab:#fdfdfb;
+  --f-h2:900 30px "Archivo",sans-serif;--ls-h2:-.02em;--f-btn:700 12px "IBM Plex Mono",monospace;--f-small:500 10px "IBM Plex Mono",monospace;--f-name:900 21px/1.05 "Archivo",sans-serif;--ls-name:-.01em;
+  --f-big:900 42px/1 "Archivo",sans-serif;--f-val:900 26px/1.1 "Archivo",sans-serif;--ls-val:-.02em;--f-sub:900 15px "Archivo",sans-serif;--f-sec:900 22px "Archivo",sans-serif;--f-tag:800 12px "IBM Plex Mono",monospace;--f-item:700 13px "Archivo",sans-serif;--f-sysv:900 18px "Archivo",sans-serif;--f-tab:600 10px "IBM Plex Mono",monospace}
 .top{position:relative;padding:58px 16px 26px;background:
   radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
   radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
@@ -142,24 +144,18 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tb-e button.on span{display:inline}
 .tb-e button svg{width:22px;height:22px}
 
-/* ═══ Скины шрифтов ═══ */
-.s-mono{--f-h2:700 28px "IBM Plex Mono",monospace;--ls-h2:-.04em;--f-btn:600 11px "IBM Plex Mono",monospace;--f-small:500 10px "IBM Plex Mono",monospace;--f-name:700 20px/1.05 "IBM Plex Mono",monospace;--ls-name:-.03em;
-  --f-big:700 42px/1 "IBM Plex Mono",monospace;--f-val:700 25px/1.1 "IBM Plex Mono",monospace;--ls-val:-.05em;--f-sub:700 13px "IBM Plex Mono",monospace;--f-sec:700 20px "IBM Plex Mono",monospace;--f-tag:700 11px "IBM Plex Mono",monospace;--f-item:600 12px "IBM Plex Mono",monospace;--f-sysv:700 17px "IBM Plex Mono",monospace;--f-tab:600 10px "IBM Plex Mono",monospace}
-.s-golos{--f-h2:800 30px "Golos Text",sans-serif;--ls-h2:-.03em;--f-btn:700 11px "JetBrains Mono",monospace;--f-small:500 10px "JetBrains Mono",monospace;--f-name:800 21px/1.05 "Golos Text",sans-serif;--ls-name:-.02em;
-  --f-big:900 44px/1 "Golos Text",sans-serif;--f-val:800 26px/1.1 "Golos Text",sans-serif;--ls-val:-.03em;--f-sub:800 14px "Golos Text",sans-serif;--f-sec:900 22px "Golos Text",sans-serif;--f-tag:700 11px "JetBrains Mono",monospace;--f-item:600 13px "Golos Text",sans-serif;--f-sysv:800 18px "Golos Text",sans-serif;--f-tab:700 9.5px "JetBrains Mono",monospace}
-.s-cond{--f-h2:900 34px "Roboto Condensed",sans-serif;--ls-h2:-.01em;--f-btn:700 12px "Roboto Condensed",sans-serif;--f-small:500 10px "Roboto Mono",monospace;--f-name:800 24px/1 "Roboto Condensed",sans-serif;
-  --f-big:900 48px/1 "Roboto Condensed",sans-serif;--f-val:800 30px/1.05 "Roboto Condensed",sans-serif;--f-sub:800 16px "Roboto Condensed",sans-serif;--f-sec:900 26px "Roboto Condensed",sans-serif;--f-tag:800 13px "Roboto Condensed",sans-serif;--f-item:700 15px "Roboto Condensed",sans-serif;--f-sysv:900 20px "Roboto Condensed",sans-serif;--f-tab:700 12px "Roboto Condensed",sans-serif}
-.s-pixel{--f-h2:400 19px "Press Start 2P",monospace;--f-btn:400 8px "Press Start 2P",monospace;--f-small:500 10px "IBM Plex Mono",monospace;--f-name:400 14px/1.3 "Press Start 2P",monospace;
-  --f-big:400 30px/1 "Press Start 2P",monospace;--f-val:400 18px/1.4 "Press Start 2P",monospace;--f-sub:400 10px/1.4 "Press Start 2P",monospace;--f-sec:400 15px "Press Start 2P",monospace;--f-tag:400 8px "Press Start 2P",monospace;--f-item:600 12px "IBM Plex Mono",monospace;--f-sysv:400 13px "Press Start 2P",monospace;--f-tab:400 7px "Press Start 2P",monospace}
-.s-unb{--f-h2:700 24px "Unbounded",sans-serif;--ls-h2:-.02em;--f-btn:600 10px "Unbounded",sans-serif;--f-small:500 10px "JetBrains Mono",monospace;--f-name:700 17px/1.1 "Unbounded",sans-serif;
-  --f-big:800 36px/1 "Unbounded",sans-serif;--f-val:700 21px/1.2 "Unbounded",sans-serif;--ls-val:-.03em;--f-sub:700 12px "Unbounded",sans-serif;--f-sec:700 18px "Unbounded",sans-serif;--f-tag:600 10px "Unbounded",sans-serif;--f-item:500 12px "Unbounded",sans-serif;--f-sysv:700 15px "Unbounded",sans-serif;--f-tab:600 9px "Unbounded",sans-serif}
-.s-pixel .lt h2{line-height:1.2}
+/* ═══ Скины: меняется только шрифт панели ═══ */
+.s-mono{--f-tab:600 10px "IBM Plex Mono",monospace}
+.s-golos{--f-tab:700 9.5px "JetBrains Mono",monospace}
+.s-cond{--f-tab:700 12px "Roboto Condensed",sans-serif}
+.s-pixel{--f-tab:400 7px "Press Start 2P",monospace}
+.s-unb{--f-tab:600 9px "Unbounded",sans-serif}
 </style>
 
 <div class="wrap">
   <header class="head">
-    <h1>Термоэтикетка: шрифт и нижняя панель</h1>
-    <p>Структура этикетки та же, что понравилась. В каждом варианте свой шрифт и своё решение нижней панели навигации.</p>
+    <h1>Термоэтикетка: нижняя панель</h1>
+    <p>Этикетка и весь экран остаются как были. В пяти вариантах меняются только шрифт и иконки нижней панели навигации.</p>
   </header>
   <div class="pills" id="pills"></div>
   <div class="stage">
@@ -222,20 +218,20 @@ const C=id=>CATS.find(c=>c.id===id);
 
 const V=[
  {s:'mono',t:'a',n:'Чек',font:'IBM Plex Mono',bar:'Текстовые ячейки без иконок',
-  idea:'Весь текст одним моноширинным шрифтом, как будто этикетку напечатал термопринтер. В нижней панели нет иконок: четыре ячейки с подписями в тех же рамках, что и на этикетке, активная залита чёрным.',
-  pros:['Самый цельный: панель продолжает этикетку','Без иконок не надо гадать, что значит значок'],cons:['Моноширинный шрифт съедает ширину, длинные слова тесно','Подписи без иконок читаются чуть медленнее']},
- {s:'golos',t:'b',n:'Логистика',font:'Golos Text и JetBrains Mono',bar:'Толстые пиктограммы, активная на жёлтой плашке',
-  idea:'Строгий гротеск Golos (сделан для кириллицы) и мелкий моноширинный для подписей, как на этикетках служб доставки. Иконки рисованные, толстые, с прямыми углами, похожие на складскую маркировку. Активный раздел выделен жёлтой плашкой, как маркер.',
-  pros:['Лучшая читаемость кириллицы из пяти','Жёлтый маркер даёт один яркий акцент'],cons:['Жёлтый нужно поддержать ещё в паре мест, иначе он одинок']},
- {s:'cond',t:'c',n:'Склад',font:'Roboto Condensed и Roboto Mono',bar:'Отрывной корешок со штрихкодами',
-  idea:'Узкий жирный шрифт, как на складских стикерах, большие цифры размеров. Нижняя панель — отрывная часть этикетки с перфорацией: у каждого раздела свой маленький штрихкод и номер, у активного штрихкод «пропечатан».',
-  pros:['Крупнее всего цифры размеров','Панель-корешок продолжает идею этикетки'],cons:['Штрихкоды в навигации на любителя','Узкий шрифт в длинных названиях вещей хуже читается']},
- {s:'pixel',t:'d',n:'Матричный',font:'Press Start 2P и IBM Plex Mono',bar:'Пиксельные иконки 12×12',
-  idea:'Заголовки и размеры пиксельным шрифтом, как у старых матричных принтеров и ценников. Иконки нарисованы по пикселям, активная подпись в чёрной плашке. Названия вещей остаются обычным моноширинным, чтобы читалось.',
-  pros:['Самый игровой и запоминающийся','Пиксельные иконки сразу узнаются как «фирменные»'],cons:['Пиксельный шрифт годится только для коротких надписей','Есть риск выглядеть как ретро-игра, а не про одежду']},
- {s:'unb',t:'e',n:'Наклейка',font:'Unbounded и JetBrains Mono',bar:'Плавающая панель-наклейка',
-  idea:'Широкий современный Unbounded (его тоже делали с кириллицей) задаёт характер, мелкий текст моноширинный. Нижняя панель — отдельная наклейка в толстой рамке, которая висит над контентом. Активный раздел раскрывается и показывает подпись, остальные только иконки.',
-  pros:['Самый современный вид, хорошо сочетается с iOS','Иконки простые и понятные'],cons:['Широкий шрифт не помещает длинные названия','Плавающая панель закрывает часть контента внизу']},
+  idea:'В панели нет иконок: четыре ячейки с подписями моноширинным шрифтом, в тех же рамках, что и на этикетке. Активная залита чёрным.',
+  pros:['Самый цельный: панель продолжает этикетку','Без иконок не надо гадать, что значит значок'],cons:['Подписи без иконок узнаются чуть медленнее']},
+ {s:'golos',t:'b',n:'Логистика',font:'JetBrains Mono',bar:'Толстые пиктограммы, активная на жёлтой плашке',
+  idea:'Иконки рисованные, толстые, с прямыми углами, похожие на складскую маркировку. Подписи мелким моноширинным капсом. Активный раздел выделен жёлтой плашкой, как маркером.',
+  pros:['Иконки в одном характере с этикеткой','Жёлтый маркер даёт один яркий акцент'],cons:['Жёлтый нужно поддержать ещё в паре мест, иначе он одинок']},
+ {s:'cond',t:'c',n:'Склад',font:'Roboto Condensed',bar:'Отрывной корешок со штрихкодами',
+  idea:'Панель — отрывная часть этикетки с перфорацией. Вместо иконок у каждого раздела маленький штрихкод и номер, у активного штрихкод «пропечатан». Подписи узким жирным шрифтом, как на складских стикерах.',
+  pros:['Панель-корешок продолжает идею этикетки','Подписи крупные и хорошо читаются'],cons:['Штрихкоды вместо иконок на любителя']},
+ {s:'pixel',t:'d',n:'Матричный',font:'Press Start 2P',bar:'Пиксельные иконки 12×12',
+  idea:'Иконки нарисованы по пикселям, как на старых матричных принтерах и ценниках, подписи пиксельным шрифтом. Активная подпись в чёрной плашке.',
+  pros:['Самый игровой и запоминающийся','Пиксельные иконки сразу узнаются как «фирменные»'],cons:['Мелкий пиксельный шрифт читается хуже','Есть риск выглядеть как ретро-игра']},
+ {s:'unb',t:'e',n:'Наклейка',font:'Unbounded',bar:'Плавающая панель-наклейка',
+  idea:'Панель — отдельная наклейка в толстой рамке, которая висит над контентом. У активного раздела видна подпись широким шрифтом Unbounded, у остальных только простые иконки.',
+  pros:['Самый современный вид, хорошо сочетается с iOS','Иконки простые и понятные'],cons:['Плавающая панель закрывает часть контента внизу']},
 ];
 
 let K=0,sheetId=null,resetTop=0;
@@ -277,9 +273,9 @@ function render(){
   document.getElementById('pills').innerHTML=V.map((v,i)=>`<button aria-pressed="${i===K}" onclick="K=${i};resetTop=1;sheetId=null;render()"><span class="n">${i+1}</span>${v.n}</button>`).join('');
   const v=V[K];
   document.getElementById('notes').innerHTML=`<div><h2>${K+1}. ${v.n}</h2></div>
-  <div class="spec"><div>Шрифт: <b>${v.font}</b></div><div>Нижняя панель: <b>${v.bar}</b></div></div><p>${v.idea}</p>
+  <div class="spec"><div>Шрифт панели: <b>${v.font}</b></div><div>Нижняя панель: <b>${v.bar}</b></div></div><p>${v.idea}</p>
   <div class="box"><div><h3>Плюсы</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
-  <p class="hint">Шрифты и панели можно смешивать: например, шрифт из «Логистики» и панель из «Чека». Все шрифты с полной поддержкой кириллицы.</p>`;
+  <p class="hint">Шрифт и иконки панели можно брать из разных вариантов. Все шрифты с полной поддержкой кириллицы.</p>`;
 }
 render();
 </script>
