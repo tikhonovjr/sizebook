@@ -85,23 +85,36 @@ button.cell:active,button.route:active{filter:invert(1)}
 .br{font:400 11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .note{background:var(--lab);border:2px dashed var(--line);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2);margin-top:12px}
 
-/* строки-этикетки (вишлист) */
+/* строки-этикетки (вишлист): одинаковая высота, фото квадратом, цена в своей колонке */
 .rows{display:grid;gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:12px}
-.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:2px;background:var(--ink);text-align:left;width:100%}
-.row>*{background:var(--lab)}
-.row .th{height:72px;display:grid;place-items:center;overflow:hidden}
-.row .th img{width:100%;height:100%;object-fit:contain}
-.row .th .ini{font-size:24px}
-.row .tx{padding:8px 10px;min-width:0;display:flex;flex-direction:column;justify-content:center}
-.row .tx b{font:800 14px/1.2 var(--disp);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.row .tx span{font:500 10px var(--mono);color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .rt{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:64px}
-.row .rt b{font:900 16px var(--disp);white-space:nowrap}
-.row .rt span{font:600 9px var(--mono);text-transform:uppercase;color:var(--ink2)}
-.row.got .tx b{text-decoration:line-through;color:var(--ink2)}
+.row{display:grid;grid-template-columns:84px minmax(0,1fr) 98px;gap:2px;background:var(--ink);text-align:left;width:100%;height:96px}
+.row>*{background:var(--lab);min-width:0}
+.th{display:grid;place-items:center;overflow:hidden;background:#fff!important}
+.th img{width:100%;height:100%;object-fit:contain;padding:6px;mix-blend-mode:multiply}
+.th .ini{font-size:26px}
+.row .tx{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.row .bd{font:700 9.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .tt{font:800 14px/1.2 var(--disp);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .mt{font:500 10px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .pr{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right}
+.row .pr b{font:900 15px/1.15 var(--disp);white-space:nowrap}
+.row .pr span{font:500 10px var(--mono);color:var(--ink3);white-space:nowrap;margin-top:2px}
+.row .pr .none{color:var(--ink3);font-weight:700}
+.row.got .tt{color:var(--ink2)}
+.row.got .pr b{font-size:10px;font-family:var(--mono);font-weight:700;letter-spacing:.06em}
 .pending{font:600 9px var(--mono);text-transform:uppercase;color:var(--ink2);animation:blink 1.2s infinite}
 @keyframes blink{50%{opacity:.35}}
-
+/* фото вещи */
+.pics{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:12px}
+.pic{background:#fff;position:relative;aspect-ratio:1;display:grid;place-items:center;overflow:hidden;text-align:center}
+.pic img{width:100%;height:100%;object-fit:contain}
+.pic.mine img{object-fit:cover}
+.pic .cap{position:absolute;left:0;top:0;background:var(--ink);color:#fff;padding:3px 6px;z-index:1}
+.pic .add{font:700 10px var(--mono);text-transform:uppercase;color:var(--ink2);display:grid;gap:6px;justify-items:center}
+.pic .add i{width:34px;height:34px;border:2px solid var(--ink);display:grid;place-items:center;font-style:normal;font:900 20px var(--disp);color:var(--ink)}
+.pic .chg{position:absolute;right:6px;bottom:6px;background:var(--lab);border:2px solid var(--ink);font:700 9px var(--mono);text-transform:uppercase;padding:3px 6px}
+.pic.busy::after{content:"ЗАГРУЖАЮ…";position:absolute;inset:0;display:grid;place-items:center;background:rgba(253,253,251,.85);font:700 10px var(--mono)}
+.orig{font:500 10px/1.5 var(--mono);color:var(--ink3);margin-top:6px}
 /* формы */
 .form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:14px}
 .form>*{background:var(--lab)}
@@ -236,6 +249,71 @@ function convert(c, v) {
   return [];
 }
 
+// ── Цены: валюта оригинала + рубли по курсу ЦБ ──
+let RATES = null;
+const CUR_RE = [[/byn|бел\.?\s?руб/i, 'BYN'], [/₽|руб|\brub\b|(?:^|\s|\d)р\.?(?=\s|$)/i, 'RUB'], [/us\$|\$|\busd\b/i, 'USD'], [/€|\beur\b|евро/i, 'EUR'], [/£|\bgbp\b/i, 'GBP'], [/₸|\bkzt\b|тенге|тг\.?$/i, 'KZT'], [/\bcny\b|юан|\brmb\b/i, 'CNY'], [/¥|\bjpy\b|иен/i, 'JPY'], [/₺|\btry\b|лир/i, 'TRY'], [/\baed\b|дирх/i, 'AED'], [/\bchf\b/i, 'CHF'], [/₩|\bkrw\b/i, 'KRW'], [/₴|\buah\b|грн/i, 'UAH'], [/\bamd\b|драм|֏/i, 'AMD'], [/\bgel\b|лари|₾/i, 'GEL']];
+const CUR_SYM = { RUB: ['', ' ₽'], USD: ['$', ''], EUR: ['€', ''], GBP: ['£', ''], JPY: ['¥', ''], CNY: ['', ' ¥'], KZT: ['', ' ₸'], TRY: ['', ' ₺'], BYN: ['', ' BYN'], UAH: ['', ' ₴'], KRW: ['₩', ''], AED: ['', ' AED'], CHF: ['', ' CHF'], AMD: ['', ' ֏'], GEL: ['', ' ₾'] };
+function parseAmount(t) {
+  const m = String(t).replace(/ | /g, ' ').match(/\d[\d\s.,']*/); if (!m) return NaN;
+  let x = m[0].replace(/[\s']/g, '').replace(/[.,]$/, '');
+  const lc = x.lastIndexOf(','), ld = x.lastIndexOf('.');
+  if (lc > -1 && ld > -1) { const dec = lc > ld ? ',' : '.'; x = x.split(dec === ',' ? '.' : ',').join('').replace(dec, '.'); }
+  else if (lc > -1 || ld > -1) { const sep = lc > -1 ? ',' : '.', parts = x.split(sep); x = (parts.length === 2 && parts[1].length !== 3) ? parts[0] + '.' + parts[1] : parts.join(''); }
+  return parseFloat(x);
+}
+function parsePrice(p, shop) {
+  if (!p) return null;
+  const n = parseAmount(p); if (!isFinite(n) || n <= 0) return null;
+  let cur = (CUR_RE.find(([re]) => re.test(p)) || [])[1];
+  if (!cur) cur = /\.(ru|su|рф)$/i.test(shop || '') || n >= 500 ? 'RUB' : null;
+  return cur ? { n, cur } : null;
+}
+const group = (n, dec) => { const [i, f] = n.toFixed(dec).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f ? ',' + f : ''); };
+function money(n, cur) { const [a, z] = CUR_SYM[cur] || ['', ' ' + cur]; const dec = cur === 'RUB' || cur === 'JPY' || cur === 'KRW' || cur === 'KZT' || cur === 'AMD' ? 0 : (Math.round(n) === n ? 0 : 2); return a + group(n, dec) + z; }
+function priceHtml(w) {
+  const p = parsePrice(w.price, w.shop);
+  if (!p) return w.price ? `<b>${esc(String(w.price).slice(0, 14))}</b>` : '<b class="none">—</b>';
+  let rub = '';
+  if (p.cur !== 'RUB' && RATES && RATES.rub[p.cur]) rub = `<span class="num">≈ ${money(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}</span>`;
+  return `<b class="num">${money(p.n, p.cur)}</b>${rub}`;
+}
+
+// ── Названия: бренд латиницей отдельно, остальное по-русски и коротко ──
+const BRANDS = ["Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
+const BRAND_RU = { 'найк': 'Nike', 'адидас': 'Adidas', 'пума': 'Puma', 'рибок': 'Reebok', 'нью баланс': 'New Balance', 'конверс': 'Converse', 'ванс': 'Vans', 'юникло': 'Uniqlo', 'зара': 'Zara', 'асикс': 'ASICS', 'саломон': 'Salomon', 'тимберленд': 'Timberland', 'левис': "Levi's", 'кархарт': 'Carhartt WIP', 'фила': 'Fila', 'лакост': 'Lacoste', 'коламбия': 'Columbia', 'норт фейс': 'The North Face', 'джордан': 'Jordan', 'стон айленд': 'Stone Island', 'гучи': 'Gucci', 'прада': 'Prada', 'баленсиага': 'Balenciaga' };
+const RU_TYPES = ['Кроссовки','Кеды','Ботинки','Сапоги','Туфли','Лоферы','Мокасины','Сандалии','Шлёпанцы','Шлепанцы','Слипоны','Угги','Худи','Толстовка','Свитшот','Футболка','Лонгслив','Рубашка','Поло','Свитер','Джемпер','Кардиган','Водолазка','Майка','Топ','Куртка','Пуховик','Пальто','Парка','Тренч','Бомбер','Ветровка','Плащ','Анорак','Жилет','Джинсы','Брюки','Чиносы','Шорты','Юбка','Платье','Джоггеры','Леггинсы','Кепка','Бейсболка','Шапка','Панама','Шляпа','Берет','Сумка','Рюкзак','Ремень','Носки','Шарф','Перчатки','Очки','Часы','Кольцо','Браслет','Комбинезон','Костюм','Пиджак','Блейзер'];
+const EN_TYPES = [[/\b(running\s+)?(sneakers?|trainers?|running shoes?)\b/i,'Кроссовки'],[/\b(high-?tops?|canvas shoes?)\b/i,'Кеды'],[/\bchelsea boots?\b/i,'Челси'],[/\bboots?\b/i,'Ботинки'],[/\bloafers?\b/i,'Лоферы'],[/\bsandals?\b/i,'Сандалии'],[/\bslides?\b/i,'Шлёпанцы'],[/\bhoodie\b/i,'Худи'],[/\bsweatshirt\b|\bcrewneck\b/i,'Свитшот'],[/\blong ?sleeve\b/i,'Лонгслив'],[/\bt-?shirt\b|\btee\b/i,'Футболка'],[/\bovershirt\b/i,'Рубашка'],[/\bpolo\b/i,'Поло'],[/\bshirt\b|\boxford\b/i,'Рубашка'],[/\bcardigan\b/i,'Кардиган'],[/\b(sweater|jumper|knit)\b/i,'Свитер'],[/\b(down jacket|puffer)\b/i,'Пуховик'],[/\bparka\b/i,'Парка'],[/\btrench\b/i,'Тренч'],[/\bbomber\b/i,'Бомбер'],[/\b(vest|gilet)\b/i,'Жилет'],[/\bjacket\b/i,'Куртка'],[/\bcoat\b/i,'Пальто'],[/\bjeans\b|\bdenim\b/i,'Джинсы'],[/\bjoggers?\b|\bsweatpants\b/i,'Джоггеры'],[/\bshorts\b/i,'Шорты'],[/\b(trousers|pants|chinos?)\b/i,'Брюки'],[/\bskirt\b/i,'Юбка'],[/\bdress\b/i,'Платье'],[/\bbeanie\b/i,'Шапка'],[/\b(cap|baseball cap)\b/i,'Кепка'],[/\bbucket hat\b/i,'Панама'],[/\bhat\b/i,'Шляпа'],[/\bbackpack\b/i,'Рюкзак'],[/\bbag\b|\btote\b/i,'Сумка'],[/\bbelt\b/i,'Ремень'],[/\bsocks?\b/i,'Носки'],[/\bscarf\b/i,'Шарф'],[/\bgloves?\b/i,'Перчатки'],[/\bblazer\b/i,'Пиджак'],[/\bshoes?\b|\bfootwear\b/i,'__shoes']];
+const SNEAKER_BRANDS = ['Nike','Jordan','Adidas','New Balance','ASICS','Puma','Reebok','Vans','Converse','Saucony','Hoka','On Running','Salomon','Mizuno','Brooks','Fila','Kappa','Yeezy'];
+const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const wordRe = x => new RegExp('(^|[^\\p{L}\\p{N}])' + reEsc(x) + '(?=$|[^\\p{L}\\p{N}])', 'iu');
+function normTitle(title, shop) {
+  let t = String(title || '').replace(/ /g, ' ').trim();
+  // хвосты магазинов и мусор
+  const B = '(?<![\\p{L}\\p{N}])', E = '(?![\\p{L}\\p{N}])';
+  t = t.split(/\s[|•]\s|\s[—–-]\s/)[0];
+  t = t.replace(new RegExp('\\s*[,]?\\s*' + B + '(купить|buy|заказать)' + E + '.*$', 'iu'), '').replace(/\s*(в|на)\s+(интернет[- ]магазине|официальном сайте|lamoda|ozon|wildberries).*$/iu, '');
+  t = t.replace(new RegExp(',?\\s*' + B + '(арт(икул)?|sku|art)\\.?\\s*[:№#]?\\s*[\\w-]+', 'giu'), '');
+  t = t.replace(new RegExp(B + '(?=[A-Z0-9-]*\\d)(?=[A-Z0-9-]*[A-Z])[A-Z0-9-]{6,}' + E, 'gu'), '').replace(new RegExp(B + '\\d{5,}' + E, 'gu'), '');
+  t = t.replace(/\((?=[^)]*\d)[^)]*\)/g, '').replace(new RegExp(',?\\s*' + B + '(цвет|color|colour|размер|size)' + E + '\\s*:?.*$', 'iu'), '');
+  t = t.replace(new RegExp(B + "(мужск\\p{L}*|женск\\p{L}*|детск\\p{L}*|унисекс|unisex|men'?s|women'?s|mens|womens|for (men|women))" + E, 'giu'), '');
+  // бренд
+  let brand = BRANDS.find(b => wordRe(b).test(t)) || null;
+  if (!brand) { const k = Object.keys(BRAND_RU).find(r => wordRe(r).test(t)); if (k) { brand = BRAND_RU[k]; t = t.replace(wordRe(k), '$1'); } }
+  if (!brand && shop) { const base = shop.replace(/^(www|m|shop|store)\./, '').split('.')[0].toLowerCase(); brand = BRANDS.find(b => b.toLowerCase().replace(/[^a-z0-9]/g, '') === base) || null; }
+  if (brand) { t = t.replace(wordRe(brand), '$1'); if (brand === 'Carhartt WIP') t = t.replace(wordRe('Carhartt'), '$1'); }
+  // тип вещи по-русски
+  let type = RU_TYPES.find(x => wordRe(x).test(t)) || null;
+  if (type) t = t.replace(wordRe(type), '$1');
+  const e = EN_TYPES.find(([re]) => re.test(t));
+  if (e) { if (!type) type = e[1] === '__shoes' ? (SNEAKER_BRANDS.includes(brand) ? 'Кроссовки' : 'Обувь') : e[1]; t = t.replace(e[0], ' '); }
+  t = t.replace(/\s{2,}/g, ' ').replace(/^[\s,.;:–—\-/"«»']+|[\s,.;:–—\-/"«»']+$/g, '');
+  let name = [type, t].filter(Boolean).join(' ').trim();
+  if (!name) name = String(title || '').trim();
+  name = name.charAt(0).toUpperCase() + name.slice(1);
+  return { brand, name, type };
+}
+const isTg = u => /^https?:\/\/(t\.me|telegram\.me)\//i.test(u || '');
+
 // ── Картинки ──
 function img(src, alt) {
   if (!src) return `<span class="ini">${esc((alt || '?')[0])}</span>`;
@@ -245,7 +323,7 @@ function imgFail(el) {
   if (!el.dataset.p && /^https?:/.test(el.getAttribute('src'))) { el.dataset.p = 1; el.src = API + '/img?u=' + encodeURIComponent(el.getAttribute('src')); return; }
   const s = document.createElement('span'); s.className = 'ini'; s.textContent = el.dataset.alt || '?'; el.replaceWith(s);
 }
-const tile = i => `<div class="ph2">${img(i.image, i.brand || i.name)}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
+const tile = i => `<div class="ph2">${img(i.image || i.my_photo, i.brand || i.name)}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
 const itemsOf = c => ITEMS.filter(i => c.zones.includes(i.zone));
 
 // ── Ссылка и QR ──
@@ -311,33 +389,69 @@ async function saveSize(e, id) {
 }
 
 // ── Вещь: просмотр, добавление, правка ──
+const picBox = (src, label, mine, onclick) => `<div class="pic ${mine ? 'mine' : ''}"><span class="cap">${label}</span>${src ? `${img(src, label)}<button class="chg" onclick="${onclick}">Заменить</button>` : `<button class="add" onclick="${onclick}"><i>+</i>Добавить фото</button>`}</div>`;
 function openItem(id) {
   const i = ITEMS.find(x => x.id === id); if (!i) return;
   const c = catOfZone(i.zone);
+  const w = i.wishlist_id ? WISH.find(x => x.id === i.wishlist_id) : null;
+  const link = i.url || (w && w.url);
   openSheet(i.name, `
-    <div class="sub">${esc([c && c.full, i.brand, i.shop].filter(Boolean).join(' · '))}</div>
-    ${i.image ? `<div class="ph2" style="height:260px;margin-top:12px">${img(i.image, i.name)}</div>` : ''}
+    <div class="sub">${esc([i.brand, c && c.full].filter(Boolean).join(' · '))}</div>
+    <div class="pics" id="itPics">
+      ${picBox(i.image, 'Вещь', false, `itemPhoto(${i.id},'image',this)`)}
+      ${picBox(i.my_photo, 'Я в ней', true, `itemPhoto(${i.id},'my_photo',this)`)}
+    </div>
     <div class="label" style="margin-top:12px">
       <div class="cell"><span class="cap">Размер</span><b class="num ${i.size ? '' : 'empty'}">${esc(i.size || '—')}</b></div>
       <div class="cell span2"><span class="cap">Посадка</span><b style="font-size:18px">${esc(fitName(i.fit) || '—')}</b></div>
+      ${i.shop ? `<div class="z1 span3">МАГАЗИН: ${esc(i.shop)}</div>` : ''}
       ${i.note ? `<div class="z1 span3">ЗАМЕТКА:<br>${esc(i.note)}</div>` : ''}
     </div>
     <div class="acts">
-      ${i.url ? `<a class="btn ghost" href="${esc(i.url)}" target="_blank" rel="noopener">Открыть в магазине</a>` : ''}
+      ${link ? `<a class="btn ghost" href="${esc(link)}" target="_blank" rel="noopener">${isTg(link) ? 'Пост в Telegram' : 'Открыть в магазине'}</a>` : ''}
       <button class="btn" onclick="openItemForm(${i.id})">Изменить</button>
     </div>
-    <div class="acts"><button class="btn ghost" id="delBtn" onclick="confirmDel(this,()=>delItem(${i.id}))">Удалить вещь</button></div>`);
+    <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delItem(${i.id}))">Удалить вещь</button></div>`);
+}
+async function itemPhoto(id, field, el) {
+  const box = el.closest('.pic');
+  const url = await choosePhoto(box); if (!url) return;
+  try { const saved = await api('/items/' + id, { method: 'PATCH', body: { [field]: url } }); ITEMS = ITEMS.map(x => x.id === id ? saved : x); renderAll(); openItem(id); toast('Фото сохранено'); }
+  catch (e) { if (e.message !== 'auth') toast('Не сохранилось. Попробуй ещё раз'); }
+}
+// Выбор фото: камера или галерея, сжатие до 1600 px, загрузка на сервер
+function pickFile() { return new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files && i.files[0] || null); i.click(); }); }
+async function shrink(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const im = await new Promise((ok, no) => { const x = new Image(); x.onload = () => ok(x); x.onerror = no; x.src = src; });
+    const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+    const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth * k); cv.height = Math.round(im.naturalHeight * k);
+    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    return await new Promise(ok => cv.toBlob(ok, 'image/jpeg', .85));
+  } finally { URL.revokeObjectURL(src); }
+}
+async function choosePhoto(box) {
+  const f = await pickFile(); if (!f) return null;
+  if (box) box.classList.add('busy');
+  try {
+    const blob = await shrink(f);
+    const r = await fetch(API + '/photos', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'Authorization': 'Bearer ' + token }, body: blob });
+    if (!r.ok) throw new Error();
+    return (await r.json()).url;
+  } catch (_) { toast('Фото не загрузилось. Попробуй другое'); return null; }
+  finally { if (box) box.classList.remove('busy'); }
 }
 let F = null; // состояние формы вещи
 function openItemForm(id = null, zone = null) {
   const i = id ? ITEMS.find(x => x.id === id) : null;
-  F = { id, zone: i ? i.zone : (zone || 'tops'), fit: i ? i.fit : null, image: i ? i.image : null, shop: i ? i.shop : null };
+  F = { id, zone: i ? i.zone : (zone || 'tops'), fit: i ? i.fit : null, image: i ? i.image : null, my_photo: i ? i.my_photo : null, shop: i ? i.shop : null };
   openSheet(i ? 'Изменить вещь' : 'Новая вещь', `
     ${i ? '' : `<form class="form" style="grid-template-columns:1fr auto" onsubmit="event.preventDefault();parseItem()">
       <label class="fld small"><span class="cap">Ссылка на вещь (необязательно)</span><input id="fUrl" inputmode="url" placeholder="https://…" autocomplete="off"></label>
       <button class="btn" type="submit">Найти</button></form>
     <div class="msg" id="fParse">Вставь ссылку, и название с фото заполнятся сами</div>`}
-    <div id="fImg">${F.image ? `<div class="ph2" style="height:180px;margin-top:10px">${img(F.image, '')}</div>` : ''}</div>
+    <div id="fImg">${formPics()}</div>
     <div class="cap" style="margin-top:14px">Категория</div>
     <div class="zchips" id="fZones">${ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="F.zone='${z[0]}';markPressed('fZones',this)">${z[1]}</button>`).join('')}</div>
     <div class="form">
@@ -351,6 +465,8 @@ function openItemForm(id = null, zone = null) {
     <div class="msg" id="fMsg"></div>
     <button class="btn wide" style="margin-top:6px" onclick="saveItem()">${i ? 'Сохранить' : 'Добавить в гардероб'}</button>`);
 }
+const formPics = () => `<div class="pics">${picBox(F.image, 'Вещь', false, `formPhoto('image',this)`)}${picBox(F.my_photo, 'Я в ней', true, `formPhoto('my_photo',this)`)}</div>`;
+async function formPhoto(field, el) { const url = await choosePhoto(el.closest('.pic')); if (url) { F[field] = url; $('fImg').innerHTML = formPics(); } }
 function markPressed(group, btn, on = true) { $(group).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === btn && !!on ? 'true' : 'false')); }
 async function parseItem() {
   const url = $('fUrl').value.trim(); if (!/^https?:\/\//.test(url)) { $('fParse').textContent = 'Нужна ссылка, начинающаяся с http'; return; }
@@ -358,7 +474,7 @@ async function parseItem() {
   try {
     const m = await api('/parse', { method: 'POST', body: { url } });
     if (m.title && !$('fName').value) $('fName').value = m.title;
-    if (m.image) { F.image = m.image; $('fImg').innerHTML = `<div class="ph2" style="height:180px;margin-top:10px">${img(m.image, m.title)}</div>`; }
+    if (m.image) { F.image = m.image; $('fImg').innerHTML = formPics(); }
     try { F.shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
     F.url = url;
     if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) { F.zone = g.zone; markPressed('fZones', $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } } catch (_) {} }
@@ -368,7 +484,8 @@ async function parseItem() {
 async function saveItem() {
   const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, note: $('fNote').value.trim() };
   if (!body.name) { $('fMsg').textContent = 'Напиши название вещи'; $('fMsg').className = 'msg err'; return; }
-  if (!F.id) { body.image = F.image || null; body.url = F.url || null; body.shop = F.shop || null; body.source = F.url ? 'link' : 'manual'; }
+  body.image = F.image || null; body.my_photo = F.my_photo || null;
+  if (!F.id) { body.url = F.url || null; body.shop = F.shop || null; body.source = F.url ? 'link' : 'manual'; }
   try {
     const saved = await api(F.id ? '/items/' + F.id : '/items', { method: F.id ? 'PATCH' : 'POST', body });
     if (F.id) ITEMS = ITEMS.map(x => x.id === F.id ? saved : x); else ITEMS.push(saved);
@@ -386,39 +503,85 @@ function confirmDel(btn, fn) {
 }
 
 // ══════════ ВИШЛИСТ ══════════
+function wishRow(w) {
+  const n = normTitle(w.title, w.shop), it = w.received_at && ITEMS.find(x => x.wishlist_id === w.id);
+  const meta = [w.shop && !isTg(w.url) ? w.shop.replace(/^www\./, '') : (isTg(w.url) ? 'Telegram' : ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
+  return `<button class="row ${w.received_at ? 'got' : ''}" onclick="${w.received_at ? `openGot(${w.id})` : `openWish(${w.id})`}">
+    <div class="th">${img((it && (it.image || it.my_photo)) || w.image, n.brand || n.name)}</div>
+    <div class="tx">${n.brand ? `<span class="bd">${esc(n.brand)}</span>` : ''}<span class="tt">${esc(n.name)}</span><span class="mt">${w.parse_status === 'pending' ? '<em class="pending">ищу данные…</em>' : esc(meta)}</span></div>
+    <div class="pr">${w.received_at ? `<b>${it ? 'В ГАРДЕРОБЕ →' : 'ПОЛУЧЕНО'}</b>` : priceHtml(w)}</div></button>`;
+}
 function renderWishlist() {
   const want = WISH.filter(w => !w.received_at), got = WISH.filter(w => w.received_at);
-  const row = w => `<button class="row ${w.received_at ? 'got' : ''}" onclick="openWish(${w.id})">
-      <div class="th">${img(w.image, w.title || w.shop)}</div>
-      <div class="tx"><b>${esc(w.title)}</b><span>${esc(w.shop || '')}${w.parse_status === 'pending' ? ' · <em class="pending">ищу данные…</em>' : ''}</span></div>
-      <div class="rt">${w.price ? `<b class="num">${esc(w.price)}</b>` : ''}${w.size ? `<span class="num">РАЗМ. ${esc(w.size)}</span>` : ''}</div></button>`;
+  const sumRub = want.reduce((a, w) => { const p = parsePrice(w.price, w.shop); const r = p && (p.cur === 'RUB' ? 1 : RATES && RATES.rub[p.cur]); return a + (r ? p.n * r : 0); }, 0);
   $('v-wishlist').innerHTML = `
   <div class="top">
     <div class="lt"><h1>Вишлист</h1><button class="tbtn dark" onclick="openWishForm()">+ По ссылке</button></div>
     <div class="label">
       <div class="cell"><span class="cap">Хочу</span><b class="num">${want.length}</b></div>
+      <div class="cell span2"><span class="cap">На сумму, по курсу ЦБ</span><b class="num" style="font-size:22px">${sumRub ? '≈ ' + money(Math.round(sumRub / 100) * 100, 'RUB') : '—'}</b></div>
       <div class="cell"><span class="cap">Получено</span><b class="num">${got.length}</b></div>
-      <button class="cell" onclick="go('friends')"><span class="cap">Друзья видят</span><b style="font-size:16px">${SHARE && SHARE.sections && SHARE.sections.wishlist ? 'ДА →' : 'НЕТ →'}</b></button>
+      <button class="cell span2" onclick="go('friends')"><span class="cap">Друзья видят вишлист</span><b style="font-size:18px">${SHARE && SHARE.sections && SHARE.sections.wishlist !== false ? 'ДА →' : 'НЕТ →'}</b></button>
     </div>
   </div>
   <div class="body">
-    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(row).join('')}</div>` :
+    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(wishRow).join('')}</div>` :
       `<div class="note" style="margin-top:20px">Вишлист пуст. Нажми «+ По ссылке» и вставь ссылку на товар: название, цена и фото подтянутся сами. Ещё можно пересылать товары Telegram-боту.</div>`}
-    ${got.length ? `<div class="sec"><h2>Получено</h2></div><div class="rows">${got.map(row).join('')}</div>` : ''}
+    ${got.length ? `<div class="sec"><h2>Получено</h2></div><div class="rows">${got.map(wishRow).join('')}</div>` : ''}
   </div>`;
 }
 function openWish(id) {
   const w = WISH.find(x => x.id === id); if (!w) return;
-  openSheet(w.title, `
-    <div class="sub">${esc([w.shop, w.price].filter(Boolean).join(' · '))}</div>
-    ${w.image ? `<div class="ph2" style="height:260px;margin-top:12px">${img(w.image, w.title)}</div>` : ''}
+  const n = normTitle(w.title, w.shop), p = parsePrice(w.price, w.shop);
+  const rub = p && p.cur !== 'RUB' && RATES && RATES.rub[p.cur] ? ` · ≈ ${money(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}` : '';
+  openSheet(n.name, `
+    <div class="sub">${esc([n.brand, isTg(w.url) ? 'пост в Telegram' : w.shop].filter(Boolean).join(' · '))}</div>
+    ${w.image ? `<div class="pics" style="grid-template-columns:1fr"><div class="pic" style="aspect-ratio:4/3">${img(w.image, n.name)}</div></div>` : ''}
     <div class="label" style="margin-top:12px">
+      <div class="cell span2"><span class="cap">Цена</span><b class="num" style="font-size:22px">${p ? money(p.n, p.cur) : esc(w.price || '—')}</b>${rub ? `<span class="cap" style="color:var(--ink3)">${rub.slice(3)} по курсу ЦБ</span>` : ''}</div>
       <div class="cell"><span class="cap">Размер</span><b class="num ${w.size ? '' : 'empty'}">${esc(w.size || '—')}</b></div>
-      <div class="cell span2"><span class="cap">Статус</span><b style="font-size:18px">${w.received_at ? 'ПОЛУЧЕНО' : 'ХОЧУ'}</b></div>
     </div>
-    <div class="acts">${w.url ? `<a class="btn ghost" href="${esc(w.url)}" target="_blank" rel="noopener">Открыть в магазине</a>` : ''}
-      ${w.received_at ? `<button class="btn ghost" onclick="setGot(${w.id},false)">Вернуть в «Хочу»</button>` : `<button class="btn" onclick="toWardrobe(${w.id})">Получил → в гардероб</button>`}</div>
+    ${w.title && w.title !== n.name ? `<div class="orig">Как в магазине: ${esc(w.title)}</div>` : ''}
+    <div class="acts">${w.url ? `<a class="btn ghost" href="${esc(w.url)}" target="_blank" rel="noopener">${isTg(w.url) ? 'Открыть пост в Telegram' : 'Открыть в магазине'}</a>` : ''}</div>
+    <div class="acts"><button class="btn" onclick="openGotForm(${w.id})">Получил — в гардероб</button></div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delWish(${w.id}))">Удалить из вишлиста</button></div>`);
+}
+// Полученная вещь: ведёт в гардероб на её профиль; если вещи ещё нет — предлагает оформить
+function openGot(id) {
+  const it = ITEMS.find(x => x.wishlist_id === id);
+  if (it) { go('wardrobe'); openItem(it.id); } else openGotForm(id);
+}
+async function openGotForm(id) {
+  const w = WISH.find(x => x.id === id); if (!w) return;
+  const n = normTitle(w.title, w.shop);
+  F = { wid: id, zone: 'tops', fit: null, image: w.image || null, my_photo: null };
+  try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: w.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) F.zone = g.zone; } catch (_) {}
+  openSheet('Получил вещь', `
+    <div class="sub">Отметь размер и посадку, и вещь появится в гардеробе</div>
+    <div id="fImg">${formPics()}</div>
+    <div class="cap" style="margin-top:14px">Категория</div>
+    <div class="zchips" id="fZones">${ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="F.zone='${z[0]}';markPressed('fZones',this)">${z[1]}</button>`).join('')}</div>
+    <div class="form">
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Название</span><input id="fName" value="${esc(n.name)}"></label>
+      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(n.brand || '')}" placeholder="Nike"></label>
+      <label class="fld"><span class="cap">Какой размер взял</span><input id="fSize" value="${esc(w.size || '')}" placeholder="M"></label>
+    </div>
+    <div class="cap" style="margin-top:14px">Как сидит</div>
+    <div class="seg" id="fFit" style="border:2px solid var(--ink);margin-top:6px">${FITS.map(f => `<button type="button" aria-pressed="false" onclick="F.fit=F.fit==='${f[0]}'?null:'${f[0]}';markPressed('fFit',this,F.fit)">${f[1]}</button>`).join('')}</div>
+    <div class="msg" id="fMsg">Посадка поможет друзьям не ошибиться с размером этого бренда</div>
+    <button class="btn wide" style="margin-top:6px" onclick="saveGot()">Добавить в гардероб</button>`);
+}
+async function saveGot() {
+  const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, image: F.image, my_photo: F.my_photo };
+  if (!body.size) { $('fMsg').textContent = 'Укажи, какой размер взял'; $('fMsg').className = 'msg err'; $('fSize').focus(); return; }
+  try {
+    const r = await api('/wishlist/' + F.wid + '/to-items', { method: 'POST', body });
+    let item = r.item;
+    if (r.existed) item = await api('/items/' + item.id, { method: 'PATCH', body });
+    ITEMS = ITEMS.filter(x => x.id !== item.id).concat(item);
+    WISH = WISH.map(w => w.id === F.wid ? { ...w, received_at: w.received_at || new Date().toISOString() } : w);
+    renderAll(); go('wardrobe'); openItem(item.id); toast('Вещь в гардеробе');
+  } catch (e) { if (e.message !== 'auth') { $('fMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('fMsg').className = 'msg err'; } }
 }
 function openWishForm() {
   F = { image: null };
@@ -444,7 +607,7 @@ async function parseWish() {
     const m = await api('/parse', { method: 'POST', body: { url } });
     if (m.title && !$('wTitle').value) $('wTitle').value = m.title;
     if (m.price && !$('wPrice').value) $('wPrice').value = m.price;
-    if (m.image) { F.image = m.image; $('wImg').innerHTML = `<div class="ph2" style="height:180px;margin-top:10px">${img(m.image, m.title)}</div>`; }
+    if (m.image) { F.image = m.image; $('wImg').innerHTML = `<div class="pics" style="grid-template-columns:1fr"><div class="pic" style="aspect-ratio:4/3">${img(m.image, m.title)}</div></div>`; }
     $('wParse').className = 'msg'; $('wParse').textContent = m.title ? 'Нашёл. Укажи нужный размер' : 'Не всё подтянулось. Можно сохранить, данные дополнятся позже';
   } catch (_) { $('wParse').className = 'msg'; $('wParse').textContent = 'Магазин не ответил. Сохрани, данные дополнятся позже'; }
 }
@@ -456,18 +619,6 @@ async function saveWish() {
     const w = await api('/wishlist', { method: 'POST', body: { title: t || shop || 'Без названия', shop, url, price: $('wPrice').value.trim(), size: $('wSize').value.trim(), image: F.image, autotitle: !t } });
     WISH.unshift(w); renderAll(); closeSheet(); toast('Добавлено в вишлист'); pollWish();
   } catch (e) { if (e.message !== 'auth') { $('wMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('wMsg').className = 'msg err'; } }
-}
-async function setGot(id, on) {
-  try { const r = await api('/wishlist/' + id, { method: 'PATCH', body: { received: on } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: r.received_at } : w); renderAll(); openWish(id); }
-  catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
-}
-async function toWardrobe(id) {
-  try {
-    const r = await api('/wishlist/' + id + '/to-items', { method: 'POST', body: {} });
-    WISH = WISH.map(w => w.id === id ? { ...w, received_at: w.received_at || new Date().toISOString() } : w);
-    if (r && r.item && !ITEMS.some(x => x.id === r.item.id)) ITEMS.push(r.item);
-    renderAll(); toast(r && r.existed ? 'Вещь уже в гардеробе' : 'Перенесено в гардероб'); if (r && r.item) openItemForm(r.item.id);
-  } catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
 }
 async function delWish(id) {
   try { await api('/wishlist/' + id, { method: 'DELETE' }); WISH = WISH.filter(w => w.id !== id); renderAll(); closeSheet(); toast('Удалено'); }
@@ -629,6 +780,7 @@ async function load() {
     const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => []), api('/wishlist').catch(() => []), api('/share').catch(() => null)]);
     SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
     renderAll(); pollWish();
+    fetch(API + '/rates').then(r => r.ok ? r.json() : null).then(r => { if (r) { RATES = r; renderWishlist(); } }).catch(() => {});
     api('/me/telegram').then(t => { TG = t; renderProfile(); }).catch(() => { TG = { enabled: false }; renderProfile(); });
   } catch (e) { if (e.message !== 'auth') showLogin('Не удалось загрузить данные. Проверь интернет и обнови страницу.'); }
 }
