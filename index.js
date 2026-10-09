@@ -2338,6 +2338,8 @@ app.get('/healthlog', (req, res) => {
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
 app.get('/proto', (req, res) => res.sendFile(__dirname + '/sizebook-proto.html'));
+// Экспериментальный вид «паспорт-термоэтикетка»; основное приложение остаётся на «/»
+app.get('/passport', (req, res) => res.sendFile(__dirname + '/passport.html'));
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
 app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
 

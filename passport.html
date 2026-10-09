@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#a9aeb6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>SizeBook · Гардероб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Паспорт-термоэтикетка (вариант «Чек»). Экспериментальная страница, основная — «/» */
+:root{
+  --ink:#0d0d0d; --ink2:#5f6166; --lab:#fdfdfb; --bg:#e7e8ea;
+  --disp:"Archivo",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;background:var(--bg);padding-bottom:calc(84px + var(--safe-b))}
+.num{font-variant-numeric:tabular-nums}
+
+.top{padding:calc(18px + var(--safe-t)) 16px 26px;background:
+  radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
+  radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
+  linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:0 2px 16px;gap:12px}
+.lt h1{margin:0;font:900 30px var(--disp);text-transform:uppercase;letter-spacing:-.02em}
+.lt a{font:700 11px var(--mono);text-transform:uppercase;color:var(--ink);background:var(--lab);padding:6px 10px;border:2px solid var(--ink);text-decoration:none;white-space:nowrap}
+
+.label{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.2),0 16px 28px -14px rgba(0,0,0,.45)}
+.label>*{background:var(--lab)}
+.z1{grid-column:span 2;padding:9px 12px;font:500 10px/1.5 var(--mono);min-width:0}
+.z1 b{display:block;font:900 21px/1.05 var(--disp);text-transform:uppercase;margin:3px 0 2px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.route{background:var(--ink)!important;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:9px 12px;font:900 42px/1 var(--disp);text-align:left}
+.route small{font:500 10px var(--mono);letter-spacing:.1em;margin-bottom:4px;opacity:.85}
+.cell{padding:8px 12px;text-align:left;min-height:60px}
+.cell span{display:block;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.cell b{font:900 26px/1.1 var(--disp);letter-spacing:-.02em;overflow-wrap:anywhere}
+.cell b.empty{color:#b0b2b6}
+.cell:active,.route:active{filter:invert(1)}
+.qrbox{padding:12px;display:grid;place-items:center}
+.qrbox svg,.qrbox img{width:100%;height:auto;display:block}
+.qrbox .ph{width:100%;aspect-ratio:1;border:2px dashed #c4c6ca;display:grid;place-items:center;font:600 9px var(--mono);color:var(--ink2);text-align:center;padding:4px}
+.gift{grid-column:span 2;padding:10px 12px;font:500 10px/1.5 var(--mono);display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.gift b{display:block;font:900 15px var(--disp);text-transform:uppercase;margin-bottom:2px}
+.gift button{margin-top:8px;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:7px 10px}
+
+.shelves{padding:0 16px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px}
+.sec h2{margin:0;font:900 22px var(--disp);text-transform:uppercase}
+.sec a{font:700 12px var(--mono);text-transform:uppercase;color:var(--ink);text-decoration:none}
+.shelf{margin-top:16px}
+.shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
+.shead b{font:900 15px var(--disp);text-transform:uppercase}
+.shead .sz{font:600 11px var(--mono);border:2px solid var(--ink);padding:0 5px}
+.shead .cnt{margin-left:auto;font:500 11px var(--mono);color:var(--ink2)}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none;gap:10px;margin:0 -16px;padding:0 16px}
+.strip::-webkit-scrollbar{display:none}
+.it{flex:none;width:118px;text-align:left}
+.ph2{height:132px;background:var(--lab);display:grid;place-items:center;position:relative;overflow:hidden}
+.ph2 img{width:100%;height:100%;object-fit:contain}
+.ph2 .ini{font:900 34px var(--disp);color:#d4d5d8;text-transform:uppercase}
+.ph2 .tg{position:absolute;right:6px;top:6px;background:#fff;border:2px solid var(--ink);font:800 12px var(--mono);padding:1px 6px}
+.it .nm{font:700 13px var(--disp);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .br{font:400 11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty-items{background:var(--lab);border:2px dashed #c4c6ca;padding:18px;font:500 12px/1.5 var(--mono);color:var(--ink2);margin-top:12px}
+.empty-items a{color:var(--ink);font-weight:700}
+
+.tb{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;z-index:5;background:var(--lab);border-top:2px solid var(--ink);padding-bottom:var(--safe-b);display:grid;grid-template-columns:repeat(4,1fr)}
+.tb a{display:block;text-align:center;padding:17px 0 15px;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);text-decoration:none;border-right:2px solid var(--ink)}
+.tb a:last-child{border-right:0}
+.tb a.on{background:var(--ink);color:#fff}
+
+.dim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:50%;bottom:0;width:100%;max-width:480px;max-height:86vh;transform:translate(-50%,102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;background:var(--bg);border-top:3px solid var(--ink)}
+.sheet.on{transform:translate(-50%,0)}
+.sheet .in{overflow-y:auto;padding:4px 16px calc(24px + var(--safe-b))}
+.grab{width:38px;height:5px;margin:8px auto 6px;flex:none;background:var(--ink);opacity:.3}
+.sheet h3{margin:4px 0 2px;font:900 24px var(--disp);text-transform:uppercase}
+.sheet .sub{font:500 11px var(--mono);color:var(--ink2)}
+.edit{display:grid;grid-template-columns:1fr auto;gap:0;margin-top:14px;border:2px solid var(--ink);background:var(--lab)}
+.edit label{grid-column:1/-1;font:600 9px var(--mono);text-transform:uppercase;padding:7px 10px 0}
+.edit input{border:0;background:none;font:900 28px var(--disp);padding:2px 10px 8px;min-width:0;color:var(--ink);outline:none}
+.edit button{background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:0 14px}
+.saved{font:500 11px var(--mono);color:var(--ink2);margin-top:6px;min-height:16px}
+.sysrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sysrow span{background:var(--lab);border:2px solid var(--ink);padding:6px 10px;font:900 18px var(--disp)}
+.sysrow span i{font:600 10px var(--mono);font-style:normal;margin-right:6px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid .ph2{height:auto;aspect-ratio:1}
+.sgrid .nm{font:700 13px var(--disp);margin-top:6px}
+.sgrid .br{font:400 11px var(--mono);color:var(--ink2)}
+.toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+.login{padding:40px 20px;font:500 13px/1.6 var(--mono)}
+.login a{display:inline-block;margin-top:12px;background:var(--ink);color:#fff;padding:10px 14px;text-decoration:none;font-weight:700;text-transform:uppercase}
+@media (prefers-reduced-motion:reduce){.sheet,.dim,.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="top"><div class="lt"><h1>Гардероб</h1></div><div class="label" style="height:300px"></div></div></div>
+<nav class="tb" aria-label="Разделы">
+  <a href="/passport" class="on">Гардероб</a>
+  <a href="/" data-page="wishlist">Вишлист</a>
+  <a href="/" data-page="share">Друзья</a>
+  <a href="/" data-page="profile">Профиль</a>
+</nav>
+<div class="dim" id="dim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Категория"><div class="grab"></div><div class="in" id="sheetBody"></div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const API = location.origin;
+const token = (() => { try { return localStorage.getItem('sb_token'); } catch (_) { return null; } })();
+const user = (() => { try { return JSON.parse(localStorage.getItem('sb_user') || 'null'); } catch (_) { return null; } })();
+const H = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ссылки нижней панели открывают старое приложение на нужном разделе
+document.querySelectorAll('.tb a[data-page]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem('sb_page', a.dataset.page); } catch (_) {} }));
+
+// Категории паспорта: ключи размеров из старого приложения и зоны вещей
+const CATS = [
+  { id: 'tops',    title: 'Верх',    full: 'Футболки и рубашки', keys: ['daily_top'],               zones: ['tops', 'formal_shirt'], kind: 'letter' },
+  { id: 'bottoms', title: 'Низ',     full: 'Джинсы и брюки',     keys: ['daily_bottom'],            zones: ['bottoms', 'formal_pants'], kind: 'letter' },
+  { id: 'outer',   title: 'Верхняя', full: 'Верхняя одежда',     keys: ['outer', 'outer_jacket'],   zones: ['outer', 'formal_jacket'], kind: 'letter' },
+  { id: 'shoes',   title: 'Обувь',   full: 'Обувь',              keys: ['shoes_eu', 'shoes_sneaker'], zones: ['shoes'], kind: 'shoe' },
+  { id: 'hats',    title: 'Шапка',   full: 'Головные уборы',     keys: ['hat', 'hat_cap'],          zones: ['hats'], kind: 'hat' },
+  { id: 'ring',    title: 'Кольцо',  full: 'Кольцо и аксессуары', keys: ['ring_mm'],                zones: ['acc'], kind: 'ring' },
+];
+let SIZES = {}, ITEMS = [], SHARE = null;
+const val = c => { for (const k of c.keys) if (SIZES[k] !== undefined && String(SIZES[k]).trim() !== '') return String(SIZES[k]).trim(); return ''; };
+const female = () => SIZES.profile_gender === 'female';
+
+// ── Конвертация (примерная, по стандартным таблицам) ──
+const SHOE_M = [[38.5,6,5.5,24],[39,6.5,6,24.5],[40,7,6,25],[40.5,7.5,6.5,25.5],[41,8,7,26],[42,8.5,7.5,26.5],[42.5,9,8,27],[43,9.5,8.5,27.5],[44,10,9,28],[44.5,10.5,9.5,28.5],[45,11,10,29],[45.5,11.5,10.5,29.5],[46,12,11,30],[47,12.5,11.5,30.5],[47.5,13,12,31]];
+const SHOE_F = [[35.5,5,2.5,22],[36,5.5,3,22.5],[36.5,6,3.5,23],[37.5,6.5,4,23.5],[38,7,4.5,24],[38.5,7.5,5,24.5],[39,8,5.5,25],[40,8.5,6,25.5],[40.5,9,6.5,26],[41,9.5,7,26.5],[42,10,7.5,27]];
+const LET_M = { XS: 44, S: 46, M: 48, L: 50, XL: 52, XXL: 54, '3XL': 56 };
+const LET_F = { XS: 42, S: 44, M: 46, L: 48, XL: 50, XXL: 52, '3XL': 54 };
+const fmt = n => String(n).replace('.', ',');
+function convert(c, v) {
+  if (!v) return [];
+  const n = parseFloat(v.replace(',', '.'));
+  if (c.kind === 'shoe' && !isNaN(n)) {
+    const t = female() ? SHOE_F : SHOE_M;
+    const row = t.reduce((a, r) => Math.abs(r[0] - n) < Math.abs(a[0] - n) ? r : a, t[0]);
+    if (Math.abs(row[0] - n) > 1) return [];
+    return [['EU', fmt(v)], ['US', fmt(row[1])], ['UK', fmt(row[2])], ['СМ', fmt(row[3])]];
+  }
+  if (c.kind === 'letter') {
+    const L = female() ? LET_F : LET_M, up = v.toUpperCase().replace(/\s/g, '');
+    if (L[up]) return [['INT', up], ['RU', String(L[up])]];
+    const hit = Object.entries(L).find(([, r]) => r === n);
+    if (hit) return [['RU', String(n)], ['INT', hit[0]]];
+    return [];
+  }
+  if (c.kind === 'ring' && !isNaN(n) && n > 13 && n < 25) {
+    const us = Math.round((n - 11.63) / 0.8128 * 4) / 4;
+    return [['ММ', fmt(n)], ['RU', fmt(n)], ['US', fmt(us)]];
+  }
+  if (c.kind === 'hat' && !isNaN(n) && n > 50 && n < 66) {
+    const L = [[55, 'S'], [57, 'M'], [59, 'L'], [61, 'XL'], [63, 'XXL']];
+    const r = L.find(x => n <= x[0]) || L[L.length - 1];
+    return [['СМ', fmt(n)], ['INT', r[1]]];
+  }
+  return [];
+}
+
+// ── Картинки вещей: напрямую, при ошибке через прокси сервера ──
+function img(src, alt) {
+  if (!src) return '';
+  return `<img referrerpolicy="no-referrer" loading="lazy" alt="${esc(alt)}" src="${esc(src)}" onerror="if(!this.dataset.p){this.dataset.p=1;this.src='${API}/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.replaceWith(Object.assign(document.createElement('span'),{className:'ini',textContent:'${esc((alt || '?')[0])}'}))">`;
+}
+const itemsOf = c => ITEMS.filter(i => c.zones.includes(i.zone));
+const tile = (i, cls = '') => `<div class="ph2 ${cls}">${i.image ? img(i.image, i.name) : `<span class="ini">${esc((i.brand || i.name || '?')[0])}</span>`}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
+
+// ── QR и ссылка ──
+const shareUrl = () => SHARE ? API + '/s/' + SHARE.token : '';
+function qrSvg(text) {
+  if (!window.qrcode || !text) return '';
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+}
+async function shareLink() {
+  try {
+    if (!SHARE) {
+      const r = await fetch(API + '/share', { method: 'POST', headers: H(), body: JSON.stringify({ sections: { sizes: true, wishlist: true, excluded_size_keys: [], excluded_wishlist_ids: [] } }) });
+      if (!r.ok) throw new Error();
+      SHARE = await r.json(); render();
+    }
+    const url = shareUrl();
+    if (navigator.share) { try { await navigator.share({ title: 'Мои размеры в SizeBook', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    await navigator.clipboard.writeText(url); toast('Ссылка скопирована');
+  } catch (_) { toast('Не получилось создать ссылку. Попробуй ещё раз'); }
+}
+
+// ── Отрисовка ──
+function render() {
+  const name = [SIZES.profile_name, SIZES.profile_lastname].filter(Boolean).join(' ') || (user && user.username) || 'Без имени';
+  const meta = [SIZES.profile_height && 'рост ' + SIZES.profile_height, SIZES.profile_weight && 'вес ' + SIZES.profile_weight].filter(Boolean).join(' · ') || 'рост и вес не указаны';
+  const shoes = CATS.find(c => c.id === 'shoes');
+  const url = shareUrl();
+  document.getElementById('app').innerHTML = `
+  <div class="top">
+    <div class="lt"><h1>Гардероб</h1><a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">Старый вид</a></div>
+    <div class="label">
+      <div class="z1">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
+      <button class="route num" onclick="openSheet('shoes')"><small>ОБУВЬ EU</small>${esc(val(shoes) || '—')}</button>
+      ${CATS.map(c => { const v = val(c); return `<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
+      <div class="qrbox">${url ? qrSvg(url) : '<div class="ph">QR появится после создания ссылки</div>'}</div>
+      <div class="gift"><b>Подарок в размер</b>${url ? 'Отсканируй, чтобы увидеть все размеры и вишлист' : 'Создай ссылку, и друзья увидят твои размеры и вишлист'}<button onclick="shareLink()">${url ? 'Отправить ссылку' : 'Создать ссылку'}</button></div>
+    </div>
+  </div>
+  <div class="shelves">
+    <div class="sec"><h2>Мои вещи</h2><a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">+ Добавить</a></div>
+    ${ITEMS.length ? CATS.filter(c => itemsOf(c).length).map(c => `
+      <div class="shelf">
+        <button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b>${val(c) ? `<span class="sz num">${esc(val(c))}</span>` : ''}<span class="cnt num">${itemsOf(c).length} →</span></button>
+        <div class="strip">${itemsOf(c).map(i => `<button class="it" onclick="openSheet('${c.id}')">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc(i.brand || i.shop || '')}</div></button>`).join('')}</div>
+      </div>`).join('') : `<div class="empty-items">Здесь появятся твои вещи с фото и размером. Добавить их можно в <a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">основной версии</a> или через Telegram-бота.</div>`}
+  </div>`;
+}
+
+let sheetCat = null;
+function openSheet(id) {
+  sheetCat = id; const c = CATS.find(x => x.id === id); const v = val(c); const conv = convert(c, v); const its = itemsOf(c);
+  document.getElementById('sheetBody').innerHTML = `
+    <h3>${c.full}</h3><div class="sub">${v ? 'Твой размер ' + esc(v) : 'Размер ещё не указан'} · ${its.length ? its.length + ' в гардеробе' : 'вещей пока нет'}</div>
+    <form class="edit" onsubmit="saveSize(event,'${c.id}')"><label for="sz-in">Мой размер</label><input id="sz-in" value="${esc(v)}" placeholder="${c.kind === 'shoe' ? '43' : c.kind === 'ring' ? '17,5' : c.kind === 'hat' ? '58' : 'M'}" autocomplete="off" enterkeyhint="done"><button type="submit">Сохранить</button></form>
+    <div class="saved" id="saved"></div>
+    ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="saved">Перевод примерный, у брендов бывают отличия</div>` : ''}
+    ${its.length ? `<div class="sgrid">${its.map(i => `<div>${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc([i.brand, i.size].filter(Boolean).join(' · '))}</div></div>`).join('')}</div>` : ''}`;
+  document.getElementById('sheet').classList.add('on'); document.getElementById('dim').classList.add('on');
+}
+function closeSheet() { sheetCat = null; document.getElementById('sheet').classList.remove('on'); document.getElementById('dim').classList.remove('on'); }
+document.getElementById('dim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+async function saveSize(e, id) {
+  e.preventDefault();
+  const c = CATS.find(x => x.id === id); const v = document.getElementById('sz-in').value.trim();
+  const key = c.keys.find(k => SIZES[k] !== undefined && String(SIZES[k]).trim() !== '') || c.keys[0];
+  try {
+    const r = await fetch(API + '/sizes', { method: 'POST', headers: H(), body: JSON.stringify({ [key]: v }) });
+    if (!r.ok) throw new Error();
+    SIZES[key] = v; render(); openSheet(id); toast('Сохранено');
+  } catch (_) { document.getElementById('saved').textContent = 'Не сохранилось. Проверь интернет и попробуй ещё раз'; }
+}
+
+let toastT; function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
+
+async function load() {
+  if (!token) {
+    document.getElementById('app').innerHTML = '<div class="login">Чтобы увидеть паспорт, войди в SizeBook.<br><a href="/">Войти</a></div>';
+    return;
+  }
+  try {
+    const [s, i, sh] = await Promise.all([
+      fetch(API + '/sizes', { headers: H() }), fetch(API + '/items', { headers: H() }), fetch(API + '/share', { headers: H() })
+    ]);
+    if (s.status === 401 || s.status === 403) { document.getElementById('app').innerHTML = '<div class="login">Сессия истекла. Войди заново.<br><a href="/">Войти</a></div>'; return; }
+    SIZES = await s.json() || {}; ITEMS = i.ok ? await i.json() : []; SHARE = sh.ok ? await sh.json() : null;
+    render();
+  } catch (_) {
+    document.getElementById('app').innerHTML = '<div class="login">Не удалось загрузить данные. Проверь интернет и обнови страницу.<br><a href="/passport">Обновить</a></div>';
+  }
+}
+load();
+</script>
+</body>
+</html>
