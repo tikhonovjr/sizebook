@@ -89,7 +89,7 @@ const MAIN = [['Верх', ['daily_top']], ['Низ', ['daily_bottom']], ['Ве�
 const EXTRA = { formal_jacket: 'Пиджак', formal_pants: 'Брюки костюма', formal_shirt: 'Рубашка', outer_down: 'Пуховик', sport_top: 'Спорт верх', sport_bottom: 'Спорт низ',
   shoes_sneaker: 'Кроссовки', shoes_dress: 'Туфли', shoes_boot: 'Сапоги', shoes_sandal: 'Сандалии', beach_one: 'Купальник', beach_two: 'Купальник раздельный', beach_swim: 'Плавки',
   under_top: 'Бельё верх', under_bottom: 'Бельё низ', under_bra: 'Бюстгальтер', under_body: 'Боди', under_stockings: 'Чулки', under_tights: 'Колготки', under_socks: 'Носки',
-  bracelet_cm: 'Браслет, см', belt_cm: 'Ремень, см', hat_winter: 'Зимняя шапка', gloves_size: 'Перчатки', gloves: 'Перчатки', belt: 'Ремень', waist: 'Талия', chest: 'Грудь' };
+  bracelet_cm: 'Браслет, см', belt_cm: 'Ремень, см', hat_winter: 'Зимняя шапка', gloves_size: 'Перчатки', gloves: 'Перчатки', belt: 'Ремень' };
 const ZONES = { tops: 'Верх', bottoms: 'Низ', outer: 'Верхняя', shoes: 'Обувь', hats: 'Головной убор', acc: 'Аксессуар', formal_jacket: 'Пиджак', formal_pants: 'Брюки', formal_shirt: 'Рубашка' };
 const FIT = { small: 'маломерит', true: 'в размер', large: 'большемерит' };
 const sval = v => v && typeof v === 'object' ? [v.value, v.brand].filter(Boolean).join(' · ') : (v == null ? '' : String(v).trim());
@@ -113,6 +113,7 @@ function render(d) {
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta || 'точно в размер')}</span></div>
       <div class="route num"><small>ОБУВЬ EU</small>${esc(first(['shoes_eu', 'shoes_sneaker']) || '—')}</div>
       ${hasSizes ? MAIN.map(([t, keys]) => { const v = first(keys); return `<div class="cell"><span class="cap">${t}</span><b class="num ${v ? (v.length > 6 ? 'sm' : '') : 'empty'}">${esc(v || '—')}</b></div>`; }).join('') : '<div class="z1 span3">Размеры скрыты владельцем</div>'}
+      ${['chest', 'waist', 'hips'].some(k => sval(S[k])) ? `<div class="cell span3"><span class="cap">Параметры · грудь — талия — бёдра, см</span><b class="num">${['chest', 'waist', 'hips'].map(k => esc(sval(S[k]) || '—')).join('-')}</b></div>` : ''}
       ${extra.map(([k, v]) => `<div class="cell"><span class="cap">${esc(EXTRA[k])}</span><b class="num sm">${esc(sval(v))}</b></div>`).join('')}
       ${extra.length % 3 ? '<div></div>'.repeat(3 - extra.length % 3) : ''}
     </div></div><div class="body">`;
