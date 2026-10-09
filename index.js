@@ -219,6 +219,7 @@ async function initDB() {
     ALTER TABLE items ADD COLUMN IF NOT EXISTS source TEXT;
     ALTER TABLE items ADD COLUMN IF NOT EXISTS wishlist_id INTEGER;
     ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS my_photo TEXT;
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
@@ -892,9 +893,9 @@ function cleanItemFields(b) {
   const out = {
     zone: str(b.zone, 40), name: str(b.name, 200), brand: str(b.brand, 80), size: str(b.size, 40),
     note: str(b.note, 500), shop: str(b.shop, 80), fit: str(b.fit, 10),
-    url: str(b.url, 2000), image: str(b.image, 2000),
+    url: str(b.url, 2000), image: str(b.image, 2000), my_photo: str(b.my_photo, 2000),
   };
-  for (const k of ['url', 'image']) {
+  for (const k of ['url', 'image', 'my_photo']) {
     if (out[k] && !/^https?:\/\//i.test(out[k])) out[k] = null;
   }
   if (out.fit && !ITEM_FITS.includes(out.fit)) out.fit = null;
@@ -917,10 +918,10 @@ app.post('/items', authenticateToken, async (req, res) => {
     if (!f.zone || !f.name) return res.status(400).json({ error: 'zone и name обязательны' });
     const source = ITEM_SOURCES.includes(req.body.source) ? req.body.source : 'manual';
     const r = await pool.query(
-      `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, my_photo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
       [req.user.id, f.zone, f.name, f.brand || null, f.size || null, f.note || null,
-       f.url || null, f.image || null, f.shop || null, f.fit || null, source]
+       f.url || null, f.image || null, f.shop || null, f.fit || null, source, f.my_photo || null]
     );
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
@@ -930,7 +931,7 @@ app.post('/items', authenticateToken, async (req, res) => {
 app.patch('/items/:id', authenticateToken, async (req, res) => {
   try {
     const f = cleanItemFields(req.body || {});
-    const cols = ['zone', 'name', 'brand', 'size', 'note', 'url', 'image', 'shop', 'fit'];
+    const cols = ['zone', 'name', 'brand', 'size', 'note', 'url', 'image', 'shop', 'fit', 'my_photo'];
     const sets = [], vals = [];
     for (const c of cols) {
       if (f[c] === undefined) continue;
@@ -979,10 +980,10 @@ async function wishlistToItem(userId, wishlistId, extra) {
   const f = cleanItemFields(extra || {});
   const zone = f.zone || guessZone(w.title) || 'tops';
   const r = await pool.query(
-    `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id, my_photo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
     [userId, zone, f.name || w.title, f.brand || null, f.size || w.size || null, f.note || null,
-     w.url || null, w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id]
+     w.url || null, f.image || w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id, f.my_photo || null]
   );
   await pool.query('UPDATE wishlist SET received_at=COALESCE(received_at, NOW()) WHERE id=$1 AND user_id=$2', [w.id, userId]);
   return { item: r.rows[0], existed: false };
@@ -1769,6 +1770,39 @@ app.get('/img', async (req, res) => {
     res.set({ 'Content-Type': ct, 'Cache-Control': 'public, max-age=604800' });
     res.send(buf);
   } catch (e) { res.status(502).end(); }
+});
+
+// Загрузка своих фото (вещь, «я в этой вещи»): тело — сама картинка (image/jpeg|png|webp), до 8 МБ.
+// Храним рядом с картинками из Telegram и отдаём через /media/:token.
+app.post('/photos', authenticateToken, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '8mb' }), async (req, res) => {
+  try {
+    const mime = String(req.headers['content-type'] || '').split(';')[0].trim();
+    if (!Buffer.isBuffer(req.body) || !req.body.length || !['image/jpeg', 'image/png', 'image/webp'].includes(mime))
+      return res.status(400).json({ error: 'Нужна картинка JPEG, PNG или WebP' });
+    const token = crypto.randomBytes(16).toString('hex');
+    await pool.query('INSERT INTO tg_media (token, user_id, mime, data) VALUES ($1,$2,$3,$4)', [token, req.user.id, mime, req.body]);
+    const base = PUBLIC_BASE || (req.protocol + '://' + req.get('host'));
+    res.json({ url: `${base}/media/${token}` });
+  } catch (e) { console.error('[photos]', e.message); res.status(500).json({ error: 'Не удалось сохранить фото' }); }
+});
+
+// Курсы валют ЦБ РФ для пересчёта цен вишлиста в рубли (кэш 6 часов)
+let _rates = null, _ratesAt = 0;
+app.get('/rates', async (req, res) => {
+  try {
+    if (!_rates || Date.now() - _ratesAt > 6 * 3600 * 1000) {
+      const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js', { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error('cbr ' + r.status);
+      const j = await r.json();
+      const rub = { RUB: 1 };
+      for (const [code, v] of Object.entries(j.Valute || {})) rub[code] = v.Value / v.Nominal;
+      _rates = { date: j.Date, rub }; _ratesAt = Date.now();
+    }
+    res.set('Cache-Control', 'public, max-age=3600').json(_rates);
+  } catch (e) {
+    if (_rates) return res.json(_rates);
+    res.status(502).json({ error: 'Курсы недоступны' });
+  }
 });
 
 // Картинки из постов Telegram (сохранены ботом). Токен случайный, 32 hex-символа.
