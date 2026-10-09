@@ -211,6 +211,12 @@ button.cell:active,button.route:active{filter:invert(1)}
 .start .bar i{flex:1;height:4px;background:#d7d8db}
 .start .bar i.on{background:var(--ink)}
 .start em{font:900 22px var(--disp);font-style:normal}
+.act{display:grid;gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:12px}
+.act .day{background:var(--ink);color:#fff;font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;padding:6px 12px}
+.act .ev{display:grid;grid-template-columns:44px 72px minmax(0,1fr);gap:10px;align-items:baseline;background:var(--lab);padding:9px 12px}
+.act .ev time{font:600 11px var(--mono);color:var(--ink2)}
+.act .ev em{font:700 9px var(--mono);font-style:normal;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid var(--ink);padding:1px 4px;text-align:center;white-space:nowrap}
+.act .ev span{font:600 13px/1.35 var(--disp);overflow-wrap:anywhere}
 .auth{max-width:480px;margin:0 auto;min-height:100vh}
 .toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -749,6 +755,22 @@ async function revokeLink() {
 }
 
 // ══════════ ПРОФИЛЬ ══════════
+// ── Последние действия ──
+let ACT = null, ACT_N = 30;
+const ACT_TAG = { size: 'Размер', body: 'Фигура', profile: 'Профиль', wish_add: 'Вишлист', wish_got: 'Получено', wish_back: 'Вишлист', wish_del: 'Удалено', item_add: 'Гардероб', item_got: 'Гардероб', item_edit: 'Гардероб', item_del: 'Удалено', photo: 'Фото', share: 'Друзья', share_off: 'Друзья', share_view: 'Просмотр', tg: 'Бот', tg_off: 'Бот', login: 'Вход', account: 'Аккаунт' };
+async function loadActivity(n = ACT_N) { ACT_N = n; try { ACT = await api('/me/activity?limit=' + n); } catch (_) { ACT = ACT || []; } if (CUR === 'profile') renderProfile(); }
+function activityHtml() {
+  if (ACT === null) return '<div class="note">Загружаю…</div>';
+  if (!ACT.length) return '<div class="note">Пока пусто. Здесь будет видно всё, что ты делаешь в приложении.</div>';
+  const day = d => { const x = new Date(d), t = new Date(); const y = new Date(t); y.setDate(t.getDate() - 1); const same = (a, b) => a.toDateString() === b.toDateString(); return same(x, t) ? 'Сегодня' : same(x, y) ? 'Вчера' : x.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }); };
+  let last = '', out = '';
+  for (const e of ACT) {
+    const d = day(e.created_at);
+    if (d !== last) { out += `<div class="day">${d}</div>`; last = d; }
+    out += `<div class="ev"><time class="num">${new Date(e.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</time><em>${ACT_TAG[e.kind] || 'Событие'}</em><span>${esc(e.text)}</span></div>`;
+  }
+  return `<div class="act">${out}</div>`;
+}
 let GEN = null;
 function renderProfile() {
   if (GEN === null) GEN = SIZES.profile_gender || '';
@@ -784,6 +806,10 @@ function renderProfile() {
       <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту @${esc(TG.bot)} ссылки на товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Нажми «Подключить бота», в Telegram откроется @${esc(TG.bot)}, там нажми «Старт» и вернись сюда. После этого пересылай боту ссылки и посты из каналов`}</div>
     </div>
     <div class="acts">${TG && TG.enabled ? (TG.linked ? `<a class="btn ghost" href="https://t.me/${esc(TG.bot)}" target="_blank" rel="noopener">Открыть бота</a><button class="btn ghost" onclick="confirmDel(this,unlinkTg)">Отвязать</button>` : `<a class="btn" href="${esc(TG.link)}" target="_blank" rel="noopener" onclick="watchTg()">Подключить бота</a>`) : ''}</div>
+
+    <div class="sec"><h2>Последние действия</h2><button onclick="loadActivity(ACT_N + 30)">${ACT && ACT.length >= ACT_N ? 'Ещё' : ''}</button></div>
+    <div class="msg" style="margin-top:0">Что происходило в аккаунте: размеры, вещи, вишлист, ссылка для друзей</div>
+    ${activityHtml()}
 
     <div class="sec"><h2>Ещё</h2></div>
     <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>
@@ -926,9 +952,10 @@ function go(v, push = true) {
   document.querySelectorAll('.tb button').forEach(b => b.dataset.v === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   document.title = 'SizeBook · ' + { wardrobe: 'Гардероб', wishlist: 'Вишлист', friends: 'Друзья', profile: 'Профиль' }[v];
   if (push) history.replaceState(null, '', v === 'wardrobe' ? '/passport' : '/passport#' + v);
+  if (v === 'profile' && ACT === null && token) loadActivity();
   window.scrollTo(0, 0);
 }
-document.querySelectorAll('.tb button').forEach(b => b.addEventListener('click', () => go(b.dataset.v)));
+document.querySelectorAll('.tb button').forEach(b => b.addEventListener('click', () => { go(b.dataset.v); if (b.dataset.v === 'profile') loadActivity(); }));
 function renderAll() { renderWardrobe(); renderWishlist(); renderFriends(); renderProfile(); }
 
 // ══════════ Шторка: открытие, закрытие, свайп вниз ══════════
