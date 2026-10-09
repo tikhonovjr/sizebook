@@ -60,6 +60,8 @@ function normTitle(title, shop, knownBrand) {
   const e = EN_TYPES.find(([re]) => re.test(t));
   if (e) { if (!type) type = e[1] === '__shoes' ? (SNEAKER_BRANDS.includes(brand) ? 'Кроссовки' : 'Обувь') : e[1]; t = t.replace(e[0], ' '); }
   t = t.replace(/\s{2,}/g, ' ').replace(/^[\s,.;:–—\-/"«»']+|[\s,.;:–—\-/"«»']+$/g, '');
+  // «BOUCLÉ JACKET» → «Bouclé»: название целиком капсом делаем обычным
+  if (t.length > 3 && t === t.toUpperCase() && /\p{Lu}{3}/u.test(t)) t = t.toLowerCase().replace(/(^|[\s\-'])(\p{L})/gu, (m, p, ch) => p + ch.toUpperCase());
   let name = [type, t].filter(Boolean).join(' ').trim();
   if (!name) name = String(title || '').trim();
   name = name.charAt(0).toUpperCase() + name.slice(1);

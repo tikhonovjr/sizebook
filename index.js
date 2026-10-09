@@ -223,6 +223,8 @@ async function initDB() {
     ALTER TABLE items ADD COLUMN IF NOT EXISTS label_photo TEXT;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS brand TEXT;
     CREATE TABLE IF NOT EXISTS img_cache (key TEXT PRIMARY KEY, mime TEXT NOT NULL, data BYTEA NOT NULL, created_at TIMESTAMP DEFAULT NOW());
+    CREATE TABLE IF NOT EXISTS activity (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, text TEXT NOT NULL, ref TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+    CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id, created_at DESC);
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
@@ -237,6 +239,8 @@ async function initDB() {
       }
     }
     if (fixed) console.log('[migrate] исправлены картинки у', fixed, 'записей');
+    const zr = await pool.query("SELECT id, user_id, url FROM wishlist WHERE url ILIKE '%zara.com%' AND COALESCE(price,'')='' AND received_at IS NULL ORDER BY id DESC LIMIT 10");
+    if (zr.rows.length) setTimeout(async () => { for (const r of zr.rows) await enrichWishlistItem(r.id, r.user_id, r.url, null); }, 15000);
   } catch (e) { console.log('[migrate] картинки:', e.message); }
   for (const pair of String(process.env.SEED_USERS || '').split(',').map(x => x.trim()).filter(Boolean)) {
     const [u, p] = pair.split(':');
@@ -328,6 +332,24 @@ function optionalAuth(req, res, next) {
 // /debug/* — только при ENABLE_DEBUG=1 в Railway Variables (по умолчанию выключено: эндпоинты открыты и жгут кредиты Firecrawl)
 app.use('/debug', (req, res, next) => process.env.ENABLE_DEBUG === '1' ? next() : res.status(404).json({ error: 'Not found' }));
 
+// ── ЖУРНАЛ ДЕЙСТВИЙ (путь пользователя) ─────────────────────────────────────
+function logAct(userId, kind, text, ref) {
+  if (!userId) return;
+  pool.query('INSERT INTO activity (user_id, kind, text, ref) VALUES ($1,$2,$3,$4)', [userId, kind, String(text).slice(0, 300), ref ? String(ref).slice(0, 500) : null])
+    .catch(e => console.log('[activity]', e.message));
+}
+const SIZE_LABELS = { daily_top: 'Верх', daily_bottom: 'Низ', outer: 'Верхняя одежда', outer_jacket: 'Верхняя одежда', shoes_eu: 'Обувь', shoes_sneaker: 'Обувь',
+  hat: 'Шапка', hat_cap: 'Шапка', ring_mm: 'Кольцо', chest: 'Грудь', waist: 'Талия', hips: 'Бёдра',
+  profile_name: 'Имя', profile_lastname: 'Фамилия', profile_height: 'Рост', profile_weight: 'Вес', profile_age: 'Возраст', profile_gender: 'Пол' };
+const shortTitle = t => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.slice(0, 57) + '…' : t; };
+app.get('/me/activity', authenticateToken, async (req, res) => {
+  try {
+    const lim = Math.min(200, Math.max(1, +req.query.limit || 50));
+    const r = await pool.query('SELECT kind, text, ref, created_at FROM activity WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2', [req.user.id, lim]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+});
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -345,6 +367,7 @@ app.post('/auth/register', async (req, res) => {
     );
     const user = r.rows[0];
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+    logAct(user.id, 'account', 'Создан аккаунт');
     res.json({ token, user });
   } catch (e) {
     if (e.code === '23505') return res.status(400).json({ error: 'Пользователь уже существует' });
@@ -365,6 +388,7 @@ app.post('/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Неверный пароль' });
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
+    logAct(user.id, 'login', 'Вход в приложение');
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -402,12 +426,18 @@ app.get('/sizes', authenticateToken, async (req, res) => {
 
 app.post('/sizes', authenticateToken, async (req, res) => {
   try {
+    const before = (await pool.query('SELECT data FROM sizes WHERE user_id=$1', [req.user.id])).rows[0]?.data || {};
+    const changed = Object.entries(req.body || {}).filter(([k, v]) => !k.startsWith('ui_') && String(before[k] ?? '') !== String(v ?? ''));
     await pool.query(
       `INSERT INTO sizes (user_id, data) VALUES ($1,$2::jsonb)
        ON CONFLICT (user_id) DO UPDATE SET data = sizes.data || $2::jsonb, updated_at=NOW()`,
       [req.user.id, JSON.stringify(req.body)]
     );
     res.json({ ok: true });
+    const prof = changed.filter(([k]) => k.startsWith('profile_')), body = changed.filter(([k]) => ['chest', 'waist', 'hips'].includes(k)), sz = changed.filter(([k]) => !k.startsWith('profile_') && !['chest', 'waist', 'hips'].includes(k));
+    if (prof.length) logAct(req.user.id, 'profile', 'Профиль: ' + prof.map(([k]) => k === 'profile_gender' ? 'пол' : (SIZE_LABELS[k] || k).toLowerCase()).join(', '));
+    if (body.length) logAct(req.user.id, 'body', 'Параметры фигуры: ' + ['chest', 'waist', 'hips'].map(k => (req.body[k] ?? before[k]) || '—').join('-'));
+    for (const [k, v] of sz) logAct(req.user.id, 'size', `Размер «${SIZE_LABELS[k] || k}»: ${v === '' || v == null ? 'удалён' : v}`);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
@@ -435,6 +465,7 @@ app.post('/wishlist', authenticateToken, async (req, res) => {
       [req.user.id, title, shop||null, url||null, price||null, size||null, image||null, (needsEnrich || (valid && !brand)) ? 'pending' : null, brand]
     );
     res.json(r.rows[0]);
+    logAct(req.user.id, 'wish_add', 'В вишлист: ' + shortTitle(title), url);
     warmImage(image);
     if (needsEnrich) enrichWishlistItem(r.rows[0].id, req.user.id, url, autotitle ? title : null);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
@@ -469,6 +500,7 @@ async function addWishlistFromText(userId, raw) {
   return addWishlistUrl(userId, m[0].replace(/[).,;]+$/, ''));
 }
 async function addWishlistUrl(userId, url) {
+  try { logAct(userId, 'wish_add', 'В вишлист по ссылке: ' + new URL(url).hostname.replace(/^www\./, ''), url); } catch (_) {}
   let host;
   try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return { error: 'Некорректная ссылка' }; }
   const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
@@ -625,6 +657,7 @@ async function tgHandlePost(chatId, userId, msgs) {
     "INSERT INTO wishlist (user_id,title,shop,url,price,image,parse_status,brand) VALUES ($1,$2,$3,$4,$5,$6,'done',$7) RETURNING id",
     [userId, title, shop, info.postUrl, info.price, image, tgBrand(info)]);
   const wid = r.rows[0].id;
+  logAct(userId, 'wish_add', 'В вишлист из Telegram: ' + shortTitle(title), info.postUrl);
   const note = info.postUrl ? 'Ссылки на магазин в посте нет — сохранил ссылку на сам пост.'
                             : 'Ссылки на магазин в посте нет, канал закрытый — сохранил название, цену и фото.';
   const text = `✓ ${title}${info.price ? ' — ' + info.price : ''}\n${note}\nНазвание можно поправить в приложении.`;
@@ -751,7 +784,7 @@ app.get('/me/telegram', authenticateToken, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 app.post('/me/telegram/unlink', authenticateToken, async (req, res) => {
-  try { await pool.query('UPDATE users SET tg_chat_id=NULL, tg_link_code=NULL WHERE id=$1', [req.user.id]); res.json({ ok: true }); }
+  try { await pool.query('UPDATE users SET tg_chat_id=NULL, tg_link_code=NULL WHERE id=$1', [req.user.id]); logAct(req.user.id, 'tg_off', 'Telegram-бот отвязан'); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -780,6 +813,7 @@ app.post('/tg/webhook/:secret', async (req, res) => {
         // Один Telegram — один аккаунт SizeBook: если чат был привязан к другому аккаунту, переносим привязку
         const prev = await pool.query('UPDATE users SET tg_chat_id=NULL WHERE tg_chat_id=$1 AND id<>$2 RETURNING username', [chatId, who.rows[0].id]);
         await pool.query('UPDATE users SET tg_chat_id=$1, tg_link_code=NULL WHERE id=$2', [chatId, who.rows[0].id]);
+        logAct(who.rows[0].id, 'tg', 'Подключён Telegram-бот');
         const moved = prev.rows[0] ? `\n(Раньше этот Telegram был подключён к аккаунту ${prev.rows[0].username}, теперь он отвязан от него.)` : '';
         return tgSend(chatId, `Готово, Telegram подключён к аккаунту ${who.rows[0].username} ✓${moved}\n\nТеперь пересылайте сюда ссылки на товары и посты из каналов, и они окажутся в вишлисте. Можно вернуться в приложение.`);
       }
@@ -828,12 +862,15 @@ app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
     res.json({ ok: true, received_at: r.rows[0].received_at });
+    const t = (await pool.query('SELECT title FROM wishlist WHERE id=$1', [req.params.id])).rows[0];
+    logAct(req.user.id, received ? 'wish_got' : 'wish_back', (received ? 'Отмечено полученным: ' : 'Вернуто в «Хочу»: ') + shortTitle(t && t.title));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
   try {
-    await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const d = await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2 RETURNING title', [req.params.id, req.user.id]);
+    if (d.rows[0]) logAct(req.user.id, 'wish_del', 'Удалено из вишлиста: ' + shortTitle(d.rows[0].title));
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -856,6 +893,8 @@ app.post('/share', authenticateToken, async (req, res) => {
       'INSERT INTO share_links (user_id, token, sections, expires_at) VALUES ($1,$2,$3,$4) RETURNING *',
       [req.user.id, token, JSON.stringify(sections || {}), expires_at || null]
     );
+    const sec = sections || {};
+    logAct(req.user.id, 'share', 'Ссылка для друзей создана: ' + [sec.sizes !== false && 'размеры', sec.items !== false && 'по брендам', sec.wishlist && 'вишлист'].filter(Boolean).join(', '));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -879,10 +918,12 @@ app.post('/share/revoke', authenticateToken, async (req, res) => {
       'UPDATE share_links SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL',
       [req.user.id]
     );
+    logAct(req.user.id, 'share_off', 'Ссылка для друзей отключена');
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
+const _shareSeen = new Map();
 app.get('/share/:token', async (req, res) => {
   try {
     const r = await pool.query(
@@ -897,6 +938,8 @@ app.get('/share/:token', async (req, res) => {
     const sections = link.sections || {};
     const result = { token: link.token, expires_at: link.expires_at, sections };
     const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
+    const seen = _shareSeen.get(link.token) || 0;
+    if (Date.now() - seen > 30 * 60 * 1000) { _shareSeen.set(link.token, Date.now()); logAct(link.user_id, 'share_view', 'Кто-то открыл твою ссылку для друзей'); }
     result.owner = own.rows[0] ? own.rows[0].username : null;
 
     if (sections.sizes) {
@@ -973,6 +1016,7 @@ app.post('/items', authenticateToken, async (req, res) => {
        f.url || null, f.image || null, f.shop || null, f.fit || null, source, f.my_photo || null, f.label_photo || null]
     );
     res.json(r.rows[0]);
+    logAct(req.user.id, 'item_add', 'В гардероб: ' + shortTitle(f.name) + (f.size ? ` · размер ${f.size}` : ''));
     warmImage(f.image);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -996,12 +1040,17 @@ app.patch('/items/:id', authenticateToken, async (req, res) => {
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
     res.json(r.rows[0]);
+    const photo = ['image', 'my_photo', 'label_photo'].find(k => f[k]);
+    const PH = { image: 'фото вещи', my_photo: 'своё фото', label_photo: 'фото бирки' };
+    if (photo && sets.length === 1) logAct(req.user.id, 'photo', `Добавлено ${PH[photo]}: ` + shortTitle(r.rows[0].name));
+    else logAct(req.user.id, 'item_edit', 'Изменена вещь: ' + shortTitle(r.rows[0].name) + (r.rows[0].size ? ` · размер ${r.rows[0].size}` : ''));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
 app.delete('/items/:id', authenticateToken, async (req, res) => {
   try {
-    await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const d = await pool.query('DELETE FROM items WHERE id=$1 AND user_id=$2 RETURNING name', [req.params.id, req.user.id]);
+    if (d.rows[0]) logAct(req.user.id, 'item_del', 'Удалено из гардероба: ' + shortTitle(d.rows[0].name));
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -1044,6 +1093,7 @@ app.post('/wishlist/:id/to-items', authenticateToken, async (req, res) => {
   try {
     const out = await wishlistToItem(req.user.id, req.params.id, req.body || {});
     if (!out) return res.status(404).json({ error: 'Не найдено' });
+    if (!out.existed) logAct(req.user.id, 'item_got', 'Получено → в гардероб: ' + shortTitle(out.item.name) + (out.item.size ? ` · размер ${out.item.size}` : '') + (out.item.fit ? ` · ${{ small: 'маломерит', true: 'в размер', large: 'большемерит' }[out.item.fit] || ''}` : ''));
     res.json(out);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -1735,6 +1785,33 @@ function imageUrlOf(v) {
   const u = String(v).trim();
   return /^https?:\/\//i.test(u) ? u : (u.startsWith('//') ? 'https:' + u : null);
 }
+// Zara: цену страница подгружает отдельно; берём её из их JSON товара по номеру v1 из ссылки
+const ZARA_CUR = { kz: 'KZT', ru: 'RUB', by: 'BYN', am: 'AMD', ge: 'GEL', az: 'AZN', uz: 'UZS', kg: 'KGS', ae: 'AED', tr: 'TRY', us: 'USD', gb: 'GBP', uk: 'GBP', ch: 'CHF', ca: 'CAD', jp: 'JPY', cn: 'CNY', kr: 'KRW', pl: 'PLN', cz: 'CZK', ua: 'UAH', rs: 'RSD', il: 'ILS', sa: 'SAR', in: 'INR', mx: 'MXN', br: 'BRL', au: 'AUD' };
+async function zaraPrice(url) {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)zara\.com$/i.test(u.hostname)) return null;
+    const m = u.pathname.match(/^\/([a-z]{2})\/([a-z]{2})\//i);
+    const id = u.searchParams.get('v1') || (u.pathname.match(/-p(\d{8})\.html/) || [])[1];
+    if (!m || !id) return null;
+    const api = `https://www.zara.com/${m[1]}/${m[2]}/products-details?productIds=${encodeURIComponent(id)}&ajax=true`;
+    const pick = j => { const p = Array.isArray(j) ? j[0] : j; const c = p && p.detail && p.detail.colors && p.detail.colors[0]; const cents = c && (c.price ?? p.price); return cents ? cents / 100 : null; };
+    let val = null;
+    try {
+      const r = await fetch(api, { headers: { 'User-Agent': FETCH_HEADERS['User-Agent'] || 'Mozilla/5.0', 'Accept': 'application/json' }, signal: AbortSignal.timeout(7000) });
+      if (r.ok) val = pick(await r.json());
+    } catch (_) {}
+    if (!val && process.env.SCRAPEDO_TOKEN && sdAllowed()) {
+      const r = await fetchViaScrapedo(api, { super: true, timeout: 15000 });
+      if (r.http === 200 && r.html) { try { val = pick(JSON.parse(r.html)); } catch (_) {} }
+    }
+    if (!val) return null;
+    const cur = ZARA_CUR[m[1].toLowerCase()] || 'EUR';
+    console.log('[zara] цена', id, val, cur);
+    return `${val} ${cur}`;
+  } catch (e) { console.log('[zara]', e.message); return null; }
+}
+
 function mergeParseResults(a, b) {
   if (!a && !b) return { title: null, price: null, image: null };
   if (!a) return b;
@@ -1822,7 +1899,8 @@ function runParse(url) {
   const p = new Promise((resolve) => {
     const fakeRes = { statusCode: 200, status(c) { this.statusCode = c; return this; }, json(o) { resolve({ ...o, _status: this.statusCode }); return this; } };
     parseHandler({ body: { url } }, fakeRes).catch(e => resolve({ error: e.message, _status: 500 }));
-  }).then(r => {
+  }).then(async r => {
+    if (r && r._status === 200 && !r.price && /zara\.com/i.test(url)) { const zp = await zaraPrice(url); if (zp) r.price = zp; }
     if (r && r.image && typeof r.image !== 'string') r.image = imageUrlOf(r.image);
     if (r._status === 200 && (r.title || r.price || r.image)) r.brand = cleanBrand(r.brand, url) || guessBrand(r.title, url);
     if (r._status === 200 && (r.title || r.price || r.image)) {
