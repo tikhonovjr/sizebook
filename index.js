@@ -115,6 +115,14 @@ async function initDB() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS tg_link_code TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS users_tg_chat_idx ON users(tg_chat_id);
     CREATE UNIQUE INDEX IF NOT EXISTS users_add_key_idx ON users(add_key);
+    CREATE TABLE IF NOT EXISTS tg_media (
+      id         SERIAL PRIMARY KEY,
+      token      VARCHAR(40) UNIQUE NOT NULL,
+      user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      mime       TEXT NOT NULL,
+      data       BYTEA NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
     CREATE TABLE IF NOT EXISTS sizes (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -422,7 +430,9 @@ app.post('/me/add-key/rotate', authenticateToken, async (req, res) => {
 async function addWishlistFromText(userId, raw) {
   const m = String(raw).match(/https?:\/\/[^\s<>"']+/i);
   if (!m) return { error: 'Ссылка не найдена' };
-  const url = m[0].replace(/[).,;]+$/, '');
+  return addWishlistUrl(userId, m[0].replace(/[).,;]+$/, ''));
+}
+async function addWishlistUrl(userId, url) {
   let host;
   try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) { return { error: 'Некорректная ссылка' }; }
   const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, url]);
@@ -432,6 +442,168 @@ async function addWishlistFromText(userId, raw) {
     [userId, host, host, url]
   );
   return { host, url, id: r.rows[0].id, enrich: () => enrichWishlistItem(r.rows[0].id, userId, url, host) };
+}
+
+// ── Посты из Telegram-каналов-магазинов ──────────────────────────────────────
+// Ссылка в посте обычно спрятана: под словом (entity text_link) или в кнопке под постом.
+// Если ссылки на магазин нет вовсе («пишите в директ»), сохраняем вещь из самого поста:
+// название и цена из текста, фото (или обложка видео) — из вложения.
+const TG_SKIP_LINK_RE = /(^|\.)(t\.me|telegram\.me|telegram\.org|telegram\.dog|wa\.me|whatsapp\.com|instagram\.com|youtube\.com|youtu\.be|tiktok\.com)$/i;
+function tgCollectLinks(msgs) {
+  const inText = [], inButtons = [];
+  for (const msg of msgs) {
+    const text = String(msg.text || msg.caption || '');
+    const ents = msg.entities || msg.caption_entities || [];
+    for (const e of ents) {
+      if (e.type === 'text_link' && e.url) inText.push(e.url);
+      else if (e.type === 'url') inText.push(text.substr(e.offset, e.length));
+    }
+    for (const m of text.matchAll(/https?:\/\/[^\s<>"']+/gi)) inText.push(m[0]);
+    for (const row of (msg.reply_markup && msg.reply_markup.inline_keyboard) || [])
+      for (const b of row) if (b.url) inButtons.push(b.url);
+  }
+  const seen = new Set(), out = [];
+  for (let raw of [...inText, ...inButtons]) {
+    raw = String(raw).trim().replace(/[).,;!»]+$/, '');
+    if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+    let u; try { u = new URL(raw); } catch (_) { continue; }
+    if (TG_SKIP_LINK_RE.test(u.hostname)) continue;
+    if (seen.has(u.href)) continue;
+    seen.add(u.href); out.push(u.href);
+  }
+  // Ссылка на конкретную страницу важнее ссылки на главную магазина
+  return out.sort((a, b) => (new URL(a).pathname.length > 1 ? 0 : 1) - (new URL(b).pathname.length > 1 ? 0 : 1));
+}
+
+function tgPostInfo(msgs) {
+  const text = msgs.map(m => m.text || m.caption || '').filter(Boolean).join('\n').trim();
+  const fwd = msgs.find(m => m.forward_origin || m.forward_from_chat) || msgs[0];
+  const origin = fwd.forward_origin || {};
+  const chat = origin.chat || fwd.forward_from_chat || null;
+  const postId = origin.message_id || fwd.forward_from_message_id;
+  const channel = chat ? (chat.title || chat.username || null) : null;
+  const postUrl = chat && chat.username && postId ? `https://t.me/${chat.username}/${postId}` : null;
+
+  // Название: первая содержательная строка без эмодзи, хэштегов, ссылок и цены
+  let title = null;
+  for (let line of text.split('\n')) {
+    line = line.replace(/https?:\/\/\S+/g, '').replace(/#[\p{L}\p{N}_]+/gu, '')
+      .replace(/[\p{Extended_Pictographic}️‍]/gu, '').replace(/^[\s\-–—•*·|:>]+/, '').trim();
+    if (!/\p{L}{3,}/u.test(line)) continue;
+    if (/^(цена|стоимость|price|размер|sizes?|артикул|в наличии|заказ|доставка)\b/i.test(line)) continue;
+    title = line.length > 120 ? line.slice(0, 117).trim() + '…' : line;
+    break;
+  }
+
+  // Цена: «12 990 ₽», «5990 руб», «Цена: 4 500»
+  let price = null;
+  const cur = text.match(/(\d{1,3}(?:[  .,]\d{3})+|\d{3,7})\s?(₽|руб\.?|р\.|rub\b|byn\b|₸|\$|€|usd\b|eur\b)/i)
+    || text.match(/(?:цена|стоимость|price)\D{0,15}(\d{1,3}(?:[  .]\d{3})+|\d{3,7})/i);
+  if (cur) {
+    const num = cur[1].replace(/[  .,]/g, '');
+    const c = (cur[2] || '₽').toLowerCase();
+    const sym = /^(₽|руб|р\.|rub)/.test(c) ? '₽' : /byn/.test(c) ? 'BYN' : /usd|\$/.test(c) ? '$' : /eur|€/.test(c) ? '€' : c;
+    price = `${Number(num).toLocaleString('ru-RU').replace(/ /g, ' ')} ${sym}`;
+  }
+
+  // Картинка: фото → обложка видео → превью видео/гифки/файла
+  let media = null;
+  for (const m of msgs) {
+    if (m.photo && m.photo.length) { media = m.photo[m.photo.length - 1]; break; }
+  }
+  if (!media) for (const m of msgs) {
+    const v = m.video || m.animation || m.document;
+    if (!v) continue;
+    if (v.cover && v.cover.length) { media = v.cover[v.cover.length - 1]; break; }
+    if (v.thumbnail || v.thumb) { media = v.thumbnail || v.thumb; break; }
+  }
+  return { text, title, price, channel, postUrl, media, fileId: media ? media.file_id : null };
+}
+
+const PUBLIC_BASE = process.env.PUBLIC_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '');
+// Скачиваем файл из Telegram и храним у себя: прямые ссылки Telegram содержат токен бота и живут ~1 час
+async function tgSaveMedia(userId, fileId) {
+  try {
+    const f = await tgApi('getFile', { file_id: fileId });
+    if (!f || !f.ok || !f.result.file_path) return null;
+    const r = await fetch(`https://api.telegram.org/file/bot${TG_TOKEN}/${f.result.file_path}`, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 8 * 1024 * 1024) return null;
+    const ext = (f.result.file_path.split('.').pop() || '').toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    const token = crypto.randomBytes(16).toString('hex');
+    await pool.query('INSERT INTO tg_media (token, user_id, mime, data) VALUES ($1,$2,$3,$4)', [token, userId, mime, buf]);
+    return `${PUBLIC_BASE}/media/${token}`;
+  } catch (e) { console.log('[tg] media error', e.message); return null; }
+}
+
+// Обработка одного поста (или альбома — несколько сообщений с одним media_group_id)
+async function tgHandlePost(chatId, userId, msgs) {
+  const links = tgCollectLinks(msgs);
+  const info = tgPostInfo(msgs);
+
+  if (links.length) {
+    const out = await addWishlistUrl(userId, links[0]);
+    if (out.error) return tgSend(chatId, 'Не получилось разобрать ссылку из поста.');
+    if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`, tgOwnKeyboard(out.id));
+    await tgSend(chatId, `Добавил: ${out.host}. Подтягиваю название и цену…`);
+    let e = await out.enrich();
+    // Чего не отдал магазин — берём из поста
+    const fill = {};
+    if (info.title && (!e || !e.title || e.title === out.host)) fill.title = info.title;
+    if (info.price && (!e || !e.price)) fill.price = info.price;
+    if (info.fileId && (!e || !e.image)) fill.image = await tgSaveMedia(userId, info.fileId);
+    if (fill.title || fill.price || fill.image) {
+      await pool.query(
+        `UPDATE wishlist SET title=COALESCE($1,title), price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3),
+           parse_status='done' WHERE id=$4 AND user_id=$5`,
+        [fill.title || null, fill.price || null, fill.image || null, out.id, userId]);
+      e = { title: fill.title || (e && e.title) || out.host, price: (e && e.price) || fill.price || null,
+            image: (e && e.image) || fill.image || null, found: true };
+    }
+    if (e && e.found) return tgSendItem(chatId, fill.image ? { ...e, image: info.fileId } : e, out.id);
+    return tgSend(chatId, 'Вещь сохранена. Магазин пока не отдал название и цену — попробую ещё раз в ближайшие минуты и напишу сюда.', tgOwnKeyboard(out.id));
+  }
+
+  // Ссылки на магазин нет — сохраняем по самому посту
+  if (!info.title && !info.fileId) {
+    return tgSend(chatId, 'Не нашёл в сообщении ни ссылки на товар, ни описания. Перешлите сюда пост целиком или пришлите ссылку через «Поделиться» в приложении магазина.');
+  }
+  if (info.postUrl) {
+    const dup = await pool.query('SELECT id FROM wishlist WHERE user_id=$1 AND url=$2 LIMIT 1', [userId, info.postUrl]);
+    if (dup.rows[0]) return tgSend(chatId, 'Этот пост уже в вишлисте.', tgOwnKeyboard(dup.rows[0].id));
+  }
+  const image = info.fileId ? await tgSaveMedia(userId, info.fileId) : null;
+  const title = info.title || (info.channel ? `Вещь из «${info.channel}»` : 'Вещь из Telegram');
+  const shop = info.channel || 'Telegram';
+  const r = await pool.query(
+    "INSERT INTO wishlist (user_id,title,shop,url,price,image,parse_status) VALUES ($1,$2,$3,$4,$5,$6,'done') RETURNING id",
+    [userId, title, shop, info.postUrl, info.price, image]);
+  const wid = r.rows[0].id;
+  const note = info.postUrl ? 'Ссылки на магазин в посте нет — сохранил ссылку на сам пост.'
+                            : 'Ссылки на магазин в посте нет, канал закрытый — сохранил название, цену и фото.';
+  const text = `✓ ${title}${info.price ? ' — ' + info.price : ''}\n${note}\nНазвание можно поправить в приложении.`;
+  if (info.fileId) {
+    const s = await tgApi('sendPhoto', { chat_id: chatId, photo: info.fileId, caption: text.slice(0, 1000), reply_markup: { inline_keyboard: tgOwnKeyboard(wid) } });
+    if (s && s.ok) return s;
+  }
+  return tgSend(chatId, text, tgOwnKeyboard(wid));
+}
+
+// Альбом приходит несколькими сообщениями подряд; собираем их 1,5 с и обрабатываем вместе
+const tgAlbums = new Map();
+function tgQueueAlbum(chatId, userId, msg) {
+  const key = `${chatId}:${msg.media_group_id}`;
+  let a = tgAlbums.get(key);
+  if (!a) { a = { msgs: [], timer: null }; tgAlbums.set(key, a); }
+  a.msgs.push(msg);
+  clearTimeout(a.timer);
+  a.timer = setTimeout(() => {
+    tgAlbums.delete(key);
+    a.msgs.sort((x, y) => x.message_id - y.message_id);
+    tgHandlePost(chatId, userId, a.msgs).catch(e => console.error('[tg] album', e.message));
+  }, 1500);
 }
 
 // ── TELEGRAM-БОТ: «Поделиться» → Telegram → SizeBook ─────────────────────────
@@ -568,13 +740,13 @@ app.post('/tg/webhook/:secret', async (req, res) => {
     }
     const u = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
     if (!u.rows[0]) return tgSend(chatId, 'Бот ещё не подключён. Откройте SizeBook → Вишлист → «Подключить Telegram».');
-    const out = await addWishlistFromText(u.rows[0].id, text);
-    if (out.error) return tgSend(chatId, 'Не нашёл ссылку на товар в сообщении. Пришлите её через «Поделиться» в приложении магазина.');
-    if (out.duplicate) return tgSend(chatId, `Эта вещь уже в вишлисте (${out.host}).`, tgOwnKeyboard(out.id));
-    await tgSend(chatId, `Добавил: ${out.host}. Подтягиваю название и цену…`);
-    const e = await out.enrich();
-    if (e && e.found) await tgSendItem(chatId, e, out.id);
-    else await tgSend(chatId, 'Вещь сохранена. Магазин пока не отдал название и цену — попробую ещё раз в ближайшие минуты и напишу сюда.', tgOwnKeyboard(out.id));
+    const userId = u.rows[0].id;
+    if (msg.media_group_id) return tgQueueAlbum(chatId, userId, msg);
+    const isPost = !!(msg.forward_origin || msg.forward_from_chat || msg.photo || msg.video || msg.animation);
+    if (!isPost && !tgCollectLinks([msg]).length) {
+      return tgSend(chatId, 'Не нашёл ссылку на товар в сообщении. Пришлите её через «Поделиться» в приложении магазина или перешлите сюда пост из канала.');
+    }
+    await tgHandlePost(chatId, userId, [msg]);
   } catch (e) { console.error('[tg] webhook', e.message); }
 });
 
@@ -1599,6 +1771,16 @@ app.get('/img', async (req, res) => {
   } catch (e) { res.status(502).end(); }
 });
 
+// Картинки из постов Telegram (сохранены ботом). Токен случайный, 32 hex-символа.
+app.get('/media/:token', async (req, res) => {
+  try {
+    if (!/^[0-9a-f]{32}$/.test(req.params.token)) return res.status(404).end();
+    const r = await pool.query('SELECT mime, data FROM tg_media WHERE token=$1', [req.params.token]);
+    if (!r.rows[0]) return res.status(404).end();
+    res.set({ 'Content-Type': r.rows[0].mime, 'Cache-Control': 'public, max-age=31536000, immutable' });
+    res.send(r.rows[0].data);
+  } catch (e) { res.status(500).end(); }
+});
 
 async function enrichWishlistItem(id, userId, url, fallbackTitle) {
   try {
