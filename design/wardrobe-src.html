@@ -1,0 +1,318 @@
+<title>SizeBook · Шкаф</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=Archivo:wght@500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: витрина — сверху 5 вариантов «шкафа», слева «телефон», справа заметки. Паспорт = мебель, где у каждой категории своё место */
+:root{
+  --bg:#f4f4f2; --surface:#fff; --line:rgba(20,20,18,.12); --text:#151513; --text2:#65655f; --text3:#9a9a93; --accent:#1f5fa6;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --wood:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .14' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.13 0 0 0 0 0.04 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  --linen:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='l'%3E%3CfeTurbulence type='turbulence' baseFrequency='.9 .02' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.3 0 0 0 0 0.28 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23l)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:18px}
+.head h1{font-size:24px;font-weight:650;letter-spacing:-.02em;margin:0 0 4px}
+.head p{margin:0;color:var(--text2);max-width:64ch;line-height:1.5}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{display:flex;align-items:center;gap:8px;padding:8px 13px 8px 8px;border-radius:999px;background:var(--surface);border:.5px solid var(--line);font-weight:500}
+.pills .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-size:12px}
+.pills button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.pills button[aria-pressed="true"] .n{background:var(--bg);color:var(--text)}
+.stage{display:grid;grid-template-columns:392px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:840px){.stage{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:14px;min-width:0;padding-top:6px}
+.notes h2{margin:0;font-size:20px}
+.notes .insp{color:var(--text2);font-size:13px;margin-top:2px}
+.notes p{margin:0;line-height:1.55;max-width:60ch}
+.notes h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px;line-height:1.5}
+.box{padding:14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:480px){.box{grid-template-columns:1fr}}
+.hint{font-size:12px;color:var(--text3);line-height:1.5}
+
+.phone{width:392px;max-width:100%;height:812px;border-radius:46px;background:#0d0d0d;padding:10px;justify-self:center;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;background:var(--pg);color:var(--ink)}
+@media (max-width:440px){.phone{padding:0;background:none;box-shadow:none;width:100%;height:780px}.screen{border-radius:26px;border:.5px solid var(--line)}}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--ui);position:absolute;top:0;left:0;right:0;z-index:4;transition:background .2s}
+.status.sc{background:var(--sb);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.main{padding-top:52px;padding-bottom:96px}
+.num{font-variant-numeric:tabular-nums}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:0 18px 14px}
+.lt h2{margin:0;font:var(--h2f)}
+.lt button{font:500 13px var(--ui);color:var(--ink2)}
+.who{padding:0 18px 12px;display:flex;justify-content:space-between;align-items:baseline}
+.who b{font:var(--namef)}
+.who span{font:400 12px var(--mono);color:var(--ink2)}
+.share{margin:14px 18px 0;width:calc(100% - 36px);display:flex;justify-content:center;gap:8px;align-items:center;padding:13px;border-radius:var(--rad,12px);background:var(--ink);color:var(--pg);font:600 14px var(--ui)}
+/* полки вещей — общие, цвет и шрифт из переменных варианта */
+.shelves{padding:0 18px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:30px 0 4px}
+.sec b{font:var(--secf)}
+.sec button{font:600 13px var(--ui);color:var(--acc)}
+.shelf{margin-top:16px}
+.shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
+.shead b{font:600 15px var(--ui)}
+.shead .sz{font:500 11px var(--mono);color:var(--ink2)}
+.shead .chev{margin-left:auto;color:var(--ink2)}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none;gap:10px;margin:0 -18px;padding:0 18px}
+.strip::-webkit-scrollbar{display:none}
+.it{flex:none;width:118px;text-align:left}
+.it .ph{height:132px;background:var(--card);border-radius:var(--rad,10px);display:grid;place-items:center;position:relative}
+.it .ph img{width:84%;height:84%;object-fit:contain}
+.it .tg{position:absolute;left:6px;top:6px;font:600 11px var(--mono);background:var(--pg);padding:1px 6px;border-radius:4px}
+.it .nm{font:500 13px var(--ui);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .br{font:400 12px var(--ui);color:var(--ink2)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 26px;background:var(--sb);backdrop-filter:blur(14px);border-top:.5px solid var(--hair);color:var(--ink2)}
+.tabbar div{display:grid;justify-items:center;gap:3px;font:500 10px var(--ui)}
+.tabbar .on{color:var(--acc)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:84%;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:var(--pg)}
+.sheet.on{transform:none}
+.sheet .scroll{padding:4px 18px 28px}
+.grab{width:38px;height:5px;border-radius:3px;margin:8px auto 6px;flex:none;opacity:.3;background:currentColor}
+.sheet h3{margin:4px 0 2px;font:var(--secf)}
+.sheet .sub{font:400 12px var(--mono);color:var(--ink2)}
+.sysrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.sysrow span{background:var(--card);padding:7px 12px;border-radius:8px;font:700 18px var(--ui)}
+.sysrow span i{font:500 10px var(--mono);font-style:normal;color:var(--ink2);margin-right:6px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid .ph{aspect-ratio:1;max-width:100%;background:var(--card);border-radius:var(--rad,10px);display:grid;place-items:center}
+.sgrid .ph img{width:84%;height:84%;object-fit:contain}
+.sgrid .nm{font:500 13px var(--ui);margin-top:6px}
+@media (prefers-reduced-motion:reduce){.sheet,.dim,.drw{transition:none!important}}
+
+/* бумажная бирка на ниточке — используется в нескольких вариантах */
+.ptag{position:relative;display:inline-grid;justify-items:start;background:#fbfaf6;color:#1b1b1b;padding:5px 9px 5px 16px;border-radius:2px 5px 5px 2px;box-shadow:0 1px 2px rgba(0,0,0,.25);clip-path:polygon(9px 0,100% 0,100% 100%,9px 100%,0 50%);text-align:left}
+.ptag::before{content:"";position:absolute;left:7px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:rgba(0,0,0,.35)}
+.ptag span{font:500 8.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#6d6b64}
+.ptag b{font:700 17px/1.05 var(--ui)}
+
+/* ═════ 1. ШКАФ ═════ */
+.v-ward{--pg:#efede9;--ink:#1f1a14;--ink2:#7a7266;--acc:#8a5a2b;--card:#fff;--hair:#ddd8cf;--sb:rgba(239,237,233,.9);
+  --h2f:600 34px/1 "Cormorant Garamond",Georgia,serif;--namef:600 20px "Cormorant Garamond",serif;--secf:600 26px "Cormorant Garamond",serif}
+.v-ward .cab{margin:0 14px;padding:12px;border-radius:6px;position:relative;
+  background:var(--wood),linear-gradient(90deg,#8c5d34,#a8733f 40%,#9a6837 70%,#7f5330);
+  box-shadow:0 20px 30px -18px rgba(40,20,0,.6),inset 0 1px 0 rgba(255,255,255,.2)}
+.v-ward .plate{position:absolute;left:50%;top:-1px;transform:translate(-50%,-50%);z-index:3;padding:4px 14px;border-radius:2px;
+  background:linear-gradient(180deg,#e8cf8e,#b8913f 50%,#d9b866);box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6);
+  font:700 12px "Cormorant Garamond",serif;letter-spacing:.24em;color:#4a3410;text-shadow:0 1px 0 rgba(255,240,200,.6);white-space:nowrap}
+.v-ward .inside{background:linear-gradient(180deg,#f3ece0,#e6dccb);border-radius:2px;box-shadow:inset 0 6px 14px rgba(60,30,0,.35),inset 6px 0 10px -6px rgba(60,30,0,.4),inset -6px 0 10px -6px rgba(60,30,0,.4)}
+.v-ward .zone{position:relative;width:100%;display:block;text-align:left;border-bottom:9px solid transparent;border-image:linear-gradient(180deg,#b07c48,#7e5130) 1}
+.v-ward .zone:last-child{border-bottom:0}
+.v-ward .z-top{height:74px;display:flex;align-items:flex-end;gap:10px;padding:0 12px}
+.v-ward .z-top img{height:52px;width:auto;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
+.v-ward .ringbox{width:34px;height:26px;border-radius:4px;background:linear-gradient(180deg,#2a3b5c,#1b2740);box-shadow:inset 0 2px 0 rgba(255,255,255,.15),0 3px 4px rgba(0,0,0,.3);margin-bottom:2px}
+.v-ward .z-rail{height:150px;padding-top:14px;overflow:hidden}
+.v-ward .rail{position:absolute;left:8px;right:8px;top:12px;height:5px;border-radius:3px;background:linear-gradient(180deg,#f2f2f2,#9a9a9a 60%,#d6d6d6);box-shadow:0 2px 3px rgba(0,0,0,.3);z-index:2}
+.v-ward .hang{display:flex;align-items:flex-start;padding:0 6px;height:100%}
+.v-ward .hang img{height:124px;width:84px;object-fit:contain;object-position:top;margin-right:-30px;filter:drop-shadow(-3px 4px 4px rgba(0,0,0,.25))}
+.v-ward .hang .gap{width:44px;flex:none}
+.v-ward .z-mid{height:92px;display:flex;align-items:flex-end;padding:0 12px;gap:2px}
+.v-ward .z-mid img{height:84px;width:62px;margin-right:-8px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.25))}
+.v-ward .z-shoe{height:66px;display:flex;align-items:flex-end;padding:0 10px 4px;gap:4px}
+.v-ward .z-shoe img{height:54px;width:64px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
+.v-ward .zone .ptag{position:absolute;right:10px;z-index:3}
+.v-ward .z-top .ptag{top:14px}.v-ward .z-mid .ptag{top:16px}.v-ward .z-shoe .ptag{top:10px}
+.v-ward .z-rail .ptag{top:30px}
+.v-ward .z-rail .ptag.t1{right:auto;left:118px;top:96px}
+.v-ward .z-rail .ptag:not(.t1){top:96px}
+.v-ward .zone .ptag.rg{right:96px}
+.v-ward .ptag::after{content:"";position:absolute;left:-14px;top:50%;width:14px;height:1px;background:rgba(80,60,30,.6)}
+.v-ward .share{background:#3b2a1a;color:#f3ece0}
+
+/* ═════ 2. КОМОД ═════ */
+.v-dress{--pg:#e9e8e4;--ink:#22231f;--ink2:#7b7b74;--acc:#9a7432;--card:#fff;--hair:#d6d4ce;--sb:rgba(233,232,228,.9);
+  --h2f:600 34px/1 "Cormorant Garamond",Georgia,serif;--namef:600 20px "Cormorant Garamond",serif;--secf:600 26px "Cormorant Garamond",serif}
+.v-dress .top{margin:6px 10px 0;height:16px;border-radius:3px 3px 0 0;background:var(--wood),linear-gradient(180deg,#9b6c43,#7a5130);box-shadow:0 3px 4px rgba(0,0,0,.25)}
+.v-dress .body{margin:0 16px;padding:8px;background:linear-gradient(180deg,#5a6b5c,#4d5d4f);display:grid;grid-template-columns:1fr 1fr;gap:8px;box-shadow:0 18px 26px -16px rgba(0,0,0,.6)}
+.v-dress .drw{position:relative;height:84px;background:linear-gradient(180deg,#7d917f,#6c806e);border-radius:2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -2px 0 rgba(0,0,0,.18),0 1px 0 rgba(0,0,0,.25);display:grid;justify-items:center;align-content:center;gap:6px;transition:transform .25s}
+.v-dress .drw:hover{transform:translateY(2px) scale(1.01)}
+.v-dress .frame{padding:3px;border-radius:2px;background:linear-gradient(135deg,#f1d892,#a77f2e 45%,#e3c477 70%,#8e6a24);box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.v-dress .card{width:110px;background:#f7f3e8;padding:3px 8px 2px;display:flex;justify-content:space-between;align-items:baseline;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.v-dress .card span{font:400 11px "Courier Prime",monospace;letter-spacing:.04em;color:#4a463c;text-transform:uppercase}
+.v-dress .card b{font:700 18px "Courier Prime",monospace;color:#1d1c18}
+.v-dress .pull{width:56px;height:10px;border-radius:0 0 30px 30px;background:linear-gradient(180deg,#f0d38a,#9c7426);box-shadow:0 2px 2px rgba(0,0,0,.35)}
+.v-dress .legs{margin:0 26px;display:flex;justify-content:space-between}
+.v-dress .legs i{width:14px;height:16px;background:linear-gradient(90deg,#6a4628,#8c5f39);clip-path:polygon(0 0,100% 0,80% 100%,20% 100%)}
+.v-dress .share{background:#4d5d4f;color:#f3f1ea}
+
+/* ═════ 3. РЕЙЛ С РАЗДЕЛИТЕЛЯМИ ═════ */
+.v-rail{--pg:#f1f1ef;--ink:#121212;--ink2:#77776f;--acc:#121212;--card:#fff;--hair:#dcdcd8;--sb:rgba(241,241,239,.9);
+  --h2f:800 32px/1 "Archivo",sans-serif;--namef:700 17px "Archivo",sans-serif;--secf:800 24px "Archivo",sans-serif}
+.v-rail .lt h2{letter-spacing:-.03em}
+.v-rail .run{position:relative;overflow-x:auto;scrollbar-width:none;padding:0 18px}
+.v-rail .run::-webkit-scrollbar{display:none}
+.v-rail .run+.run{margin-top:14px}
+.v-rail .track{position:relative;display:flex;align-items:flex-start;gap:0;padding-top:12px;width:max-content;min-width:100%}
+.v-rail .track::before{content:"";position:absolute;left:-18px;right:-18px;top:6px;height:6px;border-radius:3px;background:linear-gradient(180deg,#3a3a3a,#111 60%,#2b2b2b);z-index:2}
+.v-rail .disc{flex:none;width:76px;height:76px;margin:6px 6px 0 2px;border-radius:50%;background:#fff;display:grid;place-items:center;align-content:center;position:relative;box-shadow:0 2px 4px rgba(0,0,0,.18);z-index:3;border:1px solid #e1e1dc}
+.v-rail .disc::before{content:"";position:absolute;top:-8px;left:50%;width:12px;height:22px;margin-left:-6px;border-radius:6px;background:var(--pg);border:1px solid #d8d8d3}
+.v-rail .disc span{font:600 9px "Archivo",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
+.v-rail .disc b{font:800 22px/1 "Archivo",sans-serif;letter-spacing:-.02em}
+.v-rail .disc.dk{background:#121212;color:#fff;border-color:#121212}
+.v-rail .disc.dk span{color:#9a9a93}
+.v-rail .hg{flex:none;width:62px;height:128px;margin-right:-4px;display:flex;align-items:flex-start;justify-content:center}
+.v-rail .hg img{width:96px;height:124px;flex:none;object-fit:contain;object-position:top;filter:drop-shadow(0 4px 5px rgba(0,0,0,.18))}
+.v-rail .floor{display:flex;align-items:flex-end;gap:2px;height:96px;padding:0 0 10px;border-bottom:8px solid #d8d8d3;width:max-content;min-width:100%}
+.v-rail .floor .disc{margin:0 8px 0 0;align-self:center}
+.v-rail .floor .disc::before{display:none}
+.v-rail .floor img{width:60px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+.v-rail .rhint{display:flex;justify-content:space-between;padding:8px 18px 0;font:500 11px var(--mono);color:var(--ink2)}
+.v-rail .share{border-radius:0}
+
+/* ═════ 4. СТЕЛЛАЖ ═════ */
+.v-cubby{--pg:#ecebe7;--ink:#161616;--ink2:#75746d;--acc:#161616;--card:#fff;--hair:#d9d8d2;--sb:rgba(236,235,231,.9);
+  --h2f:800 32px/1 "Barlow Condensed",sans-serif;--namef:700 18px "Barlow Condensed",sans-serif;--secf:800 26px "Barlow Condensed",sans-serif}
+.v-cubby .lt h2{text-transform:uppercase}
+.v-cubby .dymo{display:inline-flex;align-items:center;background:#151515;color:#f4f4f2;padding:3px 10px;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(0,0,0,.8),0 -1px 0 rgba(255,255,255,.25);box-shadow:0 1px 1px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.12);clip-path:polygon(3px 0,calc(100% - 3px) 0,100% 50%,calc(100% - 3px) 100%,3px 100%,0 50%)}
+.v-cubby .dymo b{font-weight:800;margin-left:8px;color:#fff}
+.v-cubby .namerow{padding:0 18px 12px;display:flex;justify-content:space-between;align-items:center}
+.v-cubby .namerow span{font:400 12px var(--mono);color:var(--ink2)}
+.v-cubby .rack{margin:0 14px;padding:9px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
+  background:var(--wood),linear-gradient(180deg,#e7d2ad,#d8bf94);border-radius:3px;box-shadow:0 18px 26px -16px rgba(60,40,10,.55),inset 0 0 0 1px rgba(120,80,30,.25)}
+.v-cubby .cub{position:relative;display:grid;grid-template-rows:1fr auto;justify-items:center;padding:6px 4px 8px;height:132px;background:linear-gradient(180deg,#d6d3cb,#e9e7e1 40%,#f1efea);box-shadow:inset 0 8px 12px -4px rgba(0,0,0,.28),inset 4px 0 8px -4px rgba(0,0,0,.2),inset -4px 0 8px -4px rgba(0,0,0,.2)}
+.v-cubby .cub img{max-height:86px;max-width:90%;object-fit:contain;align-self:end;filter:drop-shadow(0 4px 4px rgba(0,0,0,.22))}
+.v-cubby .cub svg{align-self:end;margin-bottom:8px;color:#9a7a3a}
+.v-cubby .cub .dymo{font-size:11px;padding:2px 7px;letter-spacing:.1em}
+.v-cubby .cub .dymo b{font-size:13px;margin-left:6px}
+.v-cubby .cub:hover .dymo{background:#b3261e}
+.v-cubby .share{border-radius:0;background:#151515;font:700 15px "Barlow Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.v-cubby .it .tg{background:#151515;color:#fff;border-radius:0;font:700 12px "Barlow Condensed",sans-serif;letter-spacing:.06em}
+
+/* ═════ 5. РАСКЛАДКА ═════ */
+.v-flat{--pg:#e6e6e3;--ink:#1c1c1a;--ink2:#7a7a74;--acc:#1c1c1a;--card:#f4f4f1;--hair:#d4d4cf;--sb:rgba(230,230,227,.9);
+  --h2f:400 38px/1 "Instrument Serif",Georgia,serif;--namef:italic 400 22px "Instrument Serif",serif;--secf:400 28px "Instrument Serif",serif}
+.v-flat .table{margin:0 14px;padding:16px 12px 14px;background:var(--linen),linear-gradient(rgba(233,233,230,.7),rgba(233,233,230,.7)),var(--noise),#e4e4e1;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.v-flat .card0{display:flex;justify-content:space-between;align-items:baseline;background:#fbfbf8;padding:8px 12px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.v-flat .card0 b{font:italic 400 22px "Instrument Serif",serif}
+.v-flat .card0 span{font:400 11px var(--mono);color:var(--ink2)}
+.v-flat .lay{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 10px}
+.v-flat .spot{display:grid;justify-items:center;gap:8px}
+.v-flat .spot .ob{height:92px;width:100%;display:grid;place-items:center}
+.v-flat .spot img{max-height:92px;max-width:100%;object-fit:contain;filter:drop-shadow(0 6px 6px rgba(0,0,0,.18)) drop-shadow(0 1px 1px rgba(0,0,0,.2))}
+.v-flat .spot svg{color:#a68a4a;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+.v-flat .ptag{box-shadow:0 2px 3px rgba(0,0,0,.18)}
+.v-flat .spot:hover .ptag{background:#fff}
+.v-flat .share{border-radius:999px;background:transparent;color:var(--ink);border:1px solid var(--ink)}
+.v-flat .it .ph{border-radius:2px}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Паспорт как шкаф: 5 вариантов</h1>
+    <p>У каждой категории своё место: рейл, полка, ящик или ячейка. Нажми на бирку, ящик, разделитель или ячейку, чтобы открыть шторку с размерами и вещами.</p>
+  </header>
+  <div class="pills" id="pills"></div>
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <section class="notes" id="notes"></section>
+  </div>
+</div>
+
+<script>
+const IMG=__IMGS__;
+const ICON={share:'<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/>',chev:'<path d="M9 6l6 6-6 6"/>',
+ hanger:'<path d="M12 7a2 2 0 1 1 2-2"/><path d="M12 7v2l9 7v2H3v-2l9-7"/>',heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',ring:'<circle cx="12" cy="14" r="6.5"/><path d="M9.5 5.5h5l-1 2.5h-3z" fill="currentColor"/>'};
+const ic=(n,s=20,w=1.8)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+const CATS=[
+ {id:'tops',title:'Верх',full:'Футболки и рубашки',base:'M',rep:'shirt',sys:[['INT','M'],['RU','48'],['EU','48'],['US','38']],
+  items:[['shirt','Рубашка из поплина','COS','M'],['tee','Футболка Supima','Uniqlo','L'],['stripe','Тельняшка','Arket','S'],['polo','Поло из пике','Zara','M'],['sweat','Джемпер из мерино','COS','M']]},
+ {id:'bottoms',title:'Низ',full:'Джинсы и брюки',base:'32/32',rep:'jeans',sys:[['W/L','32/32'],['RU','48'],['EU','48'],['US','32']],
+  items:[['jeans','501 Original',"Levi's",'32/32'],['chino','Брюки Wide','Carhartt WIP','32/32'],['linen','Брюки из льна','Uniqlo','31']]},
+ {id:'outer',title:'Верхняя',full:'Верхняя одежда',base:'L',rep:'puffer',sys:[['INT','L'],['RU','50'],['EU','50'],['US','40']],
+  items:[['puffer','Пуховик Nuptse','The North Face','L'],['coat','Стёганое пальто','Mango','XL']]},
+ {id:'shoes',title:'Обувь',full:'Обувь',base:'43',rep:'af1',sys:[['EU','43'],['US','10'],['UK','9'],['СМ','27,5']],
+  items:[['af1','Air Force 1','Nike','43'],['samba','Ultraboost','Adidas','43⅓'],['nb','Gel-Kayano','Asics','43,5'],['boots','Desert Boot','Clarks','42,5']]},
+ {id:'hats',title:'Шапка',full:'Головные уборы',base:'58',rep:'cap',sys:[['СМ','58'],['INT','M'],['RU','58'],['US','7¼']],items:[['cap','Кепка из кожи','Stetson','58']]},
+ {id:'ring',title:'Кольцо',full:'Кольцо',base:'17,5',rep:null,sys:[['ММ','17,5'],['RU','17,5'],['EU','55'],['US','7½']],items:[]},
+];
+const C=id=>CATS.find(c=>c.id===id);
+const tag=(id,cls='')=>{const c=C(id);return `<button class="ptag ${cls}" onclick="openSheet('${id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>`};
+const head=(btn='Поделиться')=>`<div class="lt"><h2>Гардероб</h2><button>${btn}</button></div>`;
+const share=(t='Отправить по ссылке')=>`<button class="share">${ic('share',16,2)} ${t}</button>`;
+
+const V=[
+ {k:'ward',n:'Открытый шкаф',insp:'деревянный шкаф без дверей: рейл с плечиками, полки, обувная полка внизу',
+  idea:'Паспорт — это сам шкаф. Наверху полка с головным убором и коробочкой для кольца, ниже рейл с рубашками и верхней одеждой, полка с брюками и обувь внизу. На каждой зоне висит бумажная бирка с размером. Над шкафом латунная табличка с именем.',
+  pros:['Сразу понятно, где что: размер висит рядом с вещами','Ваши настоящие вещи становятся частью паспорта'],cons:['Если вещей мало, шкаф выглядит пустым','Рисованная мебель требует аккуратности на разных экранах'],
+  pass:()=>`${head()}<div class="who"><b>Иван Тихонов</b><span class="num">182 см · 78 кг</span></div>
+   <div class="cab"><div class="plate">SIZEBOOK</div><div class="inside">
+    <div class="zone z-top"><img src="${IMG.cap}" alt=""><i class="ringbox"></i>${tag('hats')}${tag('ring','rg')}</div>
+    <div class="zone z-rail"><i class="rail"></i><div class="hang">${['shirt','tee','polo','stripe'].map(k=>`<img src="${IMG[k]}" alt="">`).join('')}<i class="gap"></i>${['puffer','coat'].map(k=>`<img src="${IMG[k]}" alt="">`).join('')}</div>${tag('tops','t1')}${tag('outer')}</div>
+    <div class="zone z-mid">${['jeans','chino','linen'].map(k=>`<img src="${IMG[k]}" alt="">`).join('')}${tag('bottoms')}</div>
+    <div class="zone z-shoe">${['af1','samba','boots'].map(k=>`<img src="${IMG[k]}" alt="">`).join('')}${tag('shoes')}</div>
+   </div></div>${share()}`},
+ {k:'dress',n:'Комод',insp:'старые комоды и картотеки: латунные рамки для подписей на ящиках, ручки-ракушки',
+  idea:'Шесть ящиков — шесть категорий. На каждом латунная рамка с карточкой, где напечатаны категория и размер, под ней ручка-ракушка. Нажимаешь на ящик, он «выдвигается» и открывает шторку с вещами.',
+  pros:['Самая чистая метафора «всё на своём месте»','Все шесть размеров видны сразу, крупно и ровно'],cons:['Вещей на первом экране не видно, только размеры','Мебель занимает место, которое могло бы уйти под фото'],
+  pass:()=>`${head()}<div class="who"><b>Иван Тихонов</b><span class="num">182 см · 78 кг</span></div>
+   <div class="top"></div><div class="body">${CATS.map(c=>`<button class="drw" onclick="this.style.transform='translateY(6px)';setTimeout(()=>openSheet('${c.id}'),120)"><span class="frame"><span class="card"><span>${c.title}</span><b class="num">${c.base}</b></span></span><i class="pull"></i></button>`).join('')}</div>
+   <div class="legs"><i></i><i></i></div>${share()}`},
+ {k:'rail',n:'Рейл',insp:'магазинные вешалки: круглые разделители размеров между плечиками',
+  idea:'Вещи висят на рейле, а между группами стоят круглые разделители, как в магазине. На разделителе категория и твой размер. Рейл листается пальцем вбок, обувь стоит ниже на полу с таким же разделителем.',
+  pros:['Узнаваемо и живо: так выглядят вещи в магазине','Размер и вещи этого размера стоят рядом'],cons:['Чтобы увидеть все размеры, рейл надо пролистать','Длинный рейл на маленьком экране превращается в ленту'],
+  pass:()=>`${head()}<div class="who"><b>Иван Тихонов</b><span class="num">182 см · 78 кг</span></div>
+   <div class="run"><div class="track">${['tops','bottoms','outer'].map((id,i)=>{const c=C(id);return `<button class="disc ${i===0?'dk':''}" onclick="openSheet('${id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>${c.items.map(it=>`<div class="hg"><img src="${IMG[it[0]]}" alt=""></div>`).join('')}`}).join('')}</div></div>
+   <div class="run"><div class="floor">${['shoes','hats','ring'].map(id=>{const c=C(id);return `<button class="disc" onclick="openSheet('${id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>${c.items.map(it=>`<img src="${IMG[it[0]]}" alt="">`).join('')}`}).join('')}</div></div>
+   <div class="rhint"><span>← листай рейл →</span><span>6 размеров · 15 вещей</span></div>${share()}`},
+ {k:'cubby',n:'Стеллаж',insp:'стеллажи с ячейками и наклейки-ленты Dymo с выдавленными буквами',
+  idea:'Деревянный стеллаж из шести ячеек. В каждой лежит одна вещь из категории, а на полке под ней наклеена лента с выдавленной надписью: категория и размер. Имя тоже на такой ленте. Порядок как у человека, который всё подписывает.',
+  pros:['Наглядно и аккуратно, все шесть размеров на одном экране','Наклейки-ленты дают характер без лишнего декора'],cons:['В ячейке видна одна вещь из категории, остальные внутри'],
+  pass:()=>`${head()}<div class="namerow"><span class="dymo">Иван Тихонов</span><span class="num">182 см · 78 кг</span></div>
+   <div class="rack">${CATS.map(c=>`<button class="cub" onclick="openSheet('${c.id}')">${c.rep?`<img src="${IMG[c.rep]}" alt="">`:ic('ring',44,1.4)}<span class="dymo">${c.title}<b class="num">${c.base}</b></span></button>`).join('')}</div>${share()}`},
+ {k:'flat',n:'Раскладка',insp:'фотографии «knolling»: вещи разложены сверху под прямым углом, ровной сеткой',
+  idea:'Вид сверху на стол, где вещи разложены ровной сеткой, каждая со своей бумажной биркой. Имя на карточке сверху. Самый «журнальный» вариант: порядок чувствуется в одинаковых отступах.',
+  pros:['Фото вещей в центре, очень красиво с хорошими снимками','Сетка легко растёт: новая категория — новое место на столе'],cons:['Без фото вещей теряет смысл','Мало «мебели», метафора шкафа слабее, чем в других'],
+  pass:()=>`${head()}<div class="table"><div class="card0"><b>Иван Тихонов</b><span class="num">182 см · 78 кг</span></div>
+   <div class="lay">${CATS.map(c=>`<button class="spot" onclick="openSheet('${c.id}')"><div class="ob">${c.rep?`<img src="${IMG[c.rep]}" alt="">`:ic('ring',46,1.4)}</div><span class="ptag"><span>${c.title}</span><b class="num">${c.base}</b></span></button>`).join('')}</div></div>${share()}`},
+];
+
+let K=0,sheetId=null,resetTop=0;
+try{K=+localStorage.getItem('sb_ward')||0}catch(e){}
+function screen(){
+  const v=V[K];
+  return `<div class="status"><span class="num">18:50</span><span>●●● ▮</span></div>
+  <div class="scroll main" id="main">${v.pass()}
+   <div class="shelves"><div class="sec"><b>Мои вещи</b><button>+ Добавить</button></div>
+    ${CATS.filter(c=>c.items.length).map(c=>`<div class="shelf"><button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b><span class="sz num">${c.base}</span><span class="chev">${ic('chev',16)}</span></button>
+     <div class="strip">${c.items.map(i=>`<button class="it" onclick="openSheet('${c.id}')"><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"><span class="tg num">${i[3]}</span></div><div class="nm">${i[1]}</div><div class="br">${i[2]}</div></button>`).join('')}</div></div>`).join('')}
+   </div></div>
+  <nav class="tabbar">${[['hanger','Гардероб'],['heart','Вишлист'],['users','Друзья'],['user','Профиль']].map((t,i)=>`<div class="${i===0?'on':''}">${ic(t[0],22)}<span>${t[1]}</span></div>`).join('')}</nav>
+  <div class="dim" id="dim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Категория"><div class="grab"></div><div class="scroll" id="sheetBody"></div></div>`;
+}
+function openSheet(id){
+  sheetId=id;const c=C(id);
+  document.getElementById('sheetBody').innerHTML=`<h3>${c.full}</h3><div class="sub">Твой размер ${c.base} · ${c.items.length?c.items.length+' в гардеробе':'вещей пока нет'}</div>
+  <div class="sysrow">${c.sys.map(s=>`<span class="num"><i>${s[0]}</i>${s[1]}</span>`).join('')}</div>
+  ${c.items.length?`<div class="sgrid">${c.items.map(i=>`<div><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]} · ${i[3]}</div></div>`).join('')}</div>`:''}`;
+  document.getElementById('sheet').classList.add('on');document.getElementById('dim').classList.add('on');
+}
+function closeSheet(){sheetId=null;document.getElementById('sheet').classList.remove('on');document.getElementById('dim').classList.remove('on');document.querySelectorAll('.drw').forEach(d=>d.style.transform='')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+function render(){
+  try{localStorage.setItem('sb_ward',K)}catch(e){}
+  const scr=document.getElementById('screen');const prev=document.getElementById('main');const top=prev?prev.scrollTop:0;
+  scr.className='screen v-'+V[K].k;scr.innerHTML=screen();const m=document.getElementById('main');m.scrollTop=resetTop?0:top;resetTop=0;
+  const st=scr.querySelector('.status');const upd=()=>st.classList.toggle('sc',m.scrollTop>30);m.addEventListener('scroll',upd,{passive:true});upd();
+  if(sheetId)openSheet(sheetId);
+  document.getElementById('pills').innerHTML=V.map((v,i)=>`<button aria-pressed="${i===K}" onclick="K=${i};resetTop=1;sheetId=null;render()"><span class="n">${i+1}</span>${v.n}</button>`).join('');
+  const v=V[K];
+  document.getElementById('notes').innerHTML=`<div><h2>${K+1}. ${v.n}</h2><div class="insp">Откуда идея: ${v.insp}</div></div><p>${v.idea}</p>
+  <div class="box"><div><h3>Плюсы</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+  <p class="hint">Фото вещей примерные, из открытого датасета, с вырезанным фоном. В шкаф и на стеллаж попадают твои вещи из гардероба, по одной-несколько на категорию.</p>`;
+}
+render();
+</script>
