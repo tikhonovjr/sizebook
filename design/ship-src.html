@@ -1,0 +1,285 @@
+<title>SizeBook · Термоэтикетка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Roboto+Condensed:wght@400;500;700;800;900&family=Roboto+Mono:wght@400;500;700&family=Press+Start+2P&family=Unbounded:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: витрина — сверху 5 вариантов шрифта и таб-бара для термоэтикетки, слева «телефон», справа заметки. Структура этикетки одна, меняются шрифт и нижняя панель */
+:root{
+  --bg:#f4f4f2; --surface:#fff; --line:rgba(20,20,18,.12); --text:#151513; --text2:#65655f; --text3:#9a9a93; --accent:#1f5fa6;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:18px}
+.head h1{font-size:24px;font-weight:650;letter-spacing:-.02em;margin:0 0 4px}
+.head p{margin:0;color:var(--text2);max-width:64ch;line-height:1.5}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{display:flex;align-items:center;gap:8px;padding:8px 13px 8px 8px;border-radius:999px;background:var(--surface);border:.5px solid var(--line);font-weight:500}
+.pills .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-size:12px}
+.pills button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.pills button[aria-pressed="true"] .n{background:var(--bg);color:var(--text)}
+.stage{display:grid;grid-template-columns:392px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:840px){.stage{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:14px;min-width:0;padding-top:6px}
+.notes h2{margin:0;font-size:20px}
+.notes .insp{color:var(--text2);font-size:13px;margin-top:2px}
+.notes p{margin:0;line-height:1.55;max-width:60ch}
+.notes h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px;line-height:1.5}
+.box{padding:14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:480px){.box{grid-template-columns:1fr}}
+.spec{display:grid;gap:4px;font-size:13px;color:var(--text2)}
+.spec b{color:var(--text);font-weight:600}
+.hint{font-size:12px;color:var(--text3);line-height:1.5}
+
+.phone{width:392px;max-width:100%;height:812px;border-radius:46px;background:#0d0d0d;padding:10px;justify-self:center;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;background:#e7e8ea;color:#0d0d0d}
+@media (max-width:440px){.phone{padding:0;background:none;box-shadow:none;width:100%;height:780px}.screen{border-radius:26px;border:.5px solid var(--line)}}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--ui);position:absolute;top:0;left:0;right:0;z-index:4;transition:background .2s}
+.status.sc{background:rgba(231,232,234,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.main{padding-bottom:110px}
+.num{font-variant-numeric:tabular-nums}
+
+/* — этикетка: общая структура, шрифты из переменных скина — */
+.screen{--ink:#0d0d0d;--ink2:#5f6166;--lab:#fdfdfb}
+.top{position:relative;padding:58px 16px 26px;background:
+  radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
+  radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
+  linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:0 2px 16px}
+.lt h2{margin:0;font:var(--f-h2);text-transform:uppercase;letter-spacing:var(--ls-h2,0)}
+.lt button{font:var(--f-btn);text-transform:uppercase;background:var(--lab);padding:6px 10px;border:2px solid var(--ink)}
+.label{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.2),0 16px 28px -14px rgba(0,0,0,.45)}
+.label>*>*{background:var(--lab)}
+.r1,.grid,.r3{display:contents}
+.z1{grid-column:span 2;padding:9px 12px;font:var(--f-small);line-height:1.5}
+.z1 b{display:block;font:var(--f-name);text-transform:uppercase;margin:3px 0 2px;letter-spacing:var(--ls-name,0)}
+.route{background:var(--ink)!important;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:9px 12px;font:var(--f-big)}
+.route small{font:var(--f-small);letter-spacing:.1em;margin-bottom:4px;opacity:.85}
+.cell{padding:8px 12px;text-align:left}
+.cell span{display:block;font:var(--f-small);text-transform:uppercase;letter-spacing:.04em}
+.cell b{font:var(--f-val);letter-spacing:var(--ls-val,0)}
+.cell:hover{background:var(--ink)!important;color:#fff}
+.r3>.qr{padding:12px;color:var(--ink)}
+.r3 .t{grid-column:span 2;padding:10px 12px;font:var(--f-small);line-height:1.5;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.r3 .t b{display:block;font:var(--f-sub);text-transform:uppercase;margin-bottom:2px}
+.r3 .t button{margin-top:8px;background:var(--ink);color:#fff;font:var(--f-btn);text-transform:uppercase;padding:7px 10px}
+.qr{display:grid;grid-template-columns:repeat(21,1fr);aspect-ratio:1;width:100%}
+.qr i{background:currentColor}
+.shelves{padding:0 18px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px}
+.sec b{font:var(--f-sec);text-transform:uppercase}
+.sec button{font:var(--f-btn);text-transform:uppercase}
+.shelf{margin-top:16px}
+.shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
+.shead b{font:var(--f-sub);text-transform:uppercase}
+.shead .sz{font:var(--f-small);border:2px solid var(--ink);padding:0 5px}
+.shead .chev{margin-left:auto;color:var(--ink2)}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none;gap:10px;margin:0 -18px;padding:0 18px}
+.strip::-webkit-scrollbar{display:none}
+.it{flex:none;width:118px;text-align:left}
+.it .ph{height:132px;background:var(--lab);display:grid;place-items:center;position:relative}
+.it .ph img{width:84%;height:84%;object-fit:contain}
+.it .tg{position:absolute;right:6px;top:6px;background:#fff;border:2px solid var(--ink);font:var(--f-tag);padding:1px 6px}
+.it .nm{font:var(--f-item);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .br{font:var(--f-small);color:var(--ink2)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:84%;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;background:#e7e8ea;border-top:3px solid var(--ink)}
+.sheet.on{transform:none}
+.sheet .scroll{padding:4px 18px 28px}
+.grab{width:38px;height:5px;margin:8px auto 6px;flex:none;background:var(--ink);opacity:.3}
+.sheet h3{margin:4px 0 2px;font:var(--f-sec);text-transform:uppercase}
+.sheet .sub{font:var(--f-small);color:var(--ink2)}
+.sysrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.sysrow span{background:var(--lab);border:2px solid var(--ink);padding:6px 10px;font:var(--f-sysv)}
+.sysrow span i{font:var(--f-small);font-style:normal;margin-right:6px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid .ph{aspect-ratio:1;max-width:100%;background:var(--lab);display:grid;place-items:center}
+.sgrid .ph img{width:84%;height:84%;object-fit:contain}
+.sgrid .nm{font:var(--f-item);margin-top:6px}
+@media (prefers-reduced-motion:reduce){.sheet,.dim{transition:none}}
+
+/* ═══ Таб-бары ═══ */
+.tb{position:absolute;left:0;right:0;bottom:0;z-index:5}
+/* A: ячейки без иконок */
+.tb-a{background:var(--lab);border-top:2px solid var(--ink);padding:0 0 24px;display:grid;grid-template-columns:repeat(4,1fr)}
+.tb-a button{padding:16px 0 14px;font:var(--f-tab);text-transform:uppercase;letter-spacing:.06em;border-right:2px solid var(--ink);color:var(--ink2)}
+.tb-a button:last-child{border-right:0}
+.tb-a button.on{background:var(--ink);color:#fff}
+/* B: толстые пиктограммы */
+.tb-b{background:var(--lab);border-top:3px solid var(--ink);padding:10px 8px 26px;display:grid;grid-template-columns:repeat(4,1fr)}
+.tb-b button{display:grid;justify-items:center;gap:5px;font:var(--f-tab);text-transform:uppercase;color:var(--ink2)}
+.tb-b button svg{width:26px;height:26px}
+.tb-b button.on{color:var(--ink)}
+.tb-b button.on svg{background:#ffd400;outline:3px solid #ffd400}
+/* C: отрывной корешок со штрихкодом */
+.tb-c{background:var(--lab);padding:16px 10px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+  -webkit-mask:radial-gradient(circle 5px at 7px 0,transparent 98%,#000) -7px 0/14px 100% repeat-x;mask:radial-gradient(circle 5px at 7px 0,transparent 98%,#000) -7px 0/14px 100% repeat-x;filter:drop-shadow(0 -2px 3px rgba(0,0,0,.12))}
+.tb-c button{display:grid;justify-items:center;gap:4px;font:var(--f-tab);text-transform:uppercase;color:var(--ink2);padding-top:2px}
+.tb-c button .code{font:var(--f-small);font-size:9px;opacity:.7}
+.tb-c button .bars{display:flex;height:16px;gap:1px;opacity:.25}
+.tb-c button .bars i{background:currentColor}
+.tb-c button.on{color:var(--ink)}
+.tb-c button.on .bars{opacity:1}
+/* D: пиксельные иконки */
+.tb-d{background:var(--lab);border-top:2px dashed var(--ink);padding:12px 6px 26px;display:grid;grid-template-columns:repeat(4,1fr)}
+.tb-d button{display:grid;justify-items:center;gap:6px;font:var(--f-tab);text-transform:uppercase;color:#8b8d92}
+.tb-d button svg{width:26px;height:26px;shape-rendering:crispEdges}
+.tb-d button.on{color:var(--ink)}
+.tb-d button.on span{background:var(--ink);color:#fff;padding:3px 4px}
+/* E: плавающая наклейка */
+.tb-e{left:14px;right:14px;bottom:22px;background:var(--lab);border:2.5px solid var(--ink);display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;box-shadow:0 10px 24px -8px rgba(0,0,0,.35)}
+.tb-e button{display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-left:2px solid var(--ink);color:var(--ink)}
+.tb-e button:first-child{border-left:0}
+.tb-e button span{display:none;font:var(--f-tab);text-transform:uppercase}
+.tb-e button.on{background:var(--ink);color:#fff}
+.tb-e button.on span{display:inline}
+.tb-e button svg{width:22px;height:22px}
+
+/* ═══ Скины шрифтов ═══ */
+.s-mono{--f-h2:700 28px "IBM Plex Mono",monospace;--ls-h2:-.04em;--f-btn:600 11px "IBM Plex Mono",monospace;--f-small:500 10px "IBM Plex Mono",monospace;--f-name:700 20px/1.05 "IBM Plex Mono",monospace;--ls-name:-.03em;
+  --f-big:700 42px/1 "IBM Plex Mono",monospace;--f-val:700 25px/1.1 "IBM Plex Mono",monospace;--ls-val:-.05em;--f-sub:700 13px "IBM Plex Mono",monospace;--f-sec:700 20px "IBM Plex Mono",monospace;--f-tag:700 11px "IBM Plex Mono",monospace;--f-item:600 12px "IBM Plex Mono",monospace;--f-sysv:700 17px "IBM Plex Mono",monospace;--f-tab:600 10px "IBM Plex Mono",monospace}
+.s-golos{--f-h2:800 30px "Golos Text",sans-serif;--ls-h2:-.03em;--f-btn:700 11px "JetBrains Mono",monospace;--f-small:500 10px "JetBrains Mono",monospace;--f-name:800 21px/1.05 "Golos Text",sans-serif;--ls-name:-.02em;
+  --f-big:900 44px/1 "Golos Text",sans-serif;--f-val:800 26px/1.1 "Golos Text",sans-serif;--ls-val:-.03em;--f-sub:800 14px "Golos Text",sans-serif;--f-sec:900 22px "Golos Text",sans-serif;--f-tag:700 11px "JetBrains Mono",monospace;--f-item:600 13px "Golos Text",sans-serif;--f-sysv:800 18px "Golos Text",sans-serif;--f-tab:700 9.5px "JetBrains Mono",monospace}
+.s-cond{--f-h2:900 34px "Roboto Condensed",sans-serif;--ls-h2:-.01em;--f-btn:700 12px "Roboto Condensed",sans-serif;--f-small:500 10px "Roboto Mono",monospace;--f-name:800 24px/1 "Roboto Condensed",sans-serif;
+  --f-big:900 48px/1 "Roboto Condensed",sans-serif;--f-val:800 30px/1.05 "Roboto Condensed",sans-serif;--f-sub:800 16px "Roboto Condensed",sans-serif;--f-sec:900 26px "Roboto Condensed",sans-serif;--f-tag:800 13px "Roboto Condensed",sans-serif;--f-item:700 15px "Roboto Condensed",sans-serif;--f-sysv:900 20px "Roboto Condensed",sans-serif;--f-tab:700 12px "Roboto Condensed",sans-serif}
+.s-pixel{--f-h2:400 19px "Press Start 2P",monospace;--f-btn:400 8px "Press Start 2P",monospace;--f-small:500 10px "IBM Plex Mono",monospace;--f-name:400 14px/1.3 "Press Start 2P",monospace;
+  --f-big:400 30px/1 "Press Start 2P",monospace;--f-val:400 18px/1.4 "Press Start 2P",monospace;--f-sub:400 10px/1.4 "Press Start 2P",monospace;--f-sec:400 15px "Press Start 2P",monospace;--f-tag:400 8px "Press Start 2P",monospace;--f-item:600 12px "IBM Plex Mono",monospace;--f-sysv:400 13px "Press Start 2P",monospace;--f-tab:400 7px "Press Start 2P",monospace}
+.s-unb{--f-h2:700 24px "Unbounded",sans-serif;--ls-h2:-.02em;--f-btn:600 10px "Unbounded",sans-serif;--f-small:500 10px "JetBrains Mono",monospace;--f-name:700 17px/1.1 "Unbounded",sans-serif;
+  --f-big:800 36px/1 "Unbounded",sans-serif;--f-val:700 21px/1.2 "Unbounded",sans-serif;--ls-val:-.03em;--f-sub:700 12px "Unbounded",sans-serif;--f-sec:700 18px "Unbounded",sans-serif;--f-tag:600 10px "Unbounded",sans-serif;--f-item:500 12px "Unbounded",sans-serif;--f-sysv:700 15px "Unbounded",sans-serif;--f-tab:600 9px "Unbounded",sans-serif}
+.s-pixel .lt h2{line-height:1.2}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Термоэтикетка: шрифт и нижняя панель</h1>
+    <p>Структура этикетки та же, что понравилась. В каждом варианте свой шрифт и своё решение нижней панели навигации.</p>
+  </header>
+  <div class="pills" id="pills"></div>
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <section class="notes" id="notes"></section>
+  </div>
+</div>
+
+<script>
+const IMG=__IMGS__;
+const svg=(p,s=20,w=1.8,cap='round')=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="${cap}" stroke-linejoin="${cap==='round'?'round':'miter'}">${p}</svg>`;
+const P={chev:'<path d="M9 6l6 6-6 6"/>',share:'<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/>'};
+/* B: толстые пиктограммы, как на складской маркировке */
+const PB={
+ ward:'<path d="M12 3.5a2.5 2.5 0 0 1 2.5 2.5c0 1.3-1 2-2.5 2.8V10"/><path d="M2.5 18.5L12 10l9.5 8.5z"/>',
+ wish:'<path d="M12 20.5L3.5 12V7.5L7 4h3.5L12 6l1.5-2H17l3.5 3.5V12z"/>',
+ friends:'<path d="M3 21v-3l4-3h4l4 3v3"/><rect x="6" y="4" width="6" height="7"/><path d="M15 15h3l3 2.5V21M15 4h3v7h-3"/>',
+ me:'<rect x="7.5" y="3" width="9" height="9"/><path d="M3.5 21v-3.5L8 14h8l4.5 3.5V21z"/>'};
+/* E: геометрические иконки */
+const PE={
+ ward:'<path d="M12 4.5a2 2 0 1 1 2 2c-1 0-2 .7-2 1.7V9l8.5 7.5H3.5L12 9"/>',
+ wish:'<path d="M12 19s-7-4.3-7-9.5A3.8 3.8 0 0 1 12 7.3a3.8 3.8 0 0 1 7 2.2C19 14.7 12 19 12 19z"/>',
+ friends:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/>',
+ me:'<circle cx="12" cy="8.5" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>'};
+/* D: пиксельные иконки 12×12 */
+const PX={
+ ward:['000011000000','000100100000','000000100000','000001000000','000010000000','000111100000','001100011000','011000001100','110000000110','111111111111','000000000000','000000000000'],
+ wish:['000000000000','011100111000','111111111100','111111111100','111111111100','011111111000','001111110000','000111100000','000011000000','000000000000','000000000000','000000000000'],
+ friends:['000000000000','001100011000','011110111100','011110111100','001100011000','000000000000','011110111100','111111111110','111111111110','111111111110','000000000000','000000000000'],
+ me:['000111100000','001111110000','001111110000','001111110000','000111100000','000000000000','001111110000','011111111000','111111111100','111111111100','000000000000','000000000000']};
+const pix=k=>`<svg viewBox="0 0 12 12" fill="currentColor">${PX[k].map((r,y)=>[...r].map((c,x)=>c==='1'?`<rect x="${x}" y="${y}" width="1" height="1"/>`:'').join('')).join('')}</svg>`;
+const TABS=[['ward','Гардероб'],['wish','Вишлист'],['friends','Друзья'],['me','Профиль']];
+function rnd(seed){let x=seed;return()=>(x=(x*9301+49297)%233280)/233280}
+const minibars=s=>{const r=rnd(s);let o='';for(let i=0;i<18;i++)o+=`<i style="width:${1+Math.floor(r()*2.5)}px"></i>`;return `<span class="bars">${o}</span>`};
+function qr(seed){const r=rnd(seed),N=21;let o='';const fin=(x,y,a,b)=>{const dx=x-a,dy=y-b;if(dx<0||dy<0||dx>6||dy>6)return null;return (dx===0||dy===0||dx===6||dy===6||(dx>=2&&dx<=4&&dy>=2&&dy<=4))};
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){let f=fin(x,y,0,0);if(f===null)f=fin(x,y,14,0);if(f===null)f=fin(x,y,0,14);
+  const near=(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12);const on=f!==null?f:(!near&&r()>.52);o+=on?'<i></i>':'<b></b>'}return `<div class="qr">${o}</div>`}
+
+const TB={
+ a:()=>`<nav class="tb tb-a">${TABS.map((t,i)=>`<button class="${i===0?'on':''}">${t[1]}</button>`).join('')}</nav>`,
+ b:()=>`<nav class="tb tb-b">${TABS.map((t,i)=>`<button class="${i===0?'on':''}">${svg(PB[t[0]],26,2.6,'square')}<span>${t[1]}</span></button>`).join('')}</nav>`,
+ c:()=>`<nav class="tb tb-c">${TABS.map((t,i)=>`<button class="${i===0?'on':''}">${minibars(11+i*7)}<span>${t[1]}</span><span class="code">0${i+1}/04</span></button>`).join('')}</nav>`,
+ d:()=>`<nav class="tb tb-d">${TABS.map((t,i)=>`<button class="${i===0?'on':''}">${pix(t[0])}<span>${t[1]}</span></button>`).join('')}</nav>`,
+ e:()=>`<nav class="tb tb-e">${TABS.map((t,i)=>`<button class="${i===0?'on':''}" aria-label="${t[1]}">${svg(PE[t[0]],22,2)}<span>${t[1]}</span></button>`).join('')}</nav>`,
+};
+
+const CATS=[
+ {id:'tops',title:'Верх',full:'Футболки и рубашки',base:'M',sys:[['INT','M'],['RU','48'],['EU','48'],['US','38']],
+  items:[['shirt','Рубашка из поплина','COS','M'],['tee','Футболка Supima','Uniqlo','L'],['stripe','Тельняшка','Arket','S'],['polo','Поло из пике','Zara','M'],['sweat','Джемпер из мерино','COS','M']]},
+ {id:'bottoms',title:'Низ',full:'Джинсы и брюки',base:'32/32',sys:[['W/L','32/32'],['RU','48'],['EU','48'],['US','32']],
+  items:[['jeans','501 Original',"Levi's",'32/32'],['chino','Брюки Wide','Carhartt WIP','32/32'],['linen','Брюки из льна','Uniqlo','31']]},
+ {id:'outer',title:'Верхняя',full:'Верхняя одежда',base:'L',sys:[['INT','L'],['RU','50'],['EU','50'],['US','40']],
+  items:[['puffer','Пуховик Nuptse','The North Face','L'],['coat','Стёганое пальто','Mango','XL']]},
+ {id:'shoes',title:'Обувь',full:'Обувь',base:'43',sys:[['EU','43'],['US','10'],['UK','9'],['СМ','27,5']],
+  items:[['af1','Air Force 1','Nike','43'],['samba','Ultraboost','Adidas','43⅓'],['nb','Gel-Kayano','Asics','43,5'],['boots','Desert Boot','Clarks','42,5']]},
+ {id:'hats',title:'Шапка',full:'Головные уборы',base:'58',sys:[['СМ','58'],['INT','M'],['RU','58'],['US','7¼']],items:[['cap','Кепка из кожи','Stetson','58']]},
+ {id:'ring',title:'Кольцо',full:'Кольцо',base:'17,5',sys:[['ММ','17,5'],['RU','17,5'],['EU','55'],['US','7½']],items:[]},
+];
+const C=id=>CATS.find(c=>c.id===id);
+
+const V=[
+ {s:'mono',t:'a',n:'Чек',font:'IBM Plex Mono',bar:'Текстовые ячейки без иконок',
+  idea:'Весь текст одним моноширинным шрифтом, как будто этикетку напечатал термопринтер. В нижней панели нет иконок: четыре ячейки с подписями в тех же рамках, что и на этикетке, активная залита чёрным.',
+  pros:['Самый цельный: панель продолжает этикетку','Без иконок не надо гадать, что значит значок'],cons:['Моноширинный шрифт съедает ширину, длинные слова тесно','Подписи без иконок читаются чуть медленнее']},
+ {s:'golos',t:'b',n:'Логистика',font:'Golos Text и JetBrains Mono',bar:'Толстые пиктограммы, активная на жёлтой плашке',
+  idea:'Строгий гротеск Golos (сделан для кириллицы) и мелкий моноширинный для подписей, как на этикетках служб доставки. Иконки рисованные, толстые, с прямыми углами, похожие на складскую маркировку. Активный раздел выделен жёлтой плашкой, как маркер.',
+  pros:['Лучшая читаемость кириллицы из пяти','Жёлтый маркер даёт один яркий акцент'],cons:['Жёлтый нужно поддержать ещё в паре мест, иначе он одинок']},
+ {s:'cond',t:'c',n:'Склад',font:'Roboto Condensed и Roboto Mono',bar:'Отрывной корешок со штрихкодами',
+  idea:'Узкий жирный шрифт, как на складских стикерах, большие цифры размеров. Нижняя панель — отрывная часть этикетки с перфорацией: у каждого раздела свой маленький штрихкод и номер, у активного штрихкод «пропечатан».',
+  pros:['Крупнее всего цифры размеров','Панель-корешок продолжает идею этикетки'],cons:['Штрихкоды в навигации на любителя','Узкий шрифт в длинных названиях вещей хуже читается']},
+ {s:'pixel',t:'d',n:'Матричный',font:'Press Start 2P и IBM Plex Mono',bar:'Пиксельные иконки 12×12',
+  idea:'Заголовки и размеры пиксельным шрифтом, как у старых матричных принтеров и ценников. Иконки нарисованы по пикселям, активная подпись в чёрной плашке. Названия вещей остаются обычным моноширинным, чтобы читалось.',
+  pros:['Самый игровой и запоминающийся','Пиксельные иконки сразу узнаются как «фирменные»'],cons:['Пиксельный шрифт годится только для коротких надписей','Есть риск выглядеть как ретро-игра, а не про одежду']},
+ {s:'unb',t:'e',n:'Наклейка',font:'Unbounded и JetBrains Mono',bar:'Плавающая панель-наклейка',
+  idea:'Широкий современный Unbounded (его тоже делали с кириллицей) задаёт характер, мелкий текст моноширинный. Нижняя панель — отдельная наклейка в толстой рамке, которая висит над контентом. Активный раздел раскрывается и показывает подпись, остальные только иконки.',
+  pros:['Самый современный вид, хорошо сочетается с iOS','Иконки простые и понятные'],cons:['Широкий шрифт не помещает длинные названия','Плавающая панель закрывает часть контента внизу']},
+];
+
+let K=0,sheetId=null,resetTop=0;
+try{K=+localStorage.getItem('sb_ship')||0}catch(e){}
+function screen(){
+  const v=V[K];
+  const cells=CATS.map(c=>`<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>`).join('');
+  return `<div class="status"><span class="num">19:36</span><span>●●● ▮</span></div>
+  <div class="scroll main" id="main">
+   <div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+    <div class="label">
+     <div class="r1"><div class="z1">ПОЛУЧАТЕЛЬ / TO:<b>Тихонов Иван</b><span class="num">рост 182 · вес 78 · обычная посадка</span></div><div class="route num"><small>ОБУВЬ EU</small>43</div></div>
+     <div class="grid">${cells}</div>
+     <div class="r3">${qr(7)}<div class="t"><b>Подарок в размер</b>Отсканируй, чтобы увидеть все размеры и вишлист<button>Отправить ссылку</button></div></div>
+    </div></div>
+   <div class="shelves"><div class="sec"><b>Мои вещи</b><button>+ Добавить</button></div>
+    ${CATS.filter(c=>c.items.length).map(c=>`<div class="shelf"><button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b><span class="sz num">${c.base}</span><span class="chev">${svg(P.chev,16)}</span></button>
+     <div class="strip">${c.items.map(i=>`<button class="it" onclick="openSheet('${c.id}')"><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"><span class="tg num">${i[3]}</span></div><div class="nm">${i[1]}</div><div class="br">${i[2]}</div></button>`).join('')}</div></div>`).join('')}
+   </div></div>
+  ${TB[v.t]()}
+  <div class="dim" id="dim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Категория"><div class="grab"></div><div class="scroll" id="sheetBody"></div></div>`;
+}
+function openSheet(id){
+  sheetId=id;const c=C(id);
+  document.getElementById('sheetBody').innerHTML=`<h3>${c.full}</h3><div class="sub">Твой размер ${c.base} · ${c.items.length?c.items.length+' в гардеробе':'вещей пока нет'}</div>
+  <div class="sysrow">${c.sys.map(s=>`<span class="num"><i>${s[0]}</i>${s[1]}</span>`).join('')}</div>
+  ${c.items.length?`<div class="sgrid">${c.items.map(i=>`<div><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]} · ${i[3]}</div></div>`).join('')}</div>`:''}`;
+  document.getElementById('sheet').classList.add('on');document.getElementById('dim').classList.add('on');
+}
+function closeSheet(){sheetId=null;document.getElementById('sheet').classList.remove('on');document.getElementById('dim').classList.remove('on')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+function render(){
+  try{localStorage.setItem('sb_ship',K)}catch(e){}
+  const scr=document.getElementById('screen');const prev=document.getElementById('main');const top=prev?prev.scrollTop:0;
+  scr.className='screen s-'+V[K].s;scr.innerHTML=screen();const m=document.getElementById('main');m.scrollTop=resetTop?0:top;resetTop=0;
+  const st=scr.querySelector('.status');const upd=()=>st.classList.toggle('sc',m.scrollTop>30);m.addEventListener('scroll',upd,{passive:true});upd();
+  if(sheetId)openSheet(sheetId);
+  document.getElementById('pills').innerHTML=V.map((v,i)=>`<button aria-pressed="${i===K}" onclick="K=${i};resetTop=1;sheetId=null;render()"><span class="n">${i+1}</span>${v.n}</button>`).join('');
+  const v=V[K];
+  document.getElementById('notes').innerHTML=`<div><h2>${K+1}. ${v.n}</h2></div>
+  <div class="spec"><div>Шрифт: <b>${v.font}</b></div><div>Нижняя панель: <b>${v.bar}</b></div></div><p>${v.idea}</p>
+  <div class="box"><div><h3>Плюсы</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+  <p class="hint">Шрифты и панели можно смешивать: например, шрифт из «Логистики» и панель из «Чека». Все шрифты с полной поддержкой кириллицы.</p>`;
+}
+render();
+</script>
