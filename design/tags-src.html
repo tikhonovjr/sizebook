@@ -1,0 +1,447 @@
+<title>SizeBook · Бирки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,600;1,6..96,400&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Zilla+Slab:wght@500;700&family=Barlow+Condensed:wght@500;600;800&display=swap">
+<style>
+/* Layout: витрина — сверху 5 вариантов бирки, слева «телефон», справа заметки. Каждая бирка — самостоятельный материал: ткань, картон, сатин, кожа, наклейка */
+:root{
+  --bg:#f4f4f2; --surface:#fff; --line:rgba(20,20,18,.12); --text:#151513; --text2:#65655f; --text3:#9a9a93; --accent:#1f5fa6;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .45 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.32' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.09 0 0 0 0 0.02 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --fiber:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:18px}
+.head h1{font-size:24px;font-weight:650;letter-spacing:-.02em;margin:0 0 4px}
+.head p{margin:0;color:var(--text2);max-width:64ch;line-height:1.5}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{display:flex;align-items:center;gap:8px;padding:8px 13px 8px 8px;border-radius:999px;background:var(--surface);border:.5px solid var(--line);font-weight:500}
+.pills .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-size:12px}
+.pills button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.pills button[aria-pressed="true"] .n{background:var(--bg);color:var(--text)}
+.stage{display:grid;grid-template-columns:392px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:840px){.stage{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:14px;min-width:0;padding-top:6px}
+.notes h2{margin:0;font-size:20px}
+.notes .insp{color:var(--text2);font-size:13px;margin-top:2px}
+.notes p{margin:0;line-height:1.55;max-width:60ch}
+.notes h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px;line-height:1.5}
+.box{padding:14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:480px){.box{grid-template-columns:1fr}}
+.hint{font-size:12px;color:var(--text3);line-height:1.5}
+
+.phone{width:392px;max-width:100%;height:812px;border-radius:46px;background:#0d0d0d;padding:10px;justify-self:center;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+@media (max-width:440px){.phone{padding:0;background:none;box-shadow:none;width:100%;height:780px}.screen{border-radius:26px;border:.5px solid var(--line)}}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--ui);position:absolute;top:0;left:0;right:0;z-index:4}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.main{padding-top:46px;padding-bottom:96px}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.ph{position:relative;display:grid;place-items:center;overflow:hidden}
+.ph img{width:86%;height:86%;object-fit:contain;display:block}
+.num{font-variant-numeric:tabular-nums}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 16px}
+.lt h2{margin:0}
+.tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 26px}
+.tabbar div{display:grid;justify-items:center;gap:3px;font-size:10px;font-weight:500}
+.shelves{padding:0 18px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:30px 0 4px}
+.shelf{margin-top:16px}
+.shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
+.shead .chev{margin-left:auto}
+.strip{gap:10px;margin:0 -18px;padding:0 18px}
+.it{flex:none;width:118px;text-align:left}
+.it .ph{height:132px}
+.it .nm{margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.38);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:84%;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;border-radius:26px 26px 0 0}
+.sheet.on{transform:none}
+.sheet .scroll{padding:4px 18px 28px}
+.grab{width:38px;height:5px;border-radius:3px;margin:8px auto 6px;flex:none;opacity:.3;background:currentColor}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid .ph{aspect-ratio:1;max-width:100%}
+.sysrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){.sheet,.dim{transition:none}}
+
+/* ═════ 1. ТКАНАЯ БИРКА ═════ */
+.v-woven{--w-bg:#e6e7ea;--w-navy:#1a2238;--w-thread:#e8dfc8;--w-thread2:#b9ad8f;--w-ink:#171a24;--w-2:#6b6f7c;background:var(--w-bg);color:var(--w-ink)}
+.v-woven .lt h2{font:400 34px "Bodoni Moda",Didot,serif;letter-spacing:-.01em}
+.v-woven .lt button{font:500 12px "Instrument Sans",sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.v-woven .label{margin:4px 14px 0;position:relative;color:var(--w-thread);padding:22px 34px 20px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%,rgba(0,0,0,.12)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px),
+    repeating-linear-gradient(90deg,rgba(0,0,0,.22) 0 1px,transparent 1px 2.5px),
+    var(--w-navy);
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 14px 28px -12px rgba(16,20,36,.55),0 2px 4px rgba(16,20,36,.2)}
+.v-woven .label::before,.v-woven .label::after{content:"";position:absolute;top:0;bottom:0;width:18px;
+  background:linear-gradient(90deg,rgba(0,0,0,.45),rgba(0,0,0,.1) 70%,rgba(255,255,255,.06)),repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px),var(--w-navy)}
+.v-woven .label::before{left:0}
+.v-woven .label::after{right:0;transform:scaleX(-1)}
+.v-woven .stitch{position:absolute;top:6px;bottom:6px;width:0;border-left:1.5px dashed var(--w-thread2);opacity:.75;z-index:1}
+.v-woven .stitch.l{left:8px}.v-woven .stitch.r{right:8px}
+.v-woven .thread{text-shadow:0 1px 0 rgba(0,0,0,.55),0 0 1px rgba(232,223,200,.4)}
+.v-woven .brand{display:flex;justify-content:space-between;font:600 9px "Instrument Sans",sans-serif;letter-spacing:.32em;color:var(--w-thread2)}
+.v-woven .who{font:italic 400 30px/1.05 "Bodoni Moda",serif;margin:14px 0 4px;text-align:center}
+.v-woven .meta{text-align:center;font:500 10px "Instrument Sans",sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--w-thread2)}
+.v-woven .rule{height:1px;margin:16px 0 4px;background:linear-gradient(90deg,transparent,var(--w-thread2),transparent);opacity:.6}
+.v-woven .grid{display:grid;grid-template-columns:repeat(3,1fr)}
+.v-woven .cell{padding:10px 0 6px;text-align:center}
+.v-woven .cell span{display:block;font:600 8.5px "Instrument Sans",sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--w-thread2)}
+.v-woven .cell b{font:400 30px/1.15 "Bodoni Moda",serif;color:var(--w-thread)}
+.v-woven .cell:hover b{color:#fff}
+.v-woven .share{display:block;margin:14px auto 0;font:600 11px "Instrument Sans",sans-serif;letter-spacing:.2em;text-transform:uppercase;padding:12px 18px;border-bottom:1px solid var(--w-ink)}
+.v-woven .sec b{font:400 28px "Bodoni Moda",serif}
+.v-woven .sec button,.v-woven .shead .chev{font:600 10px "Instrument Sans",sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--w-2)}
+.v-woven .shead b{font:600 11px "Instrument Sans",sans-serif;letter-spacing:.16em;text-transform:uppercase}
+.v-woven .shead .sz{font:italic 400 15px "Bodoni Moda",serif;color:var(--w-2)}
+.v-woven .it .ph{background:#f5f5f4;border-radius:2px}
+.v-woven .it .nm{font:500 13px "Instrument Sans",sans-serif}
+.v-woven .it .br{font:500 10px "Instrument Sans",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--w-2);display:flex;justify-content:space-between}
+.v-woven .it .br i{font:italic 400 13px "Bodoni Moda",serif;letter-spacing:0;text-transform:none;color:var(--w-ink)}
+.v-woven .tabbar{background:rgba(230,231,234,.92);backdrop-filter:blur(16px);border-top:1px solid rgba(23,26,36,.1);color:var(--w-2)}
+.v-woven .tabbar div{font-family:"Instrument Sans",sans-serif;letter-spacing:.06em}
+.v-woven .tabbar .on{color:var(--w-ink)}
+.v-woven .sheet{background:var(--w-bg);color:var(--w-ink)}
+.v-woven .sheet h3{font:400 30px "Bodoni Moda",serif;margin:4px 0 2px}
+.v-woven .sheet .sub{font:500 11px "Instrument Sans",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--w-2)}
+.v-woven .sysrow span{padding:8px 12px;background:var(--w-navy);color:var(--w-thread);font:400 18px "Bodoni Moda",serif}
+.v-woven .sysrow span i{font:600 9px "Instrument Sans",sans-serif;letter-spacing:.2em;font-style:normal;color:var(--w-thread2);margin-right:6px}
+.v-woven .sgrid .ph{background:#f5f5f4}
+.v-woven .sgrid .nm{font:500 13px "Instrument Sans",sans-serif;margin-top:6px}
+
+/* ═════ 2. ЯРЛЫК НА ШНУРКЕ ═════ */
+.v-hang{--h-bg:#e2e2de;--h-card:#121212;--h-ink:#161616;--h-2:#6a6b66;--h-foil1:#f4f4f2;--h-foil2:#8d8d88;background:linear-gradient(rgba(226,226,222,.86),rgba(226,226,222,.86)),var(--noise),var(--h-bg);color:var(--h-ink);font-family:"Instrument Sans",sans-serif}
+.v-hang .lt h2{font:600 30px "Instrument Sans",sans-serif;letter-spacing:-.03em}
+.v-hang .lt button{font:600 12px "Instrument Sans",sans-serif;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.55)}
+.v-hang .tagwrap{position:relative;padding:40px 26px 0}
+.v-hang .cord{position:absolute;left:50%;top:0;width:160px;height:72px;transform:translateX(-50%);z-index:2;pointer-events:none}
+.v-hang .label{position:relative;background:var(--h-card) var(--noise);color:#2a2a2a;border-radius:6px;padding:40px 22px 0;transform:rotate(-1.6deg);
+  clip-path:polygon(18% 0,82% 0,100% 9%,100% 100%,0 100%,0 9%);
+  box-shadow:0 30px 40px -24px rgba(0,0,0,.6)}
+.v-hang .shadowcard{position:absolute;inset:40px 26px 0;transform:rotate(-1.6deg) translate(4px,8px);background:rgba(0,0,0,.18);filter:blur(10px);clip-path:polygon(18% 0,82% 0,100% 9%,100% 100%,0 100%,0 9%);border-radius:6px}
+.v-hang .eyelet{position:absolute;left:50%;top:14px;width:20px;height:20px;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,var(--h-bg) 0 4.5px,#3b3b3b 5px,#d9d9d5 6.5px,#8a8a86 8px,#e6e6e2 9px,#5c5c58 10px)}
+.v-hang .deb{color:#151515;text-shadow:0 1px 0 rgba(255,255,255,.07),0 -1px 0 rgba(0,0,0,.9)}
+.v-hang .foil{background:linear-gradient(100deg,var(--h-foil2) 0%,var(--h-foil1) 35%,#bdbdb8 50%,var(--h-foil1) 65%,var(--h-foil2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.v-hang .brand{text-align:center;font:700 11px "Instrument Sans",sans-serif;letter-spacing:.42em}
+.v-hang .who{text-align:center;font:600 26px/1.05 "Instrument Sans",sans-serif;letter-spacing:-.02em;margin:16px 0 4px}
+.v-hang .meta{text-align:center;font:500 11px "Instrument Sans",sans-serif;letter-spacing:.08em;color:#6f6f6a}
+.v-hang .grid{display:grid;grid-template-columns:repeat(3,1fr);margin-top:20px;border-top:1px solid #262626}
+.v-hang .cell{padding:12px 0 12px;text-align:center;border-bottom:1px solid #262626}
+.v-hang .cell:nth-child(3n+2){border-left:1px solid #262626;border-right:1px solid #262626}
+.v-hang .cell span{display:block;font:600 9px "Instrument Sans",sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#7c7c75}
+.v-hang .cell b{font:600 26px "Instrument Sans",sans-serif;letter-spacing:-.03em;color:#e9e9e5;text-shadow:0 1px 0 rgba(0,0,0,.9),0 0 12px rgba(255,255,255,.06)}
+.v-hang .stub{margin:18px -22px 0;position:relative;border-top:2px dashed #3a3a3a;padding:16px 22px 18px;display:flex;justify-content:space-between;align-items:center;width:calc(100% + 44px)}
+.v-hang .stub::before,.v-hang .stub::after{content:"";position:absolute;top:-9px;width:16px;height:16px;border-radius:50%;background:var(--h-bg)}
+.v-hang .stub::before{left:-8px}.v-hang .stub::after{right:-8px}
+.v-hang .stub span{font:600 12px "Instrument Sans",sans-serif;letter-spacing:.16em;text-transform:uppercase}
+.v-hang .stub small{font:500 11px "Instrument Sans",sans-serif;color:#77776f}
+.v-hang .sec b{font:600 22px "Instrument Sans",sans-serif;letter-spacing:-.02em}
+.v-hang .sec button{font-weight:600}
+.v-hang .shead b{font-weight:600;font-size:15px}
+.v-hang .shead .sz{font-size:12px;font-weight:600;color:#fff;background:var(--h-card);padding:2px 8px;border-radius:4px}
+.v-hang .shead .chev{color:var(--h-2)}
+.v-hang .it .ph{background:#ecece9;border-radius:6px}
+.v-hang .it .nm{font-weight:600;font-size:13px}
+.v-hang .it .br{font-size:12px;color:var(--h-2);display:flex;justify-content:space-between}
+.v-hang .it .br i{font-style:normal;color:var(--h-ink);font-weight:600}
+.v-hang .tabbar{background:#121212;color:#7c7c77;border-radius:24px 24px 0 0}
+.v-hang .tabbar .on{color:#f4f4f2}
+.v-hang .sheet{background:#ecece9;color:var(--h-ink)}
+.v-hang .sheet h3{font:600 26px "Instrument Sans",sans-serif;letter-spacing:-.02em;margin:4px 0 2px}
+.v-hang .sheet .sub{color:var(--h-2)}
+.v-hang .sysrow span{padding:8px 12px;background:#121212;color:#f4f4f2;border-radius:6px;font-weight:600;font-size:16px}
+.v-hang .sysrow span i{font-style:normal;color:#8d8d88;font-size:10px;letter-spacing:.14em;margin-right:6px}
+.v-hang .sgrid .ph{background:#fff;border-radius:8px}
+.v-hang .sgrid .nm{font-weight:600;margin-top:6px}
+
+/* ═════ 3. БИРКА С СОСТАВОМ ═════ */
+.v-care{--c-bg:#eef0f3;--c-satin:#fbfbfa;--c-ink:#4d5566;--c-ink2:#8b93a3;--c-seam:#2e3646;--c-text:#1b1f29;background:var(--c-bg);color:var(--c-text);font-family:"IBM Plex Sans Condensed",sans-serif}
+.v-care .lt h2{font:500 30px "IBM Plex Sans Condensed",sans-serif;letter-spacing:-.01em;text-transform:uppercase}
+.v-care .lt button{font:500 12px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink)}
+.v-care .seam{height:22px;margin:0 0 0;background:linear-gradient(180deg,#3a4357,var(--c-seam));position:relative;box-shadow:0 4px 8px -2px rgba(0,0,0,.3)}
+.v-care .seam::after{content:"";position:absolute;left:0;right:0;bottom:6px;border-bottom:1.5px dashed rgba(255,255,255,.35)}
+.v-care .label{margin:-2px 46px 0;padding:26px 20px 34px;color:var(--c-ink);position:relative;
+  background:linear-gradient(115deg,rgba(255,255,255,0) 20%,rgba(255,255,255,.9) 32%,rgba(255,255,255,0) 44%),linear-gradient(115deg,rgba(0,0,0,0) 55%,rgba(30,40,60,.05) 65%,rgba(0,0,0,0) 75%),var(--c-satin);
+  box-shadow:0 18px 30px -18px rgba(27,31,41,.45),0 1px 2px rgba(27,31,41,.08);
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
+.v-care .brand{text-align:center;font:600 10px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.34em}
+.v-care .big{text-align:center;margin:14px 0 2px;font:500 11px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.18em;color:var(--c-ink2)}
+.v-care .who{text-align:center;font:500 22px "IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--c-text)}
+.v-care .lines{margin-top:16px;border-top:.5px solid #cfd3da}
+.v-care .cell{display:grid;grid-template-columns:1fr auto;align-items:baseline;width:100%;padding:8px 0;border-bottom:.5px solid #cfd3da;text-align:left}
+.v-care .cell span{font:500 10px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink2)}
+.v-care .cell span em{display:block;font-style:normal;letter-spacing:.06em;font-size:10px;color:#a9afbb;text-transform:none}
+.v-care .cell b{font:600 24px "IBM Plex Sans Condensed",sans-serif;color:var(--c-text)}
+.v-care .comp{margin-top:14px;font:400 11px/1.55 "IBM Plex Mono",monospace;color:var(--c-ink)}
+.v-care .comp b{font-weight:600}
+.v-care .care{display:flex;justify-content:center;gap:12px;margin-top:14px;color:var(--c-ink)}
+.v-care .share{display:flex;justify-content:center;gap:8px;align-items:center;margin:18px auto 0;font:500 13px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase;padding:12px 20px;border:1px solid var(--c-text);border-radius:999px}
+.v-care .sec b{font:500 22px "IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.v-care .sec button,.v-care .shead .chev{font:500 12px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink)}
+.v-care .shead b{font:500 15px "IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.v-care .shead .sz{font:400 12px "IBM Plex Mono",monospace;color:var(--c-ink2)}
+.v-care .it .ph{background:var(--c-satin);border-radius:4px;box-shadow:0 1px 2px rgba(27,31,41,.06)}
+.v-care .it .nm{font:500 14px "IBM Plex Sans Condensed",sans-serif}
+.v-care .it .br{font:400 11px "IBM Plex Mono",monospace;color:var(--c-ink2);display:flex;justify-content:space-between}
+.v-care .it .br i{font-style:normal;color:var(--c-text);font-weight:600}
+.v-care .tabbar{background:var(--c-satin);border-top:.5px solid #d3d7de;color:var(--c-ink2)}
+.v-care .tabbar div{font-family:"IBM Plex Sans Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.v-care .tabbar .on{color:var(--c-text)}
+.v-care .sheet{background:var(--c-bg);color:var(--c-text)}
+.v-care .sheet h3{font:500 26px "IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;margin:4px 0 2px}
+.v-care .sheet .sub{font:400 12px "IBM Plex Mono",monospace;color:var(--c-ink2)}
+.v-care .sysrow span{background:var(--c-satin);padding:8px 12px;font:600 18px "IBM Plex Sans Condensed",sans-serif}
+.v-care .sysrow span i{font:500 10px "IBM Plex Sans Condensed",sans-serif;letter-spacing:.14em;font-style:normal;color:var(--c-ink2);margin-right:6px}
+.v-care .sgrid .ph{background:var(--c-satin)}
+.v-care .sgrid .nm{font-weight:500;margin-top:6px}
+
+/* ═════ 4. КОЖАНЫЙ ПАТЧ ═════ */
+.v-leather .status{color:#e9eef7}
+.v-leather{--l-paper:#f2f1ee;--l-denim:#24406b;--l-leather:#b07a45;--l-dark:#4a2a12;--l-thread:#e2a55a;--l-ink:#1d2433;--l-2:#6c7182;background:var(--l-paper);color:var(--l-ink);font-family:"Instrument Sans",sans-serif}
+.v-leather .denim{padding:56px 20px 26px;margin-top:-46px;position:relative;
+  background:var(--noise),repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px),repeating-linear-gradient(45deg,rgba(0,0,0,.12) 0 1px,transparent 1px 4px),radial-gradient(120% 80% at 30% 20%,#33578a,var(--l-denim) 60%,#1a2f52)}
+.v-leather .denim .lt{padding:0 0 18px;color:#e9eef7}
+.v-leather .denim .lt h2{font:700 30px "Zilla Slab",serif;letter-spacing:-.01em}
+.v-leather .denim .lt button{font:600 12px "Instrument Sans",sans-serif;letter-spacing:.08em;color:#e9eef7;border:1px solid rgba(233,238,247,.4);border-radius:999px;padding:7px 12px}
+.v-leather .denim::after{content:"";position:absolute;left:0;right:0;bottom:8px;border-bottom:2px dashed var(--l-thread);opacity:.85}
+.v-leather .label{position:relative;border-radius:10px;padding:20px 20px 16px;color:var(--l-dark);
+  background:var(--grain),radial-gradient(140% 120% at 20% 10%,#c99460,var(--l-leather) 45%,#8a5a2e);
+  box-shadow:0 2px 0 rgba(255,255,255,.18) inset,0 -3px 6px rgba(0,0,0,.25) inset,0 12px 20px -8px rgba(0,0,0,.5)}
+.v-leather .label::before{content:"";position:absolute;inset:7px;border:2px dashed var(--l-thread);border-radius:6px;opacity:.95;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
+.v-leather .deb{color:rgba(74,42,18,.88);text-shadow:0 1px 0 rgba(255,220,180,.35),0 -1px 0 rgba(40,20,5,.45)}
+.v-leather .brand{display:flex;justify-content:space-between;font:700 11px "Zilla Slab",serif;letter-spacing:.2em}
+.v-leather .who{font:700 26px/1.05 "Zilla Slab",serif;text-align:center;margin:10px 0 2px;text-transform:uppercase;letter-spacing:.02em}
+.v-leather .meta{text-align:center;font:500 11px "Zilla Slab",serif;letter-spacing:.14em;text-transform:uppercase}
+.v-leather .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;position:relative}
+.v-leather .cell{border-radius:6px;padding:7px 0 5px;text-align:center;box-shadow:inset 0 2px 3px rgba(60,30,8,.45),inset 0 -1px 0 rgba(255,220,180,.25);background:rgba(90,52,20,.12)}
+.v-leather .cell span{display:block;font:700 9px "Zilla Slab",serif;letter-spacing:.18em;text-transform:uppercase}
+.v-leather .cell b{font:700 26px/1.05 "Zilla Slab",serif}
+.v-leather .lot{text-align:center;margin-top:10px;font:700 10px "Zilla Slab",serif;letter-spacing:.3em}
+.v-leather .share{margin:16px 0 0;width:100%;padding:13px;border-radius:999px;background:#f2f1ee;color:var(--l-denim);font:700 14px "Instrument Sans",sans-serif;display:flex;gap:8px;justify-content:center;align-items:center;box-shadow:0 6px 16px -8px rgba(0,0,0,.5)}
+.v-leather .sec b{font:700 24px "Zilla Slab",serif}
+.v-leather .sec button{font-weight:600;color:var(--l-denim)}
+.v-leather .shead b{font:700 17px "Zilla Slab",serif}
+.v-leather .shead .sz{font:700 12px "Zilla Slab",serif;color:#fff;padding:2px 8px;border-radius:4px;background:radial-gradient(circle at 30% 20%,#c99460,#8a5a2e)}
+.v-leather .shead .chev{color:var(--l-2)}
+.v-leather .it .ph{background:#fff;border-radius:10px}
+.v-leather .it .nm{font-weight:600;font-size:13px}
+.v-leather .it .br{font-size:12px;color:var(--l-2);display:flex;justify-content:space-between}
+.v-leather .it .br i{font:700 13px "Zilla Slab",serif;font-style:normal;color:var(--l-ink)}
+.v-leather .tabbar{background:var(--l-denim);color:rgba(233,238,247,.6)}
+.v-leather .tabbar .on{color:var(--l-thread)}
+.v-leather .sheet{background:var(--l-paper);color:var(--l-ink)}
+.v-leather .sheet h3{font:700 26px "Zilla Slab",serif;margin:4px 0 2px}
+.v-leather .sheet .sub{color:var(--l-2)}
+.v-leather .sysrow span{padding:8px 12px;border-radius:6px;background:var(--l-denim);color:#e9eef7;font:700 18px "Zilla Slab",serif}
+.v-leather .sysrow span i{font:600 10px "Instrument Sans",sans-serif;font-style:normal;color:var(--l-thread);letter-spacing:.12em;margin-right:6px}
+.v-leather .sgrid .ph{background:#fff;border-radius:12px}
+.v-leather .sgrid .nm{font-weight:600;margin-top:6px}
+
+/* ═════ 5. КОРОБКА ═════ */
+.v-box{--b-kraft:#b8875a;--b-paper:#fbfbf8;--b-ink:#111;--b-2:#6b6b66;--b-acc:#e8412c;--b-bg:#f3f2ef;background:var(--b-bg);color:var(--b-ink);font-family:"Barlow Condensed",sans-serif}
+.v-box .kraft{padding:56px 16px 22px;margin-top:-46px;background:var(--fiber),var(--noise),linear-gradient(180deg,#c3936a,var(--b-kraft));position:relative}
+.v-box .kraft::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;background:linear-gradient(180deg,rgba(0,0,0,.14),transparent);transform:translateY(100%)}
+.v-box .kraft .lt{padding:0 2px 16px}
+.v-box .kraft .lt h2{font:800 34px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:-.01em;color:#2a1a0c}
+.v-box .kraft .lt button{font:600 13px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#2a1a0c;border:1.5px solid #2a1a0c;padding:5px 10px}
+.v-box .label{background:var(--b-paper);border-radius:3px;padding:12px 14px 12px;box-shadow:0 1px 1px rgba(0,0,0,.15),0 10px 20px -10px rgba(60,30,0,.5);position:relative}
+.v-box .label::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 60%,rgba(255,255,255,.6) 70%,transparent 80%);pointer-events:none;border-radius:3px}
+.v-box .hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--b-ink);padding-bottom:8px}
+.v-box .hdr .m{font:800 24px/1 "Barlow Condensed",sans-serif;text-transform:uppercase}
+.v-box .hdr .m small{display:block;font:500 11px "IBM Plex Mono",monospace;letter-spacing:0;text-transform:none;color:var(--b-2);margin-top:4px}
+.v-box .hdr .bigsz{background:var(--b-ink);color:#fff;text-align:center;padding:4px 10px 3px;font:800 30px/1 "Barlow Condensed",sans-serif}
+.v-box .hdr .bigsz small{display:block;font:600 9px "IBM Plex Mono",monospace;letter-spacing:.1em}
+.v-box table{width:100%;border-collapse:collapse;margin-top:6px}
+.v-box th{font:500 10px "IBM Plex Mono",monospace;color:var(--b-2);text-align:left;padding:4px 0;font-weight:500}
+.v-box td{font:600 19px "Barlow Condensed",sans-serif;padding:4px 0;border-top:1px solid #e3e3df}
+.v-box td:first-child{font:500 15px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.v-box tr.rowbtn{cursor:pointer}
+.v-box tr.rowbtn:hover td{color:var(--b-acc)}
+.v-box td.hl{background:#f0efe9}
+.v-box .barrow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:14px}
+.v-box .bars{display:flex;height:40px;align-items:stretch;flex:1;min-width:0}
+.v-box .bars i{display:block;background:var(--b-ink)}
+.v-box .barrow small{display:block;font:400 10px "IBM Plex Mono",monospace;letter-spacing:.16em;margin-top:3px}
+.v-box .barrow .sc{font:600 12px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;text-align:right;color:var(--b-acc);flex:none}
+.v-box .sec b{font:800 26px "Barlow Condensed",sans-serif;text-transform:uppercase}
+.v-box .sec button{font:600 14px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--b-acc)}
+.v-box .shead b{font:600 18px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.03em}
+.v-box .shead .sz{font:600 11px "IBM Plex Mono",monospace;color:var(--b-2)}
+.v-box .shead .chev{color:var(--b-2)}
+.v-box .it .ph{background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.v-box .it .nm{font:600 16px "Barlow Condensed",sans-serif;text-transform:uppercase}
+.v-box .it .br{font:400 11px "IBM Plex Mono",monospace;color:var(--b-2);display:flex;justify-content:space-between}
+.v-box .it .br i{font-style:normal;color:var(--b-ink);font-weight:600}
+.v-box .tabbar{background:var(--b-paper);border-top:2px solid var(--b-ink);color:var(--b-2)}
+.v-box .tabbar div{font:600 12px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.v-box .tabbar .on{color:var(--b-acc)}
+.v-box .sheet{background:var(--b-bg);color:var(--b-ink)}
+.v-box .sheet h3{font:800 30px "Barlow Condensed",sans-serif;text-transform:uppercase;margin:4px 0 2px}
+.v-box .sheet .sub{font:400 12px "IBM Plex Mono",monospace;color:var(--b-2)}
+.v-box .sysrow span{background:var(--b-paper);border:1.5px solid var(--b-ink);padding:6px 12px;font:800 20px "Barlow Condensed",sans-serif}
+.v-box .sysrow span i{font:500 10px "IBM Plex Mono",monospace;font-style:normal;color:var(--b-2);margin-right:6px}
+.v-box .sgrid .ph{background:#fff}
+.v-box .sgrid .nm{font:600 16px "Barlow Condensed",sans-serif;text-transform:uppercase;margin-top:6px}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Паспорт как бирка: 5 вариантов</h1>
+    <p>Каждый вариант повторяет настоящий ярлык с одежды: материал, шов, печать. Нажми на размер в бирке или на категорию вещей, чтобы открыть шторку.</p>
+  </header>
+  <div class="pills" id="pills"></div>
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <section class="notes" id="notes"></section>
+  </div>
+</div>
+
+<script>
+const IMG=__IMGS__;
+const ICON={share:'<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/>',chev:'<path d="M9 6l6 6-6 6"/>',
+ hanger:'<path d="M12 7a2 2 0 1 1 2-2"/><path d="M12 7v2l9 7v2H3v-2l9-7"/>',heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+ wash:'<path d="M3 7l2 12h14l2-12"/><path d="M3 7c1.5 1.5 3 1.5 4.5 0s3-1.5 4.5 0 3 1.5 4.5 0 3-1.5 4.5 0"/>',
+ iron:'<path d="M3 18h18l-2-7a4 4 0 0 0-4-3H8"/><circle cx="12" cy="14" r=".8" fill="currentColor"/>',
+ tri:'<path d="M12 4l9 16H3z"/><path d="M5 9l14 10M19 9L5 19" stroke-width="1"/>',
+ sq:'<rect x="4" y="4" width="16" height="16" rx="1"/><circle cx="12" cy="12" r="5"/>'};
+const ic=(n,s=20,w=1.8)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+const CATS=[
+ {id:'tops',title:'Верх',full:'Футболки и рубашки',base:'M',sys:[['INT','M'],['RU','48'],['EU','48'],['US','38']],
+  items:[['shirt','Рубашка из поплина','COS','M'],['tee','Футболка Supima','Uniqlo','L'],['stripe','Тельняшка','Arket','S'],['polo','Поло из пике','Zara','M'],['sweat','Джемпер из мерино','COS','M']]},
+ {id:'bottoms',title:'Низ',full:'Джинсы и брюки',base:'32/32',sys:[['W/L','32/32'],['RU','48'],['EU','48'],['US','32']],
+  items:[['jeans','501 Original',"Levi's",'32/32'],['chino','Брюки Wide','Carhartt WIP','32/32'],['linen','Брюки из льна','Uniqlo','31']]},
+ {id:'outer',title:'Верхняя',full:'Верхняя одежда',base:'L',sys:[['INT','L'],['RU','50'],['EU','50'],['US','40']],
+  items:[['puffer','Пуховик Nuptse','The North Face','L'],['coat','Стёганое пальто','Mango','XL']]},
+ {id:'shoes',title:'Обувь',full:'Обувь',base:'43',sys:[['EU','43'],['US','10'],['UK','9'],['СМ','27,5']],
+  items:[['af1','Air Force 1','Nike','43'],['samba','Ultraboost','Adidas','43⅓'],['nb','Gel-Kayano','Asics','43,5'],['boots','Desert Boot','Clarks','42,5']]},
+ {id:'hats',title:'Шапка',full:'Головные уборы',base:'58',sys:[['СМ','58'],['INT','M'],['RU','58'],['US','7¼']],items:[['cap','Кепка из кожи','Stetson','58']]},
+ {id:'ring',title:'Кольцо',full:'Кольцо',base:'17,5',sys:[['ММ','17,5'],['RU','17,5'],['EU','55'],['US','7½']],items:[]},
+];
+const C=id=>CATS.find(c=>c.id===id);
+const cells=()=>CATS.map(c=>`<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>`).join('');
+
+function barcode(seed){let x=seed,out='';for(let i=0;i<46;i++){x=(x*9301+49297)%233280;const w=1+(x%3),g=1+((x>>3)%3);out+=`<i style="width:${w}px;margin-right:${g}px"></i>`}return out}
+
+const V=[
+ {k:'woven',n:'Тканая бирка',insp:'пришивные ярлыки на вороте пиджаков и пальто, жаккардовое плетение',
+  idea:'Тёмно-синяя тканая лента с подогнутыми и прошитыми краями. Текст «вышит» светлой нитью, антиквенный шрифт, всё по центру, как на ярлыке ателье. Ниже спокойный каталог вещей.',
+  pros:['Самый «дорогой», ассоциируется с хорошей одеждой','Фактура плетения и шов читаются даже на маленьком экране'],
+  cons:['Тёмная плашка тяжелее остального интерфейса','Классический вкус, молодой аудитории может показаться строгим'],
+  pass:()=>`<div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label"><i class="stitch l"></i><i class="stitch r"></i>
+    <div class="brand thread"><span>SIZEBOOK</span><span>№ 0182</span></div>
+    <div class="who thread">Иван Тихонов</div>
+    <div class="meta thread num">182 см · 78 кг · обычная посадка</div>
+    <div class="rule"></div>
+    <div class="grid thread">${cells()}</div>
+   </div>
+   <button class="share">Отправить по ссылке</button>`},
+ {k:'hang',n:'Ярлык на шнурке',insp:'картонные ярлыки дизайнерских брендов: плотный чёрный картон, люверс, слепое тиснение',
+  idea:'Плотный чёрный ярлык висит на шнурке с металлическим люверсом. Размеры вытиснены без краски, имя выделено серебряной фольгой. Отправка по ссылке — это отрывной корешок под перфорацией.',
+  pros:['Сильная метафора: ярлык с новой вещи и «оторви, чтобы отправить»','Узнаваемый силуэт, хорошо смотрится как превью в мессенджерах'],
+  cons:['Тиснение даёт низкий контраст, размеры читаются хуже','Наклон и шнурок нужно аккуратно адаптировать под узкие экраны'],
+  pass:()=>`<div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="tagwrap"><div class="shadowcard"></div>
+    <svg class="cord" viewBox="0 0 160 72"><defs><linearGradient id="cf" x1="0" y1="1" x2="0" y2="0"><stop offset=".45" stop-color="#9c9688"/><stop offset="1" stop-color="#9c9688" stop-opacity="0"/></linearGradient></defs><path d="M80 66 C 74 40, 50 18, 20 0" stroke="url(#cf)" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M80 66 C 88 40, 112 18, 142 0" stroke="url(#cf)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+    <div class="label"><i class="eyelet"></i>
+     <div class="brand foil">SIZEBOOK</div>
+     <div class="who foil">Иван Тихонов</div>
+     <div class="meta num">182 СМ · 78 КГ · ОБЫЧНАЯ ПОСАДКА</div>
+     <div class="grid deb">${cells()}</div>
+     <button class="stub"><span class="foil">Оторвать и отправить</span><small>${ic('share',16)}</small></button>
+    </div></div>`},
+ {k:'care',n:'Бирка с составом',insp:'сатиновые бирки по уходу в боковом шве: размеры по странам, состав, значки стирки',
+  idea:'Длинная сатиновая лента, пришитая к шву, с краем, обрезанным зубчатыми ножницами. Каждый размер дан сразу в нескольких системах, как на настоящей бирке. Вместо состава ткани — «состав» владельца.',
+  pros:['Конвертация RU/EU/US видна сразу, без лишних нажатий','Самый спокойный и читаемый вариант, хорошо масштабируется'],
+  cons:['Длинная бирка занимает почти весь первый экран','Значки ухода — шутка, которую надо поддержать в остальном интерфейсе'],
+  pass:()=>`<div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="seam"></div>
+   <div class="label">
+    <div class="brand">SIZEBOOK</div>
+    <div class="big">РАЗМЕР · SIZE · TAILLE</div>
+    <div class="who">Иван Тихонов</div>
+    <div class="lines">${CATS.map(c=>`<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}<em class="num">${c.sys.slice(1).map(s=>s[0]+' '+s[1]).join(' · ')}</em></span><b class="num">${c.base}</b></button>`).join('')}</div>
+    <div class="comp"><b>СОСТАВ:</b> рост 182 см, вес 78 кг,<br>посадка обычная</div>
+    <div class="care">${ic('wash',22,1.4)}${ic('iron',22,1.4)}${ic('tri',22,1.4)}${ic('sq',22,1.4)}</div>
+   </div>
+   <button class="share">${ic('share',16)} Отправить по ссылке</button>`},
+ {k:'leather',n:'Кожаный патч',insp:'кожаные патчи на поясе джинсов: тиснение, номер модели, отстрочка контрастной ниткой',
+  idea:'Наверху экрана деним, на нём пришит кожаный патч с рыжей отстрочкой. Размеры вдавлены в кожу, внизу номер «модели» по росту. Остальное приложение светлое, с джинсовыми и медными акцентами.',
+  pros:['Тёплый, тактильный и очень «про одежду»','Хорошо подходит к теме винтажа и архива вещей'],
+  cons:['Сильная ассоциация с джинсами, для образа в целом может быть слишком узко','Текстуры кожи и денима нагружают экран'],
+  pass:()=>`<div class="denim"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label">
+    <div class="brand deb"><span>SIZEBOOK</span><span>EST. 2026</span></div>
+    <div class="who deb">Иван Тихонов</div>
+    <div class="meta deb num">182 см · 78 кг</div>
+    <div class="grid deb">${cells()}</div>
+    <div class="lot deb num">LOT 182-78 · ОБЫЧНАЯ ПОСАДКА</div>
+   </div>
+   <button class="share">${ic('share',16,2)} Отправить по ссылке</button></div>`},
+ {k:'box',n:'Коробка',insp:'наклейки на коробках кроссовок: модель, артикул, таблица US / UK / EU / CM, штрихкод',
+  idea:'Белая наклейка на крафтовом картоне. Все размеры собраны в таблицу по системам, как на коробке кроссовок, большой размер обуви вынесен в чёрный блок. Штрихкод означает ссылку, по которой друзья видят паспорт.',
+  pros:['Самый информативный: все системы в одной таблице','Близок к культуре кроссовок и ресейла, понятен с первого взгляда'],
+  cons:['Плотная таблица на маленьком экране требует аккуратной типографики','Крафт и штрихкод могут показаться «складскими»'],
+  pass:()=>`<div class="kraft"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label">
+    <div class="hdr"><div class="m">Тихонов Иван<small class="num">ART. SB-0182-78 · рост 182 · вес 78</small></div><div class="bigsz num"><small>EU</small>43</div></div>
+    <table><thead><tr><th></th><th>РАЗМ.</th><th>RU</th><th>EU</th><th>US</th></tr></thead>
+    <tbody>${CATS.map(c=>{const g=k=>(c.sys.find(s=>s[0]===k)||['','—'])[1];return `<tr class="rowbtn" onclick="openSheet('${c.id}')"><td>${c.title}</td><td class="hl num">${c.base}</td><td class="num">${g('RU')}</td><td class="num">${g('EU')}</td><td class="num">${g('US')}</td></tr>`}).join('')}</tbody></table>
+    <div class="barrow"><div style="flex:1;min-width:0"><div class="bars">${barcode(182)}</div><small class="num">4 600182 078430</small></div><button class="sc">Отправить<br>по ссылке →</button></div>
+   </div></div>`},
+];
+
+let K=0,sheetId=null,resetTop=0;
+try{K=+localStorage.getItem('sb_tag')||0}catch(e){}
+function screen(){
+  const v=V[K];
+  return `<div class="status"><span class="num">18:14</span><span>●●● ▮</span></div>
+  <div class="scroll main" id="main">${v.pass()}
+   <div class="shelves">
+    <div class="sec"><b>Мои вещи</b><button>+ Добавить</button></div>
+    ${CATS.filter(c=>c.items.length).map(c=>`<div class="shelf">
+     <button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b><span class="sz num">${c.base}</span><span class="chev">${ic('chev',16)}</span></button>
+     <div class="strip">${c.items.map(i=>`<button class="it" onclick="openSheet('${c.id}')"><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]}</div><div class="br"><span>${i[2]}</span><i class="num">${i[3]}</i></div></button>`).join('')}</div>
+    </div>`).join('')}
+   </div>
+  </div>
+  <nav class="tabbar">${[['hanger','Гардероб'],['heart','Вишлист'],['users','Друзья'],['user','Профиль']].map((t,i)=>`<div class="${i===0?'on':''}">${ic(t[0],22)}<span>${t[1]}</span></div>`).join('')}</nav>
+  <div class="dim" id="dim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Категория"><div class="grab"></div><div class="scroll" id="sheetBody"></div></div>`;
+}
+function openSheet(id){
+  sheetId=id;const c=C(id);
+  document.getElementById('sheetBody').innerHTML=`<h3>${c.full}</h3><div class="sub">Твой размер ${c.base} · ${c.items.length?c.items.length+' в гардеробе':'вещей пока нет'}</div>
+  <div class="sysrow">${c.sys.map(s=>`<span class="num"><i>${s[0]}</i>${s[1]}</span>`).join('')}</div>
+  ${c.items.length?`<div class="sgrid">${c.items.map(i=>`<div><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]} · ${i[3]}</div></div>`).join('')}</div>`:''}`;
+  document.getElementById('sheet').classList.add('on');document.getElementById('dim').classList.add('on');
+}
+function closeSheet(){sheetId=null;document.getElementById('sheet').classList.remove('on');document.getElementById('dim').classList.remove('on')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+function render(){
+  try{localStorage.setItem('sb_tag',K)}catch(e){}
+  const scr=document.getElementById('screen');const prev=document.getElementById('main');const top=prev?prev.scrollTop:0;
+  scr.className='screen v-'+V[K].k;scr.innerHTML=screen();document.getElementById('main').scrollTop=resetTop?0:top;resetTop=0;
+  if(sheetId)openSheet(sheetId);
+  document.getElementById('pills').innerHTML=V.map((v,i)=>`<button aria-pressed="${i===K}" onclick="K=${i};resetTop=1;sheetId=null;render()"><span class="n">${i+1}</span>${v.n}</button>`).join('');
+  const v=V[K];
+  document.getElementById('notes').innerHTML=`<div><h2>${K+1}. ${v.n}</h2><div class="insp">Откуда идея: ${v.insp}</div></div><p>${v.idea}</p>
+  <div class="box"><div><h3>Плюсы</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+  <p class="hint">Фото вещей примерные, из открытого датасета, с вырезанным фоном. Шрифты и текстуры подбирались под каждый материал отдельно.</p>`;
+}
+render();
+</script>
