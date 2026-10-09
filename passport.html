@@ -186,11 +186,13 @@ button.cell:active,button.route:active{filter:invert(1)}
 
 .tour{position:fixed;inset:0;z-index:40;display:none}
 .tour.on{display:block}
-.tour .shade{position:absolute;inset:0;background:rgba(10,10,10,.62)}
-.tour .spot{position:absolute;border:3px solid #ffd400;box-shadow:0 0 0 9999px rgba(10,10,10,.62);transition:all .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
-.tour .tcard{position:absolute;left:12px;right:12px;max-width:456px;margin:0 auto;background:var(--lab);border:2px solid var(--ink);box-shadow:0 18px 40px rgba(0,0,0,.45);transition:top .3s,bottom .3s}
-.tcard .th1{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--ink);padding:8px 12px;font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em}
-.tcard .th1 button{font:700 10px var(--mono);text-transform:uppercase;color:var(--ink2)}
+.tour.hint{pointer-events:none}
+.tour.hint .tcard{pointer-events:auto}
+.tour .spot{position:absolute;border:3px solid #ffd400;box-shadow:0 0 0 9999px rgba(10,10,10,.62);transition:left .25s,top .25s,width .25s,height .25s;pointer-events:none}
+.tour.hint .spot{box-shadow:0 0 0 9999px rgba(10,10,10,.45)}
+.tour .tcard{position:absolute;left:12px;right:12px;max-width:456px;margin:0 auto;background:var(--lab);border:2px solid var(--ink);box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.tcard .th1{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--ink);padding:0 0 0 12px;font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.tcard .th1 button{font:700 10px var(--mono);text-transform:uppercase;color:var(--ink2);padding:12px 12px;touch-action:manipulation}
 .tcard .tb2{padding:12px 14px 4px}
 .tcard h4{margin:0 0 6px;font:900 21px/1.1 var(--disp);text-transform:uppercase}
 .tcard p{margin:0;font:500 15px/1.45 var(--disp);color:#2a2b2e}
@@ -199,15 +201,16 @@ button.cell:active,button.route:active{filter:invert(1)}
 .tcard .bar i{flex:1;height:4px;background:#d7d8db}
 .tcard .bar i.on{background:var(--ink)}
 .tcard .tf{display:flex;gap:8px;padding:12px 14px 14px}
-.tcard .tf .btn{flex:1;padding:11px}
-.check{margin-top:16px}
-.check .row2{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;padding:11px 12px;text-align:left;width:100%;background:var(--lab)}
-.check .row2 i{width:20px;height:20px;border:2px solid var(--ink);display:grid;place-items:center}
-.check .row2.done i{background:var(--ink)}
-.check .row2.done i::after{content:"";width:8px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
-.check .row2 span{font:700 14px var(--disp)}
-.check .row2.done span{color:var(--ink3);text-decoration:line-through}
-.check .row2 em{font:700 10px var(--mono);font-style:normal;text-transform:uppercase;color:var(--ink2)}
+.tcard .tf .btn{flex:1;padding:14px 8px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.tcard .tf .btn[hidden]{display:none}
+/* «С чего начать»: баннер в шапке гардероба */
+.start{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;width:100%;text-align:left;background:var(--lab);border:2px solid var(--ink);border-left:10px solid #ffd400;padding:10px 12px;margin:-4px 0 14px;box-shadow:0 8px 18px -10px rgba(0,0,0,.4)}
+.start b{display:block;font:900 15px var(--disp);text-transform:uppercase}
+.start span{display:block;font:500 11px var(--mono);color:var(--ink2);margin-top:2px}
+.start .bar{display:flex;gap:3px;margin-top:7px}
+.start .bar i{flex:1;height:4px;background:#d7d8db}
+.start .bar i.on{background:var(--ink)}
+.start em{font:900 22px var(--disp);font-style:normal}
 .auth{max-width:480px;margin:0 auto;min-height:100vh}
 .toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -234,7 +237,10 @@ button.cell:active,button.route:active{filter:invert(1)}
   <div class="in" id="shBody"></div>
 </div>
 <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Фото"><span class="vc">Нажми или смахни вниз, чтобы закрыть</span><button class="vx" aria-label="Закрыть" onclick="closeViewer()"><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="2.4"><path d="M2 2l10 10M12 2L2 12"/></svg></button><div class="vw" id="vw"></div></div>
-<div class="tour" id="tour" role="dialog" aria-modal="true" aria-label="Обучение"><div class="spot" id="tSpot"></div><div class="tcard" id="tCard"></div></div>
+<div class="tour" id="tour" role="dialog" aria-modal="true" aria-label="Обучение"><div class="spot" id="tSpot"></div>
+  <div class="tcard" id="tCard"><div class="th1"><span id="tStep"></span><button type="button" id="tSkip">Пропустить</button></div><div class="bar" id="tBar"></div>
+    <div class="tb2"><h4 id="tTitle"></h4><p id="tText"></p></div>
+    <div class="tf"><button type="button" class="btn ghost" id="tBack">Назад</button><button type="button" class="btn" id="tNext">Дальше</button></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -353,6 +359,7 @@ function renderWardrobe() {
   $('v-wardrobe').innerHTML = `
   <div class="top">
     <div class="lt"><h1>Гардероб</h1><a class="tbtn" href="/" onclick="LS.set('sb_page','daily')">Старый вид</a></div>
+    ${startBanner()}
     <div class="label">
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
       <button class="route num" onclick="openCat('shoes')"><small>ОБУВЬ EU</small>${esc(val(CATS[3]) || '—')}</button>
@@ -362,7 +369,6 @@ function renderWardrobe() {
     </div>
   </div>
   <div class="body">
-    ${checklistHtml()}
     <div class="sec"><h2>Мои вещи</h2><button onclick="openItemForm()">+ Добавить</button></div>
     ${withItems.length ? withItems.map(c => `
       <div class="shelf">
@@ -695,14 +701,14 @@ function renderFriends() {
     </div>
   </div>
   <div class="body">
-    <div class="sec"><h2>Что видно</h2></div>
+    <div id="fSec"><div class="sec"><h2>Что видно</h2></div>
     <div class="label" style="grid-template-columns:1fr;box-shadow:none">
       ${chk('sizes', 'Размеры', 'Паспорт со всеми размерами')}
       ${chk('items', 'Размеры по брендам', 'Бренд и размер из твоих вещей, без фото и заметок')}
       ${chk('wishlist', 'Вишлист', 'Что ты хочешь получить, без полученного')}
-    </div>
+    </div></div>
     <div class="acts">
-      ${url ? `<button class="btn" onclick="sendLink()">Отправить</button><button class="btn ghost" onclick="copy(shareUrl())">Скопировать</button>` : `<button class="btn wide" onclick="makeLink()">Создать ссылку</button>`}
+      ${url ? `<button class="btn" id="fSend" onclick="sendLink()">Отправить</button><button class="btn ghost" onclick="copy(shareUrl())">Скопировать</button>` : `<button class="btn wide" id="fSend" onclick="makeLink()">Создать ссылку</button>`}
     </div>
     ${url ? `<div class="acts"><button class="btn ghost" onclick="makeLink()">Применить настройки</button></div>
       <div class="msg">При изменении настроек ссылка обновится, старая перестанет работать</div>
@@ -733,12 +739,12 @@ function renderProfile() {
   <div class="body">
     <div class="sec"><h2>О себе</h2></div>
     <div class="msg" style="margin-top:0">Пол и рост помогают переводить размеры между системами</div>
-    <div class="form">
+    <div id="pAbout"><div class="form">
       ${f('profile_name', 'Имя', 'Иван')}${f('profile_lastname', 'Фамилия', 'Тихонов')}
       ${f('profile_height', 'Рост, см', '182', 'numeric')}${f('profile_weight', 'Вес, кг', '78', 'numeric')}
       ${f('profile_age', 'Возраст', '30', 'numeric', 'span3')}
     </div>
-    <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this)">${g[1]}</button>`).join('')}</div>
+    <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this)">${g[1]}</button>`).join('')}</div></div>
     <div class="msg" id="pMsg"></div>
     <button class="btn wide" onclick="saveProfile()">Сохранить</button>
 
@@ -750,7 +756,7 @@ function renderProfile() {
 
     <div class="sec"><h2>Ещё</h2></div>
     <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>
-    <div class="acts"><button class="btn ghost" onclick="setFlag('ui_checklist_hidden','');renderAll();go('wardrobe')">Показать «С чего начать»</button></div>
+    <div class="acts"><button class="btn ghost" onclick="setFlag('ui_checklist_hidden','');renderAll();go('wardrobe');runTasks()">С чего начать</button></div>
     <div class="acts"><a class="btn ghost" href="/" onclick="LS.set('sb_page','daily')">Старая версия приложения</a></div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,logout)">Выйти из аккаунта</button></div>
   </div>`;
@@ -764,71 +770,112 @@ async function saveProfile() {
 async function unlinkTg() { try { await api('/me/telegram/unlink', { method: 'POST' }); TG = await api('/me/telegram'); renderAll(); toast('Бот отвязан'); } catch (_) {} }
 function logout() { LS.del('sb_token'); LS.del('sb_user'); location.href = '/'; }
 
-// ══════════ С чего начать ══════════
+// ══════════ Подсказки: общий движок для обучения и «С чего начать» ══════════
 function setFlag(k, v) { SIZES[k] = v; api('/sizes', { method: 'POST', body: { [k]: v } }).catch(() => {}); }
+const G = { steps: [], i: 0, mode: 'tour', timers: [] };
+function guideOn() { return $('tour').classList.contains('on'); }
+function runGuide(steps, mode, at = 0) {
+  if (!steps.length) return;
+  G.steps = steps; G.i = at; G.mode = mode;
+  closeSheet(true);
+  $('tour').classList.add('on'); $('tour').classList.toggle('hint', mode === 'hint');
+  if (mode !== 'hint') document.body.classList.add('lock');
+  showGuide();
+}
+function stopGuide() {
+  G.timers.forEach(clearTimeout); G.timers = [];
+  $('tour').classList.remove('on', 'hint'); document.body.classList.remove('lock');
+  if (G.mode === 'tour' && SIZES.ui_tour_done !== '1') setFlag('ui_tour_done', '1');
+  if (G.mode !== 'hint') renderWardrobe();
+}
+function showGuide() {
+  const st = G.steps[G.i], n = G.steps.length;
+  if (st.v && CUR !== st.v) go(st.v);
+  if (st.before) st.before();
+  const tour = G.mode === 'tour', tasks = G.mode === 'tasks';
+  $('tStep').textContent = tour ? `Обучение · шаг ${G.i + 1} из ${n}` : tasks ? `С чего начать · ${doneCount()} из ${checklist().length} готово` : 'Подсказка';
+  $('tSkip').textContent = tour ? 'Пропустить' : 'Закрыть';
+  $('tBar').innerHTML = tour || tasks ? G.steps.map((_, i) => `<i class="${i <= G.i ? 'on' : ''}"></i>`).join('') : '';
+  $('tTitle').textContent = st.t; $('tText').innerHTML = st.p;
+  const back = $('tBack'), next = $('tNext');
+  if (tour) { back.hidden = G.i === 0; back.textContent = 'Назад'; next.textContent = G.i === n - 1 ? 'Начать' : 'Дальше'; }
+  else if (tasks) { back.hidden = G.i === n - 1; back.textContent = 'Следующий шаг'; next.textContent = st.cta || 'Сделать'; }
+  else { back.hidden = true; next.textContent = st.cta || 'Понятно'; }
+  // рамка: ставим несколько раз, пока экран не успокоится после смены вкладки и прокрутки
+  G.timers.forEach(clearTimeout); G.timers = [];
+  const el = findTarget(st);
+  if (el) el.scrollIntoView({ block: 'center' });
+  [0, 120, 320, 650].forEach(ms => G.timers.push(setTimeout(placeGuide, ms)));
+}
+function findTarget(st) { return st.sel ? st.sel.split(',').map(x => document.querySelector(x.trim())).find(e => e && e.offsetParent !== null) : null; }
+function placeGuide() {
+  if (!guideOn()) return;
+  const st = G.steps[G.i], card = $('tCard'), spot = $('tSpot'), el = findTarget(st);
+  const vh = window.innerHeight, ch = card.offsetHeight + 24;
+  if (!el) {
+    Object.assign(spot.style, { left: '50%', top: '50%', width: '0px', height: '0px', borderWidth: '0px' });
+    card.style.top = Math.max(12, (vh - card.offsetHeight) / 2) + 'px'; card.style.bottom = 'auto'; return;
+  }
+  const r = el.getBoundingClientRect(), pad = 6;
+  Object.assign(spot.style, { left: (r.left - pad) + 'px', top: (r.top - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px', borderWidth: '' });
+  const below = vh - r.bottom, above = r.top;
+  if (below >= ch) { card.style.top = (r.bottom + 14) + 'px'; card.style.bottom = 'auto'; }
+  else if (above >= ch) { card.style.top = Math.max(12, r.top - 14 - card.offsetHeight) + 'px'; card.style.bottom = 'auto'; }
+  else { card.style.top = Math.max(12, vh - card.offsetHeight - 12) + 'px'; card.style.bottom = 'auto'; }
+}
+function guideNext() {
+  const st = G.steps[G.i];
+  if (G.mode === 'tour') { if (G.i >= G.steps.length - 1) return stopGuide(); G.i++; return showGuide(); }
+  stopGuide(); if (st.act) setTimeout(st.act, 60);
+}
+function guideBack() {
+  if (G.mode === 'tour') { if (G.i > 0) { G.i--; showGuide(); } return; }
+  if (G.mode === 'tasks' && G.i < G.steps.length - 1) { G.i++; showGuide(); }
+}
+// кнопки карточки создаются один раз — нажатие не теряется при перерисовке
+$('tNext').addEventListener('click', e => { e.preventDefault(); guideNext(); });
+$('tBack').addEventListener('click', e => { e.preventDefault(); guideBack(); });
+$('tSkip').addEventListener('click', e => { e.preventDefault(); stopGuide(); });
+let _rz; addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(placeGuide, 150); });
+// в режиме подсказки можно нажать прямо на подсвеченное: подсказка закрывается и действие выполняется
+document.addEventListener('click', e => { if (G.mode === 'hint' && guideOn() && !e.target.closest('#tCard')) stopGuide(); }, true);
+
+// ══════════ Обучение ══════════
+const TOUR = [
+  { v: 'wardrobe', t: 'Привет! Это SizeBook', p: 'Здесь хранятся <b>твои размеры и вещи</b>, а близкие по одной ссылке видят, что тебе подарить и какого размера. Покажу всё за минуту.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Паспорт размеров', p: 'Главное в приложении. <b>Нажми на любую ячейку</b>, например «Обувь», и впиши свой размер. Если какой-то не знаешь, оставь пустым.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .route', t: 'Перевод размеров', p: 'В карточке размера виден его <b>перевод в другие системы</b>: для обуви US, UK и сантиметры, для одежды INT и RU. Перевод примерный, у брендов бывают отличия.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .body .sec', t: 'Мои вещи', p: 'Добавляй вещи, которые <b>хорошо сидят</b>. Вставь ссылку из магазина, и фото, название и бренд подтянутся сами. Отметь размер и посадку: маломерит, в размер или большемерит. Так друзья поймут твой размер в конкретном бренде.' },
+  { v: 'wishlist', sel: '#v-wishlist .lt .tbtn', t: 'Вишлист', p: 'Сюда добавляй то, что хочешь получить. Нажми <b>«+ По ссылке»</b> и вставь ссылку на товар из любого магазина. Цена показывается в валюте магазина и в рублях. <b>Смахни строку влево</b>, чтобы отметить «Получил» или удалить. Полученная вещь переедет в гардероб.' },
+  { v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'В Профиле нажми <b>«Подключить бота»</b>: откроется Telegram, там нажми <b>«Старт»</b>. Дальше просто пересылай боту ссылки на товары и посты из каналов, и всё попадёт в твой вишлист.' },
+  { v: 'friends', sel: '#v-friends .label', t: 'Ссылка для друзей', p: 'Здесь создаётся <b>ссылка и QR-код</b> для близких. Ссылку можно отправить в любой мессенджер и отключить в любой момент.' },
+  { v: 'friends', sel: '#fSec', t: 'Что увидят друзья', p: '<b>Отметь галочками</b>, что показывать: размеры, размеры по брендам из твоих вещей и вишлист. Потом нажми «Создать ссылку» или «Применить настройки».' },
+  { v: 'profile', sel: '#pAbout', t: 'Профиль', p: 'Укажи <b>пол и рост</b>: от них зависит перевод размеров. Пройти обучение ещё раз можно кнопкой внизу Профиля.' },
+  { v: 'wardrobe', sel: '#v-wardrobe .start', t: 'С чего начать', p: 'Наверху гардероба есть <b>жёлтая плашка «С чего начать»</b>. Нажми на неё, и я по шагам покажу, что сделать первым: размеры, первая вещь, вишлист, бот и ссылка.' },
+];
+function startTour() { runGuide(TOUR, 'tour'); }
+
+// ══════════ С чего начать ══════════
 function checklist() {
-  const filled = CATS.filter(c => val(c)).length;
+  const filled = CATS.filter(c => val(c)).length, empty = CATS.find(c => !val(c)) || CATS[0];
   return [
-    ['Указать пол и рост', !!(SIZES.profile_gender && SIZES.profile_height), "go('profile')"],
-    ['Вписать хотя бы 3 размера', filled >= 3, `openCat('${(CATS.find(c => !val(c)) || CATS[0]).id}')`],
-    ['Добавить вещь, которая хорошо сидит', ITEMS.length > 0, 'openItemForm()'],
-    ['Добавить товар в вишлист', WISH.length > 0, "go('wishlist');openWishForm()"],
-    ['Подключить Telegram-бота', !!(TG && TG.linked), "go('profile');setTimeout(()=>$('tgBox').scrollIntoView({block:'center',behavior:'smooth'}),50)"],
-    ['Отправить ссылку близкому', !!SHARE, "go('friends')"],
+    { k: 'profile', ok: !!(SIZES.profile_gender && SIZES.profile_height), v: 'profile', sel: '#pAbout', t: 'Пол и рост', p: 'Впиши <b>рост</b> и выбери <b>пол</b>, потом нажми «Сохранить». От этого зависит перевод размеров.', cta: 'Понятно', act: () => $('p_profile_height') && $('p_profile_height').focus() },
+    { k: 'sizes', ok: filled >= 3, v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Три размера', p: `Нажми на ячейку и впиши размер. Заполнено <b>${filled} из 6</b>. Начни с обуви и верха.`, cta: 'Вписать размер', act: () => openCat(empty.id) },
+    { k: 'item', ok: ITEMS.length > 0, v: 'wardrobe', sel: '#v-wardrobe .body .sec', t: 'Первая вещь', p: 'Добавь вещь, которая <b>хорошо сидит</b>. Вставь ссылку из магазина или заполни вручную, укажи размер и посадку.', cta: 'Добавить вещь', act: () => openItemForm() },
+    { k: 'wish', ok: WISH.length > 0, v: 'wishlist', sel: '#v-wishlist .lt .tbtn', t: 'Первое желание', p: 'Нажми <b>«+ По ссылке»</b> и вставь ссылку на вещь, которую хочешь получить.', cta: 'Добавить в вишлист', act: () => openWishForm() },
+    { k: 'bot', ok: !!(TG && TG.linked), v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'Нажми <b>«Подключить бота»</b>, в Telegram нажми <b>«Старт»</b>. Потом пересылай боту ссылки и посты, и они попадут в вишлист.', cta: 'Подключить', act: () => { if (TG && TG.link) location.href = TG.link; } },
+    { k: 'link', ok: !!SHARE, v: 'friends', sel: '#fSend', t: 'Ссылка близким', p: 'Отметь, что показывать, и нажми <b>«Создать ссылку»</b>. Отправь её тем, кто будет дарить подарки.', cta: 'Создать ссылку', act: () => makeLink() },
   ];
 }
-function checklistHtml() {
+const doneCount = () => checklist().filter(x => x.ok).length;
+function startBanner() {
   if (SIZES.ui_checklist_hidden) return '';
-  const L = checklist(), done = L.filter(x => x[1]).length;
-  if (done === L.length) return '';
-  return `<div class="check">
-    <div class="sec" style="margin-top:22px"><h2>С чего начать</h2><button onclick="setFlag('ui_checklist_hidden','1');renderAll()">Скрыть</button></div>
-    <div class="rows" style="grid-template-columns:1fr">
-      <div class="z1" style="background:var(--lab);padding:10px 12px">ГОТОВО ${done} ИЗ ${L.length}<div class="bar" style="display:flex;gap:3px;margin-top:6px">${L.map(x => `<i style="flex:1;height:4px;background:${x[1] ? 'var(--ink)' : '#d7d8db'}"></i>`).join('')}</div></div>
-      ${L.map(x => `<button class="row2 ${x[1] ? 'done' : ''}" onclick="${x[2]}"><i></i><span>${x[0]}</span><em>${x[1] ? '' : '→'}</em></button>`).join('')}
-    </div></div>`;
+  const L = checklist(), d = L.filter(x => x.ok).length;
+  if (d === L.length) return '';
+  const nxt = L.find(x => !x.ok);
+  return `<button class="start" onclick="runTasks()"><div><b>С чего начать · ${d} из ${L.length}</b><span>Дальше: ${nxt.t.toLowerCase()}</span><div class="bar">${L.map(x => `<i class="${x.ok ? 'on' : ''}"></i>`).join('')}</div></div><em>→</em></button>`;
 }
-
-// ══════════ Обучение: шаги по вкладкам с подсветкой ══════════
-const TOUR = [
-  { v: 'wardrobe', t: 'Привет! Это SizeBook', p: 'Здесь хранятся <b>твои размеры и вещи</b>, а близкие по одной ссылке видят, что тебе подарить и какого размера. Покажу всё за минуту, это 9 коротких шагов.' },
-  { v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Паспорт размеров', p: 'Главное в приложении. <b>Нажми на любую ячейку</b>, например «Обувь», и впиши свой размер. Если какой-то не знаешь, оставь пустым.' },
-  { v: 'wardrobe', sel: '#v-wardrobe .route', t: 'Перевод размеров', p: 'В карточке размера видно его <b>перевод в другие системы</b>: для обуви US, UK и сантиметры, для одежды INT и RU. Перевод примерный, у брендов бывают отличия.' },
-  { v: 'wardrobe', sel: '#v-wardrobe .sec:last-of-type, #v-wardrobe .body .sec', t: 'Мои вещи', p: 'Добавляй вещи, которые <b>хорошо сидят</b>. Вставь ссылку из магазина, и фото, название и бренд подтянутся сами. Отметь размер и посадку: маломерит, в размер или большемерит. Так друзья поймут твой размер в конкретном бренде.' },
-  { v: 'wishlist', sel: '#v-wishlist .lt .tbtn', t: 'Вишлист', p: 'Сюда добавляй то, что хочешь получить. Нажми <b>«+ По ссылке»</b> и вставь ссылку на товар из любого магазина. Цена показывается в валюте магазина и в рублях. <b>Смахни строку влево</b>, чтобы отметить «Получил» или удалить. Полученная вещь переедет в гардероб.' },
-  { v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'Бот <b>общий для всех</b>, свой создавать не нужно. В Профиле нажми «Подключить бота», в Telegram откроется наш бот, там нажми <b>«Старт»</b>. Дальше просто пересылай ему ссылки на товары и посты из каналов: всё попадёт в твой вишлист.' },
-  { v: 'friends', sel: '#v-friends .label', t: 'Ссылка для друзей', p: 'Создай ссылку и отправь близким. Они увидят <b>размеры, размеры по брендам и вишлист</b>, ровно то, что ты отметишь. Ссылку можно отключить в любой момент.' },
-  { v: 'profile', sel: '#v-profile .form', t: 'Профиль', p: 'Укажи <b>пол и рост</b>: от них зависит перевод размеров. Пройти обучение ещё раз можно кнопкой внизу Профиля.' },
-  { v: 'wardrobe', sel: '#v-wardrobe .check', t: 'С чего начать', p: 'На главной есть список из шести шагов. Пройди его, и паспорт <b>готов к отправке</b>. Начни с размеров обуви и верха.' },
-];
-let TI = 0;
-function startTour() { TI = 0; $('tour').classList.add('on'); document.body.classList.add('lock'); showStep(); }
-function endTour() { $('tour').classList.remove('on'); document.body.classList.remove('lock'); if (SIZES.ui_tour_done !== '1') setFlag('ui_tour_done', '1'); go('wardrobe'); }
-function tourNext(d) { TI += d; if (TI >= TOUR.length) return endTour(); if (TI < 0) TI = 0; showStep(); }
-function showStep() {
-  const st = TOUR[TI];
-  if (CUR !== st.v) go(st.v);
-  if (st.v === 'wardrobe' && st.sel && st.sel.includes('.check') && SIZES.ui_checklist_hidden) { setFlag('ui_checklist_hidden', ''); renderAll(); }
-  const card = $('tCard'), spot = $('tSpot');
-  card.innerHTML = `<div class="th1"><span>Шаг ${TI + 1} из ${TOUR.length}</span><button onclick="endTour()">Пропустить</button></div>
-    <div class="bar">${TOUR.map((_, i) => `<i class="${i <= TI ? 'on' : ''}"></i>`).join('')}</div>
-    <div class="tb2"><h4>${st.t}</h4><p>${st.p}</p></div>
-    <div class="tf">${TI ? '<button class="btn ghost" onclick="tourNext(-1)">Назад</button>' : ''}<button class="btn" onclick="tourNext(1)">${TI === TOUR.length - 1 ? 'Начать' : 'Дальше'}</button></div>`;
-  const el = st.sel ? st.sel.split(',').map(x => document.querySelector(x.trim())).find(Boolean) : null;
-  if (!el) { Object.assign(spot.style, { display: 'block', left: '50%', top: '50%', width: '0px', height: '0px', borderWidth: '0' }); card.style.top = '50%'; card.style.bottom = 'auto'; card.style.transform = 'translateY(-50%)'; return; }
-  spot.style.borderWidth = '';
-  spot.style.display = 'block'; card.style.transform = '';
-  el.scrollIntoView({ block: 'center' });
-  requestAnimationFrame(() => {
-    const r = el.getBoundingClientRect(), pad = 6, vh = innerHeight;
-    Object.assign(spot.style, { left: (r.left - pad) + 'px', top: (r.top - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px' });
-    const below = vh - r.bottom, above = r.top, ch = card.offsetHeight + 24;
-    if (below >= ch) { card.style.top = (r.bottom + 14) + 'px'; card.style.bottom = 'auto'; }
-    else if (above >= ch) { card.style.bottom = (vh - r.top + 14) + 'px'; card.style.top = 'auto'; }
-    else { card.style.top = 'auto'; card.style.bottom = 'calc(12px + env(safe-area-inset-bottom, 0px))'; }
-  });
-}
-addEventListener('resize', () => { if ($('tour').classList.contains('on')) showStep(); });
+function runTasks() { const todo = checklist().filter(x => !x.ok); if (todo.length) runGuide(todo, 'tasks'); else toast('Все шаги уже сделаны'); }
 
 // ══════════ Навигация ══════════
 const VIEWS = ['wardrobe', 'wishlist', 'friends', 'profile'];
@@ -929,7 +976,7 @@ async function load() {
     const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => []), api('/wishlist').catch(() => []), api('/share').catch(() => null)]);
     SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
     renderAll(); pollWish();
-    if (SIZES.ui_tour_done !== '1' && !ITEMS.length && !WISH.length) setTimeout(startTour, 400);
+    if (SIZES.ui_tour_done !== '1' && !ITEMS.length && !WISH.length) setTimeout(startTour, 500);
     fetch(API + '/rates').then(r => r.ok ? r.json() : null).then(r => { if (r) { RATES = r; renderWishlist(); } }).catch(() => {});
     api('/me/telegram').then(t => { TG = t; renderProfile(); renderWardrobe(); }).catch(() => { TG = { enabled: false }; renderProfile(); });
   } catch (e) { if (e.message !== 'auth') showLogin('Не удалось загрузить данные. Проверь интернет и обнови страницу.'); }
