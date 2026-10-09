@@ -226,6 +226,18 @@ async function initDB() {
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
+  try {
+    let fixed = 0;
+    for (const t of ['wishlist', 'items']) {
+      const bad = await pool.query(`SELECT id, image FROM ${t} WHERE image LIKE '{%' OR image LIKE '[%'`);
+      for (const r of bad.rows) {
+        let u = null; try { u = imageUrlOf(JSON.parse(r.image)); } catch (_) {}
+        await pool.query(`UPDATE ${t} SET image=$1 WHERE id=$2`, [u, r.id]); fixed++;
+        if (u) warmImage(u);
+      }
+    }
+    if (fixed) console.log('[migrate] исправлены картинки у', fixed, 'записей');
+  } catch (e) { console.log('[migrate] картинки:', e.message); }
   for (const pair of String(process.env.SEED_USERS || '').split(',').map(x => x.trim()).filter(Boolean)) {
     const [u, p] = pair.split(':');
     if (!u || !p) continue;
@@ -1532,8 +1544,7 @@ function parseProductFromHtml(html, url) {
         if (!obj) continue;
         title = title || obj.name || null;
         if (!brand && obj.brand) brand = (typeof obj.brand === 'string' ? obj.brand : (Array.isArray(obj.brand) ? obj.brand[0]?.name : obj.brand.name)) || null;
-        const img = obj.image;
-        image = image || (Array.isArray(img) ? img[0] : img) || null;
+        image = image || imageUrlOf(obj.image);
         const offer = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
         if (offer?.price) {
           const cur = offer.priceCurrency || '';
@@ -1691,6 +1702,10 @@ function cleanBrand(b, url) {
   if (!b) return null;
   b = String(b).replace(/\s+/g, ' ').trim();
   if (!b || b.length > 40) return null;
+  // «12 STOREEZ» → «12 Storeez»: известные бренды пишем как принято
+  const canon = (typeof KNOWN_BRANDS !== 'undefined' ? KNOWN_BRANDS : []).find(k => k.toLowerCase() === b.toLowerCase());
+  if (canon) b = canon;
+  else if (b.length > 4 && b === b.toUpperCase() && /[A-Z]/.test(b)) b = b.toLowerCase().replace(/(^|[\s\-&.'])([a-z])/g, (m, p, c) => p + c.toUpperCase());
   const base = shopKey(url).split('.')[0];
   const norm = b.toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
   if (MARKETPLACES.test(base) && norm === base.replace(/[^a-z0-9]/g, '')) return null;
@@ -1712,6 +1727,14 @@ function guessBrand(title, url) {
   return null;
 }
 
+// Картинка в разметке бывает строкой, массивом или объектом ImageObject {contentUrl|url}
+function imageUrlOf(v) {
+  if (!v) return null;
+  if (Array.isArray(v)) { for (const x of v) { const u = imageUrlOf(x); if (u) return u; } return null; }
+  if (typeof v === 'object') return imageUrlOf(v.contentUrl || v.url || v.src || v['@id'] || null);
+  const u = String(v).trim();
+  return /^https?:\/\//i.test(u) ? u : (u.startsWith('//') ? 'https:' + u : null);
+}
 function mergeParseResults(a, b) {
   if (!a && !b) return { title: null, price: null, image: null };
   if (!a) return b;
@@ -1800,6 +1823,7 @@ function runParse(url) {
     const fakeRes = { statusCode: 200, status(c) { this.statusCode = c; return this; }, json(o) { resolve({ ...o, _status: this.statusCode }); return this; } };
     parseHandler({ body: { url } }, fakeRes).catch(e => resolve({ error: e.message, _status: 500 }));
   }).then(r => {
+    if (r && r.image && typeof r.image !== 'string') r.image = imageUrlOf(r.image);
     if (r._status === 200 && (r.title || r.price || r.image)) r.brand = cleanBrand(r.brand, url) || guessBrand(r.title, url);
     if (r._status === 200 && (r.title || r.price || r.image)) {
       // неполный результат (нет цены) держим недолго — повторная попытка может дать больше
