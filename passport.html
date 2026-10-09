@@ -109,6 +109,9 @@ button.cell:active,button.route:active{filter:invert(1)}
 .pic{background:#fff;position:relative;aspect-ratio:1;display:grid;place-items:center;overflow:hidden;text-align:center}
 .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;cursor:zoom-in}
 .pic.mine img{object-fit:cover}
+.pics.three{grid-template-columns:repeat(3,1fr)}
+.pics.three .add{font-size:9px}
+.pics.three .add i{width:28px;height:28px;font-size:17px}
 .pic .cap{position:absolute;left:0;top:0;background:var(--ink);color:#fff;padding:3px 6px;z-index:1}
 .pic .add{font:700 10px var(--mono);text-transform:uppercase;color:var(--ink2);display:grid;gap:6px;justify-items:center}
 .pic .add i{width:34px;height:34px;border:2px solid var(--ink);display:grid;place-items:center;font-style:normal;font:900 20px var(--disp);color:var(--ink)}
@@ -293,14 +296,14 @@ function priceHtml(w) {
 }
 
 // ── Названия: бренд латиницей отдельно, остальное по-русски и коротко ──
-const BRANDS = ["Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
+const BRANDS = ["Tom Ford","Ermenegildo Zegna","Zegna","Brunello Cucinelli","Loro Piana","Kiton","Brioni","Canali","Corneliani","Isaia","Thom Browne","Bottega Veneta","Givenchy","Fendi","Dolce & Gabbana","Alexander Wang","Balmain","Max Mara","Jil Sander","The Row","Khaite","Toteme","Lemaire","Comme des Garçons","Junya Watanabe","Sacai","Visvim","Auralee","Aimé Leon Dore","Drake's","Officine Générale","Church's","Crockett & Jones","John Lobb","Paraboot","Red Wing","Tricker's","Santoni","Berluti","Hermès","Chanel","Louis Vuitton","Etro","Missoni","Zimmermann","Ganni","Nanushka","The Kooples","Claudie Pierlot","Vince","Theory","Polo Ralph Lauren","Ralph Lauren","Moon Boot","Mackintosh","Paul Smith","Vivienne Westwood","Marine Serre","Maison Margiela","MM6","Y-3","Mastermind","Neighborhood","Wtaps","Palm Angels","Amiri","Rhude","Casablanca","Jacquemus","Lanvin","Ami Paris","Charuel","Studio 29","Monochrome","Gate31","2Mood","Lesyanebo","Alexander Terekhov","Vassa","Ruban","Lime","Ushatava","Zarina","Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
 const BRAND_RU = { 'найк': 'Nike', 'адидас': 'Adidas', 'пума': 'Puma', 'рибок': 'Reebok', 'нью баланс': 'New Balance', 'конверс': 'Converse', 'ванс': 'Vans', 'юникло': 'Uniqlo', 'зара': 'Zara', 'асикс': 'ASICS', 'саломон': 'Salomon', 'тимберленд': 'Timberland', 'левис': "Levi's", 'кархарт': 'Carhartt WIP', 'фила': 'Fila', 'лакост': 'Lacoste', 'коламбия': 'Columbia', 'норт фейс': 'The North Face', 'джордан': 'Jordan', 'стон айленд': 'Stone Island', 'гучи': 'Gucci', 'прада': 'Prada', 'баленсиага': 'Balenciaga' };
 const RU_TYPES = ['Кроссовки','Кеды','Ботинки','Сапоги','Туфли','Лоферы','Мокасины','Сандалии','Шлёпанцы','Шлепанцы','Слипоны','Угги','Худи','Толстовка','Свитшот','Футболка','Лонгслив','Рубашка','Поло','Свитер','Джемпер','Кардиган','Водолазка','Майка','Топ','Куртка','Пуховик','Пальто','Парка','Тренч','Бомбер','Ветровка','Плащ','Анорак','Жилет','Джинсы','Брюки','Чиносы','Шорты','Юбка','Платье','Джоггеры','Леггинсы','Кепка','Бейсболка','Шапка','Панама','Шляпа','Берет','Сумка','Рюкзак','Ремень','Носки','Шарф','Перчатки','Очки','Часы','Кольцо','Браслет','Комбинезон','Костюм','Пиджак','Блейзер'];
 const EN_TYPES = [[/\b(running\s+)?(sneakers?|trainers?|running shoes?)\b/i,'Кроссовки'],[/\b(high-?tops?|canvas shoes?)\b/i,'Кеды'],[/\bchelsea boots?\b/i,'Челси'],[/\bboots?\b/i,'Ботинки'],[/\bloafers?\b/i,'Лоферы'],[/\bsandals?\b/i,'Сандалии'],[/\bslides?\b/i,'Шлёпанцы'],[/\bhoodie\b/i,'Худи'],[/\bsweatshirt\b|\bcrewneck\b/i,'Свитшот'],[/\blong ?sleeve\b/i,'Лонгслив'],[/\bt-?shirt\b|\btee\b/i,'Футболка'],[/\bovershirt\b/i,'Рубашка'],[/\bpolo\b/i,'Поло'],[/\bshirt\b|\boxford\b/i,'Рубашка'],[/\bcardigan\b/i,'Кардиган'],[/\b(sweater|jumper|knit)\b/i,'Свитер'],[/\b(down jacket|puffer)\b/i,'Пуховик'],[/\bparka\b/i,'Парка'],[/\btrench\b/i,'Тренч'],[/\bbomber\b/i,'Бомбер'],[/\b(vest|gilet)\b/i,'Жилет'],[/\bjacket\b/i,'Куртка'],[/\bcoat\b/i,'Пальто'],[/\bjeans\b|\bdenim\b/i,'Джинсы'],[/\bjoggers?\b|\bsweatpants\b/i,'Джоггеры'],[/\bshorts\b/i,'Шорты'],[/\b(trousers|pants|chinos?)\b/i,'Брюки'],[/\bskirt\b/i,'Юбка'],[/\bdress\b/i,'Платье'],[/\bbeanie\b/i,'Шапка'],[/\b(cap|baseball cap)\b/i,'Кепка'],[/\bbucket hat\b/i,'Панама'],[/\bhat\b/i,'Шляпа'],[/\bbackpack\b/i,'Рюкзак'],[/\bbag\b|\btote\b/i,'Сумка'],[/\bbelt\b/i,'Ремень'],[/\bsocks?\b/i,'Носки'],[/\bscarf\b/i,'Шарф'],[/\bgloves?\b/i,'Перчатки'],[/\bblazer\b/i,'Пиджак'],[/\bshoes?\b|\bfootwear\b/i,'__shoes']];
 const SNEAKER_BRANDS = ['Nike','Jordan','Adidas','New Balance','ASICS','Puma','Reebok','Vans','Converse','Saucony','Hoka','On Running','Salomon','Mizuno','Brooks','Fila','Kappa','Yeezy'];
 const reEsc = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const wordRe = x => new RegExp('(^|[^\\p{L}\\p{N}])' + reEsc(x) + '(?=$|[^\\p{L}\\p{N}])', 'iu');
-function normTitle(title, shop) {
+function normTitle(title, shop, knownBrand) {
   let t = String(title || '').replace(/ /g, ' ').trim();
   // хвосты магазинов и мусор
   const B = '(?<![\\p{L}\\p{N}])', E = '(?![\\p{L}\\p{N}])';
@@ -311,9 +314,10 @@ function normTitle(title, shop) {
   t = t.replace(/\((?=[^)]*\d)[^)]*\)/g, '').replace(new RegExp(',?\\s*' + B + '(цвет|color|colour|размер|size)' + E + '\\s*:?.*$', 'iu'), '');
   t = t.replace(new RegExp(B + "(мужск\\p{L}*|женск\\p{L}*|детск\\p{L}*|унисекс|unisex|men'?s|women'?s|mens|womens|for (men|women))" + E, 'giu'), '');
   // бренд
-  let brand = BRANDS.find(b => wordRe(b).test(t)) || null;
+  let brand = knownBrand || BRANDS.find(b => wordRe(b).test(t)) || null;
   if (!brand) { const k = Object.keys(BRAND_RU).find(r => wordRe(r).test(t)); if (k) { brand = BRAND_RU[k]; t = t.replace(wordRe(k), '$1'); } }
-  if (!brand && shop) { const base = shop.replace(/^(www|m|shop|store)\./, '').split('.')[0].toLowerCase(); brand = BRANDS.find(b => b.toLowerCase().replace(/[^a-z0-9]/g, '') === base) || null; }
+  if (!brand && shop) { const base = shop.replace(/^(www|m|shop|store)\./, '').split('.')[0].toLowerCase(); brand = BRANDS.find(b => b.toLowerCase().replace(/[^a-z0-9]/g, '') === base.replace(/-shop$/, '')) || null; }
+  if (!brand && /[а-яё]/i.test(t)) { const m = t.match(/(?:^|(?<=[а-яёА-ЯЁ],?\s)|(?<=[«"(]))([A-Z][A-Za-z0-9'&.\-]*(?:\s+(?:&\s+)?[A-Z][A-Za-z0-9'&.\-]*){0,2})(?=$|[\s,»")])/); if (m && !/^(XS|S|M|L|XL|XXL|EU|US|UK|RU|SALE|NEW|OG|PRO)$/i.test(m[1])) brand = m[1].trim(); }
   if (brand) { t = t.replace(wordRe(brand), '$1'); if (brand === 'Carhartt WIP') t = t.replace(wordRe('Carhartt'), '$1'); }
   // тип вещи по-русски
   let type = RU_TYPES.find(x => wordRe(x).test(t)) || null;
@@ -359,8 +363,10 @@ document.addEventListener('click', e => {
   v.addEventListener('click', e => { if (e.target === v || e.target.id === 'vw') closeViewer(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
 })();
-const tile = i => `<div class="ph2">${img(i.image || i.my_photo, i.brand || i.name)}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
+const tile = (i, showSize) => { const c = catOfZone(i.zone), base = c ? val(c) : ''; const diff = i.size && (showSize || String(i.size).toUpperCase() !== String(base).toUpperCase()); return `<div class="ph2">${img(i.image || i.my_photo, brandOf(i) || i.name)}${diff ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`; };
 const itemsOf = c => ITEMS.filter(i => c.zones.includes(i.zone));
+const brandOf = i => i.brand || normTitle(i.name, i.shop || (i.url && (() => { try { return new URL(i.url).hostname; } catch (_) { return ''; } })())).brand || '';
+const wishBrand = w => w.brand || normTitle(w.title, w.shop).brand || '';
 
 // ── Ссылка и QR ──
 const shareUrl = () => SHARE ? API + '/s/' + SHARE.token : '';
@@ -398,7 +404,7 @@ function renderWardrobe() {
     ${withItems.length ? withItems.map(c => `
       <div class="shelf">
         <button class="shead" onclick="openCat('${c.id}')"><b>${c.full}</b>${val(c) ? `<span class="sz num">${esc(val(c))}</span>` : ''}<span class="cnt num">${itemsOf(c).length} →</span></button>
-        <div class="strip">${itemsOf(c).map(i => `<button class="it" onclick="openItem(${i.id})">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc(i.brand || i.shop || '')}</div></button>`).join('')}</div>
+        <div class="strip">${itemsOf(c).map(i => `<button class="it" onclick="openItem(${i.id})">${tile(i)}<div class="br" style="font-weight:700;text-transform:uppercase;margin-top:7px">${esc(brandOf(i) || '—')}</div><div class="nm" style="margin-top:1px">${esc(normTitle(i.name, '', brandOf(i)).name)}</div></button>`).join('')}</div>
       </div>`).join('') : `<div class="note">Здесь будут твои вещи с фото и размером. Нажми «+ Добавить» и вставь ссылку на вещь из магазина или заполни вручную.</div>`}
   </div>`;
 }
@@ -413,7 +419,7 @@ function openCat(id) {
     </form>
     <div class="msg" id="szMsg"></div>
     ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="msg">Перевод примерный, у брендов бывают отличия</div>` : ''}
-    ${its.length ? `<div class="sgrid">${its.map(i => `<button onclick="openItem(${i.id})">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc([i.brand, fitName(i.fit)].filter(Boolean).join(' · '))}</div></button>`).join('')}</div>` : ''}
+    ${its.length ? `<div class="sgrid">${its.map(i => `<button onclick="openItem(${i.id})">${tile(i, true)}<div class="nm">${esc(normTitle(i.name, '', brandOf(i)).name)}</div><div class="br">${esc([brandOf(i), fitName(i.fit)].filter(Boolean).join(' · '))}</div></button>`).join('')}</div>` : ''}
     <div class="acts"><button class="btn ghost" onclick="openItemForm(null,'${c.zones[0]}')">+ Вещь в «${esc(c.full)}»</button></div>`);
 }
 async function saveSize(e, id) {
@@ -431,12 +437,14 @@ function openItem(id) {
   const c = catOfZone(i.zone);
   const w = i.wishlist_id ? WISH.find(x => x.id === i.wishlist_id) : null;
   const link = i.url || (w && w.url);
-  openSheet(i.name, `
-    <div class="sub">${esc([i.brand, c && c.full].filter(Boolean).join(' · '))}</div>
-    <div class="pics" id="itPics">
+  openSheet(normTitle(i.name, '', brandOf(i)).name, `
+    <div class="sub">${esc([brandOf(i), c && c.full].filter(Boolean).join(' · '))}</div>
+    <div class="pics three" id="itPics">
       ${picBox(i.image, 'Вещь', false, `itemPhoto(${i.id},'image',this)`)}
       ${picBox(i.my_photo, 'Я в ней', true, `itemPhoto(${i.id},'my_photo',this)`)}
+      ${picBox(i.label_photo, 'Бирка', true, `itemPhoto(${i.id},'label_photo',this)`)}
     </div>
+    ${i.label_photo ? '' : '<div class="msg">Сфоткай бирку с размером и составом: так будет точно видно, какой размер у этого бренда</div>'}
     <div class="label" style="margin-top:12px">
       <div class="cell"><span class="cap">Размер</span><b class="num ${i.size ? '' : 'empty'}">${esc(i.size || '—')}</b></div>
       <div class="cell span2"><span class="cap">Посадка</span><b style="font-size:18px">${esc(fitName(i.fit) || '—')}</b></div>
@@ -481,7 +489,7 @@ async function choosePhoto(box) {
 let F = null; // состояние формы вещи
 function openItemForm(id = null, zone = null) {
   const i = id ? ITEMS.find(x => x.id === id) : null;
-  F = { id, zone: i ? i.zone : (zone || 'tops'), fit: i ? i.fit : null, image: i ? i.image : null, my_photo: i ? i.my_photo : null, shop: i ? i.shop : null };
+  F = { id, zone: i ? i.zone : (zone || 'tops'), fit: i ? i.fit : null, image: i ? i.image : null, my_photo: i ? i.my_photo : null, label_photo: i ? i.label_photo : null, shop: i ? i.shop : null };
   openSheet(i ? 'Изменить вещь' : 'Новая вещь', `
     ${i ? '' : `<form class="form" style="grid-template-columns:1fr auto" onsubmit="event.preventDefault();parseItem()">
       <label class="fld small"><span class="cap">Ссылка на вещь (необязательно)</span><input id="fUrl" inputmode="url" placeholder="https://…" autocomplete="off"></label>
@@ -489,11 +497,11 @@ function openItemForm(id = null, zone = null) {
     <div class="msg" id="fParse">Вставь ссылку, и название с фото заполнятся сами</div>`}
     <div id="fImg">${formPics()}</div>
     <div class="cap" style="margin-top:14px">Категория</div>
-    <div class="zchips" id="fZones">${ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="F.zone='${z[0]}';markPressed('fZones',this)">${z[1]}</button>`).join('')}</div>
+    <div class="zchips" id="fZones">${zoneChips()}</div>
     <div class="form">
       <label class="fld span3" style="grid-column:1/-1"><span class="cap">Название</span><input id="fName" value="${esc(i ? i.name : '')}" placeholder="Футболка оверсайз"></label>
-      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(i ? i.brand || '' : '')}" placeholder="Uniqlo"></label>
-      <label class="fld"><span class="cap">Размер</span><input id="fSize" value="${esc(i ? i.size || '' : '')}" placeholder="M"></label>
+      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(i ? brandOf(i) : '')}" placeholder="Uniqlo"></label>
+      <label class="fld"><span class="cap">Размер</span><input id="fSize" value="${esc(i ? i.size || '' : baseFor(F.zone))}" placeholder="${sizeHint(F.zone)}"></label>
     </div>
     <div class="cap" style="margin-top:14px">Как сидит</div>
     <div class="seg" id="fFit" style="border:2px solid var(--ink);margin-top:6px">${FITS.map(f => `<button type="button" aria-pressed="${f[0] === F.fit}" onclick="F.fit=F.fit==='${f[0]}'?null:'${f[0]}';markPressed('fFit',this,F.fit)">${f[1]}</button>`).join('')}</div>
@@ -501,26 +509,38 @@ function openItemForm(id = null, zone = null) {
     <div class="msg" id="fMsg"></div>
     <button class="btn wide" style="margin-top:6px" onclick="saveItem()">${i ? 'Сохранить' : 'Добавить в гардероб'}</button>`);
 }
-const formPics = () => `<div class="pics">${picBox(F.image, 'Вещь', false, `formPhoto('image',this)`)}${picBox(F.my_photo, 'Я в ней', true, `formPhoto('my_photo',this)`)}</div>`;
+const formPics = () => `<div class="pics three">${picBox(F.image, 'Вещь', false, `formPhoto('image',this)`)}${picBox(F.my_photo, 'Я в ней', true, `formPhoto('my_photo',this)`)}${picBox(F.label_photo, 'Бирка', true, `formPhoto('label_photo',this)`)}</div><div class="msg">Фото бирки с размером поможет запомнить, как маломерит или большемерит этот бренд</div>`;
 async function formPhoto(field, el) { const url = await choosePhoto(el.closest('.pic')); if (url) { F[field] = url; $('fImg').innerHTML = formPics(); } }
+// подсказка и размер по умолчанию зависят от категории
+const SIZE_HINT = { tops: 'M', bottoms: '32/32', outer: 'L', shoes: '43', hats: '58', acc: '17,5', formal_shirt: '41', formal_pants: '50', formal_jacket: '50' };
+const sizeHint = z => SIZE_HINT[z] || 'M';
+const baseFor = z => { const c = catOfZone(z); return c ? val(c) : ''; };
+const zoneChips = () => ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="pickZone('${z[0]}',this)">${z[1]}</button>`).join('');
+function pickZone(z, btn) {
+  const prevBase = baseFor(F.zone); F.zone = z; markPressed('fZones', btn);
+  const inp = $('fSize'); if (!inp) return;
+  inp.placeholder = sizeHint(z);
+  if (!inp.value || inp.value === prevBase) inp.value = baseFor(z);
+}
 function markPressed(group, btn, on = true) { $(group).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === btn && !!on ? 'true' : 'false')); }
 async function parseItem() {
   const url = $('fUrl').value.trim(); if (!/^https?:\/\//.test(url)) { $('fParse').textContent = 'Нужна ссылка, начинающаяся с http'; return; }
   $('fParse').textContent = 'Ищу вещь…'; $('fParse').className = 'msg pending';
   try {
     const m = await api('/parse', { method: 'POST', body: { url } });
-    if (m.title && !$('fName').value) $('fName').value = m.title;
+    if (m.title && !$('fName').value) $('fName').value = normTitle(m.title, new URL(url).hostname).name;
+    if (!$('fBrand').value) $('fBrand').value = m.brand || normTitle(m.title, new URL(url).hostname).brand || '';
     if (m.image) { F.image = m.image; $('fImg').innerHTML = formPics(); }
     try { F.shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
     F.url = url;
-    if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) { F.zone = g.zone; markPressed('fZones', $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } } catch (_) {} }
+    if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) pickZone(g.zone, $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } catch (_) {} }
     $('fParse').className = 'msg'; $('fParse').textContent = m.title || m.image ? 'Нашёл. Проверь название и укажи размер' : 'Магазин не отдал данные, заполни вручную';
   } catch (e) { $('fParse').className = 'msg err'; $('fParse').textContent = 'Не получилось открыть ссылку, заполни вручную'; }
 }
 async function saveItem() {
   const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, note: $('fNote').value.trim() };
   if (!body.name) { $('fMsg').textContent = 'Напиши название вещи'; $('fMsg').className = 'msg err'; return; }
-  body.image = F.image || null; body.my_photo = F.my_photo || null;
+  body.image = F.image || null; body.my_photo = F.my_photo || null; body.label_photo = F.label_photo || null;
   if (!F.id) { body.url = F.url || null; body.shop = F.shop || null; body.source = F.url ? 'link' : 'manual'; }
   try {
     const saved = await api(F.id ? '/items/' + F.id : '/items', { method: F.id ? 'PATCH' : 'POST', body });
@@ -541,7 +561,7 @@ function confirmDel(btn, fn, ask) {
 
 // ══════════ ВИШЛИСТ ══════════
 function wishRow(w) {
-  const n = normTitle(w.title, w.shop), it = w.received_at && ITEMS.find(x => x.wishlist_id === w.id);
+  const n = normTitle(w.title, w.shop), it = w.received_at && ITEMS.find(x => x.wishlist_id === w.id); n.brand = wishBrand(w);
   const meta = [w.shop && !isTg(w.url) ? w.shop.replace(/^www\./, '') : (isTg(w.url) ? 'Telegram' : ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
   return `<div class="sw" data-id="${w.id}"><div class="acts2">${w.received_at ? `<button onclick="unGot(${w.id})">Вернуть</button>` : `<button onclick="closeSwipes();openGotForm(${w.id})">Получил</button>`}<button class="del" onclick="confirmDel(this,()=>delWish(${w.id}),'Точно?')">Удалить</button></div><button class="row ${w.received_at ? 'got' : ''}" onclick="if(swiped(this))return;${w.received_at ? `openGot(${w.id})` : `openWish(${w.id})`}">
     <div class="th">${img((it && (it.image || it.my_photo)) || w.image, n.brand || n.name)}</div>
@@ -596,7 +616,7 @@ async function unGot(id) {
 }
 function openWish(id) {
   const w = WISH.find(x => x.id === id); if (!w) return;
-  const n = normTitle(w.title, w.shop), p = parsePrice(w.price, w.shop);
+  const n = normTitle(w.title, w.shop), p = parsePrice(w.price, w.shop); n.brand = wishBrand(w);
   const rub = p && p.cur !== 'RUB' && RATES && RATES.rub[p.cur] ? ` · ≈ ${money(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}` : '';
   openSheet(n.name, `
     <div class="sub">${esc([n.brand, isTg(w.url) ? 'пост в Telegram' : w.shop].filter(Boolean).join(' · '))}</div>
@@ -618,17 +638,17 @@ function openGot(id) {
 async function openGotForm(id) {
   const w = WISH.find(x => x.id === id); if (!w) return;
   const n = normTitle(w.title, w.shop);
-  F = { wid: id, zone: 'tops', fit: null, image: w.image || null, my_photo: null };
+  F = { wid: id, zone: 'tops', fit: null, image: w.image || null, my_photo: null, label_photo: null };
   try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: w.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) F.zone = g.zone; } catch (_) {}
   openSheet('Получил вещь', `
     <div class="sub">Отметь размер и посадку, и вещь появится в гардеробе</div>
     <div id="fImg">${formPics()}</div>
     <div class="cap" style="margin-top:14px">Категория</div>
-    <div class="zchips" id="fZones">${ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="F.zone='${z[0]}';markPressed('fZones',this)">${z[1]}</button>`).join('')}</div>
+    <div class="zchips" id="fZones">${zoneChips()}</div>
     <div class="form">
       <label class="fld" style="grid-column:1/-1"><span class="cap">Название</span><input id="fName" value="${esc(n.name)}"></label>
-      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(n.brand || '')}" placeholder="Nike"></label>
-      <label class="fld"><span class="cap">Какой размер взял</span><input id="fSize" value="${esc(w.size || '')}" placeholder="M"></label>
+      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(wishBrand(w))}" placeholder="Nike"></label>
+      <label class="fld"><span class="cap">Какой размер взял</span><input id="fSize" value="${esc(w.size || baseFor(F.zone))}" placeholder="${sizeHint(F.zone)}"></label>
     </div>
     <div class="cap" style="margin-top:14px">Как сидит</div>
     <div class="seg" id="fFit" style="border:2px solid var(--ink);margin-top:6px">${FITS.map(f => `<button type="button" aria-pressed="false" onclick="F.fit=F.fit==='${f[0]}'?null:'${f[0]}';markPressed('fFit',this,F.fit)">${f[1]}</button>`).join('')}</div>
@@ -636,7 +656,7 @@ async function openGotForm(id) {
     <button class="btn wide" style="margin-top:6px" onclick="saveGot()">Добавить в гардероб</button>`);
 }
 async function saveGot() {
-  const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, image: F.image, my_photo: F.my_photo };
+  const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, image: F.image, my_photo: F.my_photo, label_photo: F.label_photo };
   if (!body.size) { $('fMsg').textContent = 'Укажи, какой размер взял'; $('fMsg').className = 'msg err'; $('fSize').focus(); return; }
   try {
     const r = await api('/wishlist/' + F.wid + '/to-items', { method: 'POST', body });
@@ -671,6 +691,7 @@ async function parseWish() {
     const m = await api('/parse', { method: 'POST', body: { url } });
     if (m.title && !$('wTitle').value) $('wTitle').value = m.title;
     if (m.price && !$('wPrice').value) $('wPrice').value = m.price;
+    F.brand = m.brand || null;
     if (m.image) { F.image = m.image; $('wImg').innerHTML = `<div class="pics" style="grid-template-columns:1fr"><div class="pic" style="aspect-ratio:4/3">${img(m.image, m.title)}</div></div>`; }
     $('wParse').className = 'msg'; $('wParse').textContent = m.title ? 'Нашёл. Укажи нужный размер' : 'Не всё подтянулось. Можно сохранить, данные дополнятся позже';
   } catch (_) { $('wParse').className = 'msg'; $('wParse').textContent = 'Магазин не ответил. Сохрани, данные дополнятся позже'; }
@@ -680,7 +701,7 @@ async function saveWish() {
   if (!url && !t) { $('wMsg').textContent = 'Вставь ссылку или напиши название'; $('wMsg').className = 'msg err'; return; }
   let shop = ''; try { shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
   try {
-    const w = await api('/wishlist', { method: 'POST', body: { title: t || shop || 'Без названия', shop, url, price: $('wPrice').value.trim(), size: $('wSize').value.trim(), image: F.image, autotitle: !t } });
+    const w = await api('/wishlist', { method: 'POST', body: { title: t || shop || 'Без названия', shop, url, price: $('wPrice').value.trim(), size: $('wSize').value.trim(), image: F.image, brand: F.brand || normTitle(t, shop).brand || null, autotitle: !t } });
     WISH.unshift(w); renderAll(); closeSheet(); toast('Добавлено в вишлист'); pollWish();
   } catch (e) { if (e.message !== 'auth') { $('wMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('wMsg').className = 'msg err'; } }
 }
