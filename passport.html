@@ -12,50 +12,63 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
-/* Паспорт-термоэтикетка (вариант «Чек»). Экспериментальная страница, основная — «/» */
+/* SizeBook в стиле термоэтикетки («Чек»). Экспериментальная версия, основная — «/» */
 :root{
-  --ink:#0d0d0d; --ink2:#5f6166; --lab:#fdfdfb; --bg:#e7e8ea;
+  --ink:#0d0d0d; --ink2:#5f6166; --ink3:#9a9ca1; --lab:#fdfdfb; --bg:#e7e8ea; --line:#c4c6ca;
   --disp:"Archivo",-apple-system,"Helvetica Neue",Arial,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--disp);-webkit-font-smoothing:antialiased}
+body.lock{overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
-button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+a{color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;background:var(--bg);padding-bottom:calc(84px + var(--safe-b))}
 .num{font-variant-numeric:tabular-nums}
+.view[hidden]{display:none!important}
 
+/* шапка-пакет */
 .top{padding:calc(18px + var(--safe-t)) 16px 26px;background:
   radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
   radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
   linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
 .lt{display:flex;justify-content:space-between;align-items:center;padding:0 2px 16px;gap:12px}
 .lt h1{margin:0;font:900 30px var(--disp);text-transform:uppercase;letter-spacing:-.02em}
-.lt a{font:700 11px var(--mono);text-transform:uppercase;color:var(--ink);background:var(--lab);padding:6px 10px;border:2px solid var(--ink);text-decoration:none;white-space:nowrap}
+.tbtn{font:700 11px var(--mono);text-transform:uppercase;color:var(--ink);background:var(--lab);padding:6px 10px;border:2px solid var(--ink);text-decoration:none;white-space:nowrap}
+.tbtn.dark{background:var(--ink);color:#fff}
 
+/* этикетка */
 .label{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.2),0 16px 28px -14px rgba(0,0,0,.45)}
 .label>*{background:var(--lab)}
-.z1{grid-column:span 2;padding:9px 12px;font:500 10px/1.5 var(--mono);min-width:0}
+.span2{grid-column:span 2}.span3{grid-column:1/-1}
+.z1{padding:9px 12px;font:500 10px/1.5 var(--mono);min-width:0}
 .z1 b{display:block;font:900 21px/1.05 var(--disp);text-transform:uppercase;margin:3px 0 2px;letter-spacing:-.01em;overflow-wrap:anywhere}
 .route{background:var(--ink)!important;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:9px 12px;font:900 42px/1 var(--disp);text-align:left}
 .route small{font:500 10px var(--mono);letter-spacing:.1em;margin-bottom:4px;opacity:.85}
-.cell{padding:8px 12px;text-align:left;min-height:60px}
-.cell span{display:block;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.cell{padding:8px 12px;text-align:left;min-height:60px;min-width:0}
+.cap{display:block;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
 .cell b{font:900 26px/1.1 var(--disp);letter-spacing:-.02em;overflow-wrap:anywhere}
 .cell b.empty{color:#b0b2b6}
-.cell:active,.route:active{filter:invert(1)}
+button.cell:active,button.route:active{filter:invert(1)}
 .qrbox{padding:12px;display:grid;place-items:center}
-.qrbox svg,.qrbox img{width:100%;height:auto;display:block}
-.qrbox .ph{width:100%;aspect-ratio:1;border:2px dashed #c4c6ca;display:grid;place-items:center;font:600 9px var(--mono);color:var(--ink2);text-align:center;padding:4px}
-.gift{grid-column:span 2;padding:10px 12px;font:500 10px/1.5 var(--mono);display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+.qrbox svg{width:100%;height:auto;display:block}
+.qrph{width:100%;aspect-ratio:1;border:2px dashed var(--line);display:grid;place-items:center;font:600 9px var(--mono);color:var(--ink2);text-align:center;padding:4px}
+.gift{padding:10px 12px;font:500 10px/1.5 var(--mono);display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
 .gift b{display:block;font:900 15px var(--disp);text-transform:uppercase;margin-bottom:2px}
-.gift button{margin-top:8px;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:7px 10px}
+.btn{display:inline-block;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:8px 11px;text-decoration:none;text-align:center}
+.btn.ghost{background:var(--lab);color:var(--ink);border:2px solid var(--ink);padding:6px 9px}
+.btn.wide{display:block;width:100%;padding:13px}
+.btn.danger{background:#b3261e}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.gift .btn{margin-top:8px}
 
-.shelves{padding:0 16px}
-.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px}
+/* полки и списки */
+.body{padding:0 16px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px;gap:10px}
 .sec h2{margin:0;font:900 22px var(--disp);text-transform:uppercase}
-.sec a{font:700 12px var(--mono);text-transform:uppercase;color:var(--ink);text-decoration:none}
+.sec button{font:700 12px var(--mono);text-transform:uppercase}
 .shelf{margin-top:16px}
 .shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
 .shead b{font:900 15px var(--disp);text-transform:uppercase}
@@ -66,81 +79,139 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-of
 .it{flex:none;width:118px;text-align:left}
 .ph2{height:132px;background:var(--lab);display:grid;place-items:center;position:relative;overflow:hidden}
 .ph2 img{width:100%;height:100%;object-fit:contain}
-.ph2 .ini{font:900 34px var(--disp);color:#d4d5d8;text-transform:uppercase}
+.ini{font:900 34px var(--disp);color:#d4d5d8;text-transform:uppercase}
 .ph2 .tg{position:absolute;right:6px;top:6px;background:#fff;border:2px solid var(--ink);font:800 12px var(--mono);padding:1px 6px}
-.it .nm{font:700 13px var(--disp);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.it .br{font:400 11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.empty-items{background:var(--lab);border:2px dashed #c4c6ca;padding:18px;font:500 12px/1.5 var(--mono);color:var(--ink2);margin-top:12px}
-.empty-items a{color:var(--ink);font-weight:700}
+.nm{font:700 13px var(--disp);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.br{font:400 11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note{background:var(--lab);border:2px dashed var(--line);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2);margin-top:12px}
 
+/* строки-этикетки (вишлист) */
+.rows{display:grid;gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:12px}
+.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:2px;background:var(--ink);text-align:left;width:100%}
+.row>*{background:var(--lab)}
+.row .th{height:72px;display:grid;place-items:center;overflow:hidden}
+.row .th img{width:100%;height:100%;object-fit:contain}
+.row .th .ini{font-size:24px}
+.row .tx{padding:8px 10px;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.row .tx b{font:800 14px/1.2 var(--disp);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .tx span{font:500 10px var(--mono);color:var(--ink2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .rt{padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:64px}
+.row .rt b{font:900 16px var(--disp);white-space:nowrap}
+.row .rt span{font:600 9px var(--mono);text-transform:uppercase;color:var(--ink2)}
+.row.got .tx b{text-decoration:line-through;color:var(--ink2)}
+.pending{font:600 9px var(--mono);text-transform:uppercase;color:var(--ink2);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* формы */
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;background:var(--ink);border:2px solid var(--ink);margin-top:14px}
+.form>*{background:var(--lab)}
+.fld{display:flex;flex-direction:column;padding:7px 10px 6px;min-width:0}
+.fld input,.fld select{border:0;background:none;font:800 19px var(--disp);padding:2px 0 2px;color:var(--ink);outline:none;min-width:0;width:100%;border-radius:0;-webkit-appearance:none}
+.fld input::placeholder{color:#c2c4c8}
+.fld.small input{font:600 14px var(--mono)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;background:var(--ink)}
+.seg button{background:var(--lab);padding:11px 4px;font:700 10px var(--mono);text-transform:uppercase;text-align:center}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.chk{display:flex;align-items:center;gap:10px;padding:12px;text-align:left;width:100%}
+.chk i{width:20px;height:20px;border:2px solid var(--ink);flex:none;display:grid;place-items:center}
+.chk[aria-checked="true"] i{background:var(--ink)}
+.chk[aria-checked="true"] i::after{content:"";width:8px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.chk span{font:700 13px var(--disp)}
+.chk small{display:block;font:500 10px var(--mono);color:var(--ink2);margin-top:1px}
+.msg{font:500 11px var(--mono);color:var(--ink2);margin-top:8px;min-height:16px}
+.msg.err{color:#b3261e}
+.acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.acts .btn{flex:1}
+.url{font:600 12px var(--mono);word-break:break-all;padding:12px}
+
+/* нижняя панель «Чек» */
 .tb{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;z-index:5;background:var(--lab);border-top:2px solid var(--ink);padding-bottom:var(--safe-b);display:grid;grid-template-columns:repeat(4,1fr)}
-.tb a{display:block;text-align:center;padding:17px 0 15px;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);text-decoration:none;border-right:2px solid var(--ink)}
-.tb a:last-child{border-right:0}
-.tb a.on{background:var(--ink);color:#fff}
+.tb button{display:block;text-align:center;padding:17px 0 15px;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);border-right:2px solid var(--ink)}
+.tb button:last-child{border-right:0}
+.tb button[aria-current="page"]{background:var(--ink);color:#fff}
 
-.dim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+/* шторка со свайпом */
+.dim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s;z-index:8}
 .dim.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:50%;bottom:0;width:100%;max-width:480px;max-height:86vh;transform:translate(-50%,102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;background:var(--bg);border-top:3px solid var(--ink)}
+.sheet{position:fixed;left:50%;bottom:0;width:100%;max-width:480px;max-height:88vh;transform:translate(-50%,105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;background:var(--bg);border-top:3px solid var(--ink);will-change:transform}
 .sheet.on{transform:translate(-50%,0)}
-.sheet .in{overflow-y:auto;padding:4px 16px calc(24px + var(--safe-b))}
-.grab{width:38px;height:5px;margin:8px auto 6px;flex:none;background:var(--ink);opacity:.3}
-.sheet h3{margin:4px 0 2px;font:900 24px var(--disp);text-transform:uppercase}
-.sheet .sub{font:500 11px var(--mono);color:var(--ink2)}
-.edit{display:grid;grid-template-columns:1fr auto;gap:0;margin-top:14px;border:2px solid var(--ink);background:var(--lab)}
-.edit label{grid-column:1/-1;font:600 9px var(--mono);text-transform:uppercase;padding:7px 10px 0}
-.edit input{border:0;background:none;font:900 28px var(--disp);padding:2px 10px 8px;min-width:0;color:var(--ink);outline:none}
-.edit button{background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:0 14px}
-.saved{font:500 11px var(--mono);color:var(--ink2);margin-top:6px;min-height:16px}
+.sheet.drag{transition:none}
+.sh-head{flex:none;padding:8px 16px 4px;touch-action:none;cursor:grab;display:grid;grid-template-columns:1fr auto;align-items:start;gap:10px}
+.grab{grid-column:1/-1;width:44px;height:5px;margin:0 auto 6px;background:var(--ink);opacity:.3}
+.sh-head h3{margin:0;font:900 24px/1.1 var(--disp);text-transform:uppercase;overflow-wrap:anywhere}
+.x{width:32px;height:32px;border:2px solid var(--ink);background:var(--lab);display:grid;place-items:center;flex:none}
+.sheet .in{overflow-y:auto;overscroll-behavior:contain;padding:0 16px calc(24px + var(--safe-b))}
+.sub{font:500 11px var(--mono);color:var(--ink2)}
 .sysrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .sysrow span{background:var(--lab);border:2px solid var(--ink);padding:6px 10px;font:900 18px var(--disp)}
 .sysrow span i{font:600 10px var(--mono);font-style:normal;margin-right:6px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid button{text-align:left}
 .sgrid .ph2{height:auto;aspect-ratio:1}
-.sgrid .nm{font:700 13px var(--disp);margin-top:6px}
-.sgrid .br{font:400 11px var(--mono);color:var(--ink2)}
+.zchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.zchips button{border:2px solid var(--ink);background:var(--lab);padding:6px 9px;font:700 10px var(--mono);text-transform:uppercase}
+.zchips button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.big{display:block;width:100%;max-height:260px;object-fit:contain;background:var(--lab);margin-top:12px}
+
 .toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);background:var(--ink);color:#fff;font:600 12px var(--mono);padding:10px 14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
-.login{padding:40px 20px;font:500 13px/1.6 var(--mono)}
-.login a{display:inline-block;margin-top:12px;background:var(--ink);color:#fff;padding:10px 14px;text-decoration:none;font-weight:700;text-transform:uppercase}
-@media (prefers-reduced-motion:reduce){.sheet,.dim,.toast{transition:none}}
+.center{padding:40px 20px;font:500 13px/1.6 var(--mono)}
+@media (prefers-reduced-motion:reduce){.sheet,.dim,.toast{transition:none}.pending{animation:none}}
 </style>
 </head>
 <body>
-<div class="app" id="app"><div class="top"><div class="lt"><h1>Гардероб</h1></div><div class="label" style="height:300px"></div></div></div>
+<div class="app" id="app">
+  <section class="view" id="v-wardrobe"><div class="top"><div class="lt"><h1>Гардероб</h1></div><div class="label" style="height:300px"></div></div></section>
+  <section class="view" id="v-wishlist" hidden></section>
+  <section class="view" id="v-friends" hidden></section>
+  <section class="view" id="v-profile" hidden></section>
+</div>
 <nav class="tb" aria-label="Разделы">
-  <a href="/passport" class="on">Гардероб</a>
-  <a href="/" data-page="wishlist">Вишлист</a>
-  <a href="/" data-page="share">Друзья</a>
-  <a href="/" data-page="profile">Профиль</a>
+  <button data-v="wardrobe" aria-current="page">Гардероб</button>
+  <button data-v="wishlist">Вишлист</button>
+  <button data-v="friends">Друзья</button>
+  <button data-v="profile">Профиль</button>
 </nav>
 <div class="dim" id="dim"></div>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Категория"><div class="grab"></div><div class="in" id="sheetBody"></div></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="sh-head" id="shHead"><i class="grab"></i><h3 id="shTitle"></h3><button class="x" aria-label="Закрыть" onclick="closeSheet()"><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="2.4"><path d="M2 2l10 10M12 2L2 12"/></svg></button></div>
+  <div class="in" id="shBody"></div>
+</div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
 const API = location.origin;
-const token = (() => { try { return localStorage.getItem('sb_token'); } catch (_) { return null; } })();
-const user = (() => { try { return JSON.parse(localStorage.getItem('sb_user') || 'null'); } catch (_) { return null; } })();
+const LS = { get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }, del(k) { try { localStorage.removeItem(k); } catch (_) {} } };
+const token = LS.get('sb_token');
+const user = (() => { try { return JSON.parse(LS.get('sb_user') || 'null'); } catch (_) { return null; } })();
 const H = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+async function api(path, opt = {}) {
+  const r = await fetch(API + path, { ...opt, headers: H(), body: opt.body ? JSON.stringify(opt.body) : undefined });
+  if (r.status === 401 || r.status === 403) { showLogin('Сессия истекла. Войди заново.'); throw new Error('auth'); }
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.status === 204 ? null : r.json();
+}
 
-// ссылки нижней панели открывают старое приложение на нужном разделе
-document.querySelectorAll('.tb a[data-page]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem('sb_page', a.dataset.page); } catch (_) {} }));
-
-// Категории паспорта: ключи размеров из старого приложения и зоны вещей
+// ── Данные ──
 const CATS = [
-  { id: 'tops',    title: 'Верх',    full: 'Футболки и рубашки', keys: ['daily_top'],               zones: ['tops', 'formal_shirt'], kind: 'letter' },
-  { id: 'bottoms', title: 'Низ',     full: 'Джинсы и брюки',     keys: ['daily_bottom'],            zones: ['bottoms', 'formal_pants'], kind: 'letter' },
-  { id: 'outer',   title: 'Верхняя', full: 'Верхняя одежда',     keys: ['outer', 'outer_jacket'],   zones: ['outer', 'formal_jacket'], kind: 'letter' },
+  { id: 'tops',    title: 'Верх',    full: 'Футболки и рубашки', keys: ['daily_top'],                 zones: ['tops', 'formal_shirt'], kind: 'letter' },
+  { id: 'bottoms', title: 'Низ',     full: 'Джинсы и брюки',     keys: ['daily_bottom'],              zones: ['bottoms', 'formal_pants'], kind: 'letter' },
+  { id: 'outer',   title: 'Верхняя', full: 'Верхняя одежда',     keys: ['outer', 'outer_jacket'],     zones: ['outer', 'formal_jacket'], kind: 'letter' },
   { id: 'shoes',   title: 'Обувь',   full: 'Обувь',              keys: ['shoes_eu', 'shoes_sneaker'], zones: ['shoes'], kind: 'shoe' },
-  { id: 'hats',    title: 'Шапка',   full: 'Головные уборы',     keys: ['hat', 'hat_cap'],          zones: ['hats'], kind: 'hat' },
-  { id: 'ring',    title: 'Кольцо',  full: 'Кольцо и аксессуары', keys: ['ring_mm'],                zones: ['acc'], kind: 'ring' },
+  { id: 'hats',    title: 'Шапка',   full: 'Головные уборы',     keys: ['hat', 'hat_cap'],            zones: ['hats'], kind: 'hat' },
+  { id: 'ring',    title: 'Кольцо',  full: 'Аксессуары',         keys: ['ring_mm'],                   zones: ['acc'], kind: 'ring' },
 ];
-let SIZES = {}, ITEMS = [], SHARE = null;
+const ZONES = [['tops', 'Верх'], ['bottoms', 'Низ'], ['outer', 'Верхняя'], ['shoes', 'Обувь'], ['hats', 'Головные'], ['acc', 'Аксессуары']];
+const FITS = [['small', 'Маломерит'], ['true', 'В размер'], ['large', 'Большемерит']];
+const fitName = f => (FITS.find(x => x[0] === f) || [, ''])[1];
+let SIZES = {}, ITEMS = [], WISH = [], SHARE = null, TG = null;
 const val = c => { for (const k of c.keys) if (SIZES[k] !== undefined && String(SIZES[k]).trim() !== '') return String(SIZES[k]).trim(); return ''; };
+const catOfZone = z => CATS.find(c => c.zones.includes(z));
 const female = () => SIZES.profile_gender === 'female';
 
-// ── Конвертация (примерная, по стандартным таблицам) ──
+// ── Конвертация (примерная) ──
 const SHOE_M = [[38.5,6,5.5,24],[39,6.5,6,24.5],[40,7,6,25],[40.5,7.5,6.5,25.5],[41,8,7,26],[42,8.5,7.5,26.5],[42.5,9,8,27],[43,9.5,8.5,27.5],[44,10,9,28],[44.5,10.5,9.5,28.5],[45,11,10,29],[45.5,11.5,10.5,29.5],[46,12,11,30],[47,12.5,11.5,30.5],[47.5,13,12,31]];
 const SHOE_F = [[35.5,5,2.5,22],[36,5.5,3,22.5],[36.5,6,3.5,23],[37.5,6.5,4,23.5],[38,7,4.5,24],[38.5,7.5,5,24.5],[39,8,5.5,25],[40,8.5,6,25.5],[40.5,9,6.5,26],[41,9.5,7,26.5],[42,10,7.5,27]];
 const LET_M = { XS: 44, S: 46, M: 48, L: 50, XL: 52, XXL: 54, '3XL': 56 };
@@ -152,126 +223,414 @@ function convert(c, v) {
   if (c.kind === 'shoe' && !isNaN(n)) {
     const t = female() ? SHOE_F : SHOE_M;
     const row = t.reduce((a, r) => Math.abs(r[0] - n) < Math.abs(a[0] - n) ? r : a, t[0]);
-    if (Math.abs(row[0] - n) > 1) return [];
-    return [['EU', fmt(v)], ['US', fmt(row[1])], ['UK', fmt(row[2])], ['СМ', fmt(row[3])]];
+    return Math.abs(row[0] - n) > 1 ? [] : [['EU', fmt(v)], ['US', fmt(row[1])], ['UK', fmt(row[2])], ['СМ', fmt(row[3])]];
   }
   if (c.kind === 'letter') {
     const L = female() ? LET_F : LET_M, up = v.toUpperCase().replace(/\s/g, '');
     if (L[up]) return [['INT', up], ['RU', String(L[up])]];
     const hit = Object.entries(L).find(([, r]) => r === n);
-    if (hit) return [['RU', String(n)], ['INT', hit[0]]];
-    return [];
+    return hit ? [['RU', String(n)], ['INT', hit[0]]] : [];
   }
-  if (c.kind === 'ring' && !isNaN(n) && n > 13 && n < 25) {
-    const us = Math.round((n - 11.63) / 0.8128 * 4) / 4;
-    return [['ММ', fmt(n)], ['RU', fmt(n)], ['US', fmt(us)]];
-  }
-  if (c.kind === 'hat' && !isNaN(n) && n > 50 && n < 66) {
-    const L = [[55, 'S'], [57, 'M'], [59, 'L'], [61, 'XL'], [63, 'XXL']];
-    const r = L.find(x => n <= x[0]) || L[L.length - 1];
-    return [['СМ', fmt(n)], ['INT', r[1]]];
-  }
+  if (c.kind === 'ring' && !isNaN(n) && n > 13 && n < 25) return [['ММ', fmt(n)], ['RU', fmt(n)], ['US', fmt(Math.round((n - 11.63) / 0.8128 * 4) / 4)]];
+  if (c.kind === 'hat' && !isNaN(n) && n > 50 && n < 66) { const L = [[55, 'S'], [57, 'M'], [59, 'L'], [61, 'XL'], [63, 'XXL']]; return [['СМ', fmt(n)], ['INT', (L.find(x => n <= x[0]) || L[4])[1]]]; }
   return [];
 }
 
-// ── Картинки вещей: напрямую, при ошибке через прокси сервера ──
+// ── Картинки ──
 function img(src, alt) {
-  if (!src) return '';
-  return `<img referrerpolicy="no-referrer" loading="lazy" alt="${esc(alt)}" src="${esc(src)}" onerror="if(!this.dataset.p){this.dataset.p=1;this.src='${API}/img?u='+encodeURIComponent(this.getAttribute('src'));return}this.replaceWith(Object.assign(document.createElement('span'),{className:'ini',textContent:'${esc((alt || '?')[0])}'}))">`;
+  if (!src) return `<span class="ini">${esc((alt || '?')[0])}</span>`;
+  return `<img referrerpolicy="no-referrer" loading="lazy" alt="" src="${esc(src)}" data-alt="${esc((alt || '?')[0])}" onerror="imgFail(this)">`;
 }
+function imgFail(el) {
+  if (!el.dataset.p && /^https?:/.test(el.getAttribute('src'))) { el.dataset.p = 1; el.src = API + '/img?u=' + encodeURIComponent(el.getAttribute('src')); return; }
+  const s = document.createElement('span'); s.className = 'ini'; s.textContent = el.dataset.alt || '?'; el.replaceWith(s);
+}
+const tile = i => `<div class="ph2">${img(i.image, i.brand || i.name)}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
 const itemsOf = c => ITEMS.filter(i => c.zones.includes(i.zone));
-const tile = (i, cls = '') => `<div class="ph2 ${cls}">${i.image ? img(i.image, i.name) : `<span class="ini">${esc((i.brand || i.name || '?')[0])}</span>`}${i.size ? `<span class="tg num">${esc(i.size)}</span>` : ''}</div>`;
 
-// ── QR и ссылка ──
+// ── Ссылка и QR ──
 const shareUrl = () => SHARE ? API + '/s/' + SHARE.token : '';
-function qrSvg(text) {
-  if (!window.qrcode || !text) return '';
-  const q = qrcode(0, 'M'); q.addData(text); q.make();
-  return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
-}
-async function shareLink() {
+function qrSvg(text) { if (!window.qrcode || !text) return ''; const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
+async function sendLink() {
   try {
-    if (!SHARE) {
-      const r = await fetch(API + '/share', { method: 'POST', headers: H(), body: JSON.stringify({ sections: { sizes: true, wishlist: true, excluded_size_keys: [], excluded_wishlist_ids: [] } }) });
-      if (!r.ok) throw new Error();
-      SHARE = await r.json(); render();
-    }
+    if (!SHARE) SHARE = await api('/share', { method: 'POST', body: { sections: { sizes: true, wishlist: true, items: true, excluded_size_keys: [], excluded_wishlist_ids: [] } } });
+    renderAll();
     const url = shareUrl();
     if (navigator.share) { try { await navigator.share({ title: 'Мои размеры в SizeBook', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-    await navigator.clipboard.writeText(url); toast('Ссылка скопирована');
-  } catch (_) { toast('Не получилось создать ссылку. Попробуй ещё раз'); }
+    await copy(url);
+  } catch (e) { if (e.message !== 'auth') toast('Не получилось создать ссылку. Попробуй ещё раз'); }
 }
+async function copy(t) { try { await navigator.clipboard.writeText(t); toast('Ссылка скопирована'); } catch (_) { toast('Скопируй ссылку вручную'); } }
 
-// ── Отрисовка ──
-function render() {
+// ══════════ ГАРДЕРОБ ══════════
+function renderWardrobe() {
   const name = [SIZES.profile_name, SIZES.profile_lastname].filter(Boolean).join(' ') || (user && user.username) || 'Без имени';
   const meta = [SIZES.profile_height && 'рост ' + SIZES.profile_height, SIZES.profile_weight && 'вес ' + SIZES.profile_weight].filter(Boolean).join(' · ') || 'рост и вес не указаны';
-  const shoes = CATS.find(c => c.id === 'shoes');
   const url = shareUrl();
-  document.getElementById('app').innerHTML = `
+  const withItems = CATS.filter(c => itemsOf(c).length);
+  $('v-wardrobe').innerHTML = `
   <div class="top">
-    <div class="lt"><h1>Гардероб</h1><a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">Старый вид</a></div>
+    <div class="lt"><h1>Гардероб</h1><a class="tbtn" href="/" onclick="LS.set('sb_page','daily')">Старый вид</a></div>
     <div class="label">
-      <div class="z1">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
-      <button class="route num" onclick="openSheet('shoes')"><small>ОБУВЬ EU</small>${esc(val(shoes) || '—')}</button>
-      ${CATS.map(c => { const v = val(c); return `<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
-      <div class="qrbox">${url ? qrSvg(url) : '<div class="ph">QR появится после создания ссылки</div>'}</div>
-      <div class="gift"><b>Подарок в размер</b>${url ? 'Отсканируй, чтобы увидеть все размеры и вишлист' : 'Создай ссылку, и друзья увидят твои размеры и вишлист'}<button onclick="shareLink()">${url ? 'Отправить ссылку' : 'Создать ссылку'}</button></div>
+      <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
+      <button class="route num" onclick="openCat('shoes')"><small>ОБУВЬ EU</small>${esc(val(CATS[3]) || '—')}</button>
+      ${CATS.map(c => { const v = val(c); return `<button class="cell" onclick="openCat('${c.id}')"><span class="cap">${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
+      <div class="qrbox">${url ? qrSvg(url) : '<div class="qrph">QR после создания ссылки</div>'}</div>
+      <div class="gift span2"><b>Подарок в размер</b>${url ? 'Отсканируй, чтобы увидеть все размеры и вишлист' : 'Создай ссылку, и друзья увидят твои размеры и вишлист'}<button class="btn" onclick="sendLink()">${url ? 'Отправить ссылку' : 'Создать ссылку'}</button></div>
     </div>
   </div>
-  <div class="shelves">
-    <div class="sec"><h2>Мои вещи</h2><a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">+ Добавить</a></div>
-    ${ITEMS.length ? CATS.filter(c => itemsOf(c).length).map(c => `
+  <div class="body">
+    <div class="sec"><h2>Мои вещи</h2><button onclick="openItemForm()">+ Добавить</button></div>
+    ${withItems.length ? withItems.map(c => `
       <div class="shelf">
-        <button class="shead" onclick="openSheet('${c.id}')"><b>${c.full}</b>${val(c) ? `<span class="sz num">${esc(val(c))}</span>` : ''}<span class="cnt num">${itemsOf(c).length} →</span></button>
-        <div class="strip">${itemsOf(c).map(i => `<button class="it" onclick="openSheet('${c.id}')">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc(i.brand || i.shop || '')}</div></button>`).join('')}</div>
-      </div>`).join('') : `<div class="empty-items">Здесь появятся твои вещи с фото и размером. Добавить их можно в <a href="/" onclick="try{localStorage.setItem('sb_page','daily')}catch(e){}">основной версии</a> или через Telegram-бота.</div>`}
+        <button class="shead" onclick="openCat('${c.id}')"><b>${c.full}</b>${val(c) ? `<span class="sz num">${esc(val(c))}</span>` : ''}<span class="cnt num">${itemsOf(c).length} →</span></button>
+        <div class="strip">${itemsOf(c).map(i => `<button class="it" onclick="openItem(${i.id})">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc(i.brand || i.shop || '')}</div></button>`).join('')}</div>
+      </div>`).join('') : `<div class="note">Здесь будут твои вещи с фото и размером. Нажми «+ Добавить» и вставь ссылку на вещь из магазина или заполни вручную.</div>`}
   </div>`;
 }
 
-let sheetCat = null;
-function openSheet(id) {
-  sheetCat = id; const c = CATS.find(x => x.id === id); const v = val(c); const conv = convert(c, v); const its = itemsOf(c);
-  document.getElementById('sheetBody').innerHTML = `
-    <h3>${c.full}</h3><div class="sub">${v ? 'Твой размер ' + esc(v) : 'Размер ещё не указан'} · ${its.length ? its.length + ' в гардеробе' : 'вещей пока нет'}</div>
-    <form class="edit" onsubmit="saveSize(event,'${c.id}')"><label for="sz-in">Мой размер</label><input id="sz-in" value="${esc(v)}" placeholder="${c.kind === 'shoe' ? '43' : c.kind === 'ring' ? '17,5' : c.kind === 'hat' ? '58' : 'M'}" autocomplete="off" enterkeyhint="done"><button type="submit">Сохранить</button></form>
-    <div class="saved" id="saved"></div>
-    ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="saved">Перевод примерный, у брендов бывают отличия</div>` : ''}
-    ${its.length ? `<div class="sgrid">${its.map(i => `<div>${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc([i.brand, i.size].filter(Boolean).join(' · '))}</div></div>`).join('')}</div>` : ''}`;
-  document.getElementById('sheet').classList.add('on'); document.getElementById('dim').classList.add('on');
+function openCat(id) {
+  const c = CATS.find(x => x.id === id), v = val(c), conv = convert(c, v), its = itemsOf(c);
+  openSheet(c.full, `
+    <div class="sub">${v ? 'Твой размер ' + esc(v) : 'Размер ещё не указан'} · ${its.length ? its.length + ' в гардеробе' : 'вещей пока нет'}</div>
+    <form class="form" onsubmit="saveSize(event,'${c.id}')" style="grid-template-columns:1fr auto">
+      <label class="fld"><span class="cap">Мой размер</span><input id="szIn" value="${esc(v)}" placeholder="${{ shoe: '43', ring: '17,5', hat: '58' }[c.kind] || 'M'}" autocomplete="off" enterkeyhint="done"></label>
+      <button class="btn" type="submit" style="border-radius:0">Сохранить</button>
+    </form>
+    <div class="msg" id="szMsg"></div>
+    ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="msg">Перевод примерный, у брендов бывают отличия</div>` : ''}
+    ${its.length ? `<div class="sgrid">${its.map(i => `<button onclick="openItem(${i.id})">${tile(i)}<div class="nm">${esc(i.name)}</div><div class="br">${esc([i.brand, fitName(i.fit)].filter(Boolean).join(' · '))}</div></button>`).join('')}</div>` : ''}
+    <div class="acts"><button class="btn ghost" onclick="openItemForm(null,'${c.zones[0]}')">+ Вещь в «${esc(c.full)}»</button></div>`);
 }
-function closeSheet() { sheetCat = null; document.getElementById('sheet').classList.remove('on'); document.getElementById('dim').classList.remove('on'); }
-document.getElementById('dim').addEventListener('click', closeSheet);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
-
 async function saveSize(e, id) {
   e.preventDefault();
-  const c = CATS.find(x => x.id === id); const v = document.getElementById('sz-in').value.trim();
+  const c = CATS.find(x => x.id === id), v = $('szIn').value.trim();
   const key = c.keys.find(k => SIZES[k] !== undefined && String(SIZES[k]).trim() !== '') || c.keys[0];
-  try {
-    const r = await fetch(API + '/sizes', { method: 'POST', headers: H(), body: JSON.stringify({ [key]: v }) });
-    if (!r.ok) throw new Error();
-    SIZES[key] = v; render(); openSheet(id); toast('Сохранено');
-  } catch (_) { document.getElementById('saved').textContent = 'Не сохранилось. Проверь интернет и попробуй ещё раз'; }
+  try { await api('/sizes', { method: 'POST', body: { [key]: v } }); SIZES[key] = v; renderAll(); openCat(id); toast('Сохранено'); }
+  catch (er) { if (er.message !== 'auth') { $('szMsg').textContent = 'Не сохранилось. Проверь интернет и попробуй ещё раз'; $('szMsg').className = 'msg err'; } }
 }
 
-let toastT; function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
+// ── Вещь: просмотр, добавление, правка ──
+function openItem(id) {
+  const i = ITEMS.find(x => x.id === id); if (!i) return;
+  const c = catOfZone(i.zone);
+  openSheet(i.name, `
+    <div class="sub">${esc([c && c.full, i.brand, i.shop].filter(Boolean).join(' · '))}</div>
+    ${i.image ? `<div class="ph2" style="height:260px;margin-top:12px">${img(i.image, i.name)}</div>` : ''}
+    <div class="label" style="margin-top:12px">
+      <div class="cell"><span class="cap">Размер</span><b class="num ${i.size ? '' : 'empty'}">${esc(i.size || '—')}</b></div>
+      <div class="cell span2"><span class="cap">Посадка</span><b style="font-size:18px">${esc(fitName(i.fit) || '—')}</b></div>
+      ${i.note ? `<div class="z1 span3">ЗАМЕТКА:<br>${esc(i.note)}</div>` : ''}
+    </div>
+    <div class="acts">
+      ${i.url ? `<a class="btn ghost" href="${esc(i.url)}" target="_blank" rel="noopener">Открыть в магазине</a>` : ''}
+      <button class="btn" onclick="openItemForm(${i.id})">Изменить</button>
+    </div>
+    <div class="acts"><button class="btn ghost" id="delBtn" onclick="confirmDel(this,()=>delItem(${i.id}))">Удалить вещь</button></div>`);
+}
+let F = null; // состояние формы вещи
+function openItemForm(id = null, zone = null) {
+  const i = id ? ITEMS.find(x => x.id === id) : null;
+  F = { id, zone: i ? i.zone : (zone || 'tops'), fit: i ? i.fit : null, image: i ? i.image : null, shop: i ? i.shop : null };
+  openSheet(i ? 'Изменить вещь' : 'Новая вещь', `
+    ${i ? '' : `<form class="form" style="grid-template-columns:1fr auto" onsubmit="event.preventDefault();parseItem()">
+      <label class="fld small"><span class="cap">Ссылка на вещь (необязательно)</span><input id="fUrl" inputmode="url" placeholder="https://…" autocomplete="off"></label>
+      <button class="btn" type="submit">Найти</button></form>
+    <div class="msg" id="fParse">Вставь ссылку, и название с фото заполнятся сами</div>`}
+    <div id="fImg">${F.image ? `<div class="ph2" style="height:180px;margin-top:10px">${img(F.image, '')}</div>` : ''}</div>
+    <div class="cap" style="margin-top:14px">Категория</div>
+    <div class="zchips" id="fZones">${ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="F.zone='${z[0]}';markPressed('fZones',this)">${z[1]}</button>`).join('')}</div>
+    <div class="form">
+      <label class="fld span3" style="grid-column:1/-1"><span class="cap">Название</span><input id="fName" value="${esc(i ? i.name : '')}" placeholder="Футболка оверсайз"></label>
+      <label class="fld"><span class="cap">Бренд</span><input id="fBrand" value="${esc(i ? i.brand || '' : '')}" placeholder="Uniqlo"></label>
+      <label class="fld"><span class="cap">Размер</span><input id="fSize" value="${esc(i ? i.size || '' : '')}" placeholder="M"></label>
+    </div>
+    <div class="cap" style="margin-top:14px">Как сидит</div>
+    <div class="seg" id="fFit" style="border:2px solid var(--ink);margin-top:6px">${FITS.map(f => `<button type="button" aria-pressed="${f[0] === F.fit}" onclick="F.fit=F.fit==='${f[0]}'?null:'${f[0]}';markPressed('fFit',this,F.fit)">${f[1]}</button>`).join('')}</div>
+    <div class="form" style="grid-template-columns:1fr"><label class="fld small"><span class="cap">Заметка</span><input id="fNote" value="${esc(i ? i.note || '' : '')}" placeholder="Например: рукава длинноваты"></label></div>
+    <div class="msg" id="fMsg"></div>
+    <button class="btn wide" style="margin-top:6px" onclick="saveItem()">${i ? 'Сохранить' : 'Добавить в гардероб'}</button>`);
+}
+function markPressed(group, btn, on = true) { $(group).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === btn && !!on ? 'true' : 'false')); }
+async function parseItem() {
+  const url = $('fUrl').value.trim(); if (!/^https?:\/\//.test(url)) { $('fParse').textContent = 'Нужна ссылка, начинающаяся с http'; return; }
+  $('fParse').textContent = 'Ищу вещь…'; $('fParse').className = 'msg pending';
+  try {
+    const m = await api('/parse', { method: 'POST', body: { url } });
+    if (m.title && !$('fName').value) $('fName').value = m.title;
+    if (m.image) { F.image = m.image; $('fImg').innerHTML = `<div class="ph2" style="height:180px;margin-top:10px">${img(m.image, m.title)}</div>`; }
+    try { F.shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
+    F.url = url;
+    if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) { F.zone = g.zone; markPressed('fZones', $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } } catch (_) {} }
+    $('fParse').className = 'msg'; $('fParse').textContent = m.title || m.image ? 'Нашёл. Проверь название и укажи размер' : 'Магазин не отдал данные, заполни вручную';
+  } catch (e) { $('fParse').className = 'msg err'; $('fParse').textContent = 'Не получилось открыть ссылку, заполни вручную'; }
+}
+async function saveItem() {
+  const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, note: $('fNote').value.trim() };
+  if (!body.name) { $('fMsg').textContent = 'Напиши название вещи'; $('fMsg').className = 'msg err'; return; }
+  if (!F.id) { body.image = F.image || null; body.url = F.url || null; body.shop = F.shop || null; body.source = F.url ? 'link' : 'manual'; }
+  try {
+    const saved = await api(F.id ? '/items/' + F.id : '/items', { method: F.id ? 'PATCH' : 'POST', body });
+    if (F.id) ITEMS = ITEMS.map(x => x.id === F.id ? saved : x); else ITEMS.push(saved);
+    renderAll(); openItem(saved.id); toast(F.id ? 'Сохранено' : 'Добавлено в гардероб');
+  } catch (e) { if (e.message !== 'auth') { $('fMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('fMsg').className = 'msg err'; } }
+}
+async function delItem(id) {
+  try { await api('/items/' + id, { method: 'DELETE' }); ITEMS = ITEMS.filter(x => x.id !== id); renderAll(); closeSheet(); toast('Вещь удалена'); }
+  catch (e) { if (e.message !== 'auth') toast('Не удалилось. Попробуй ещё раз'); }
+}
+function confirmDel(btn, fn) {
+  if (btn.dataset.armed) return fn();
+  btn.dataset.armed = 1; btn.textContent = 'Нажми ещё раз, чтобы удалить'; btn.classList.remove('ghost'); btn.classList.add('danger');
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = 'Удалить'; btn.classList.add('ghost'); btn.classList.remove('danger'); } }, 4000);
+}
+
+// ══════════ ВИШЛИСТ ══════════
+function renderWishlist() {
+  const want = WISH.filter(w => !w.received_at), got = WISH.filter(w => w.received_at);
+  const row = w => `<button class="row ${w.received_at ? 'got' : ''}" onclick="openWish(${w.id})">
+      <div class="th">${img(w.image, w.title || w.shop)}</div>
+      <div class="tx"><b>${esc(w.title)}</b><span>${esc(w.shop || '')}${w.parse_status === 'pending' ? ' · <em class="pending">ищу данные…</em>' : ''}</span></div>
+      <div class="rt">${w.price ? `<b class="num">${esc(w.price)}</b>` : ''}${w.size ? `<span class="num">РАЗМ. ${esc(w.size)}</span>` : ''}</div></button>`;
+  $('v-wishlist').innerHTML = `
+  <div class="top">
+    <div class="lt"><h1>Вишлист</h1><button class="tbtn dark" onclick="openWishForm()">+ По ссылке</button></div>
+    <div class="label">
+      <div class="cell"><span class="cap">Хочу</span><b class="num">${want.length}</b></div>
+      <div class="cell"><span class="cap">Получено</span><b class="num">${got.length}</b></div>
+      <button class="cell" onclick="go('friends')"><span class="cap">Друзья видят</span><b style="font-size:16px">${SHARE && SHARE.sections && SHARE.sections.wishlist ? 'ДА →' : 'НЕТ →'}</b></button>
+    </div>
+  </div>
+  <div class="body">
+    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(row).join('')}</div>` :
+      `<div class="note" style="margin-top:20px">Вишлист пуст. Нажми «+ По ссылке» и вставь ссылку на товар: название, цена и фото подтянутся сами. Ещё можно пересылать товары Telegram-боту.</div>`}
+    ${got.length ? `<div class="sec"><h2>Получено</h2></div><div class="rows">${got.map(row).join('')}</div>` : ''}
+  </div>`;
+}
+function openWish(id) {
+  const w = WISH.find(x => x.id === id); if (!w) return;
+  openSheet(w.title, `
+    <div class="sub">${esc([w.shop, w.price].filter(Boolean).join(' · '))}</div>
+    ${w.image ? `<div class="ph2" style="height:260px;margin-top:12px">${img(w.image, w.title)}</div>` : ''}
+    <div class="label" style="margin-top:12px">
+      <div class="cell"><span class="cap">Размер</span><b class="num ${w.size ? '' : 'empty'}">${esc(w.size || '—')}</b></div>
+      <div class="cell span2"><span class="cap">Статус</span><b style="font-size:18px">${w.received_at ? 'ПОЛУЧЕНО' : 'ХОЧУ'}</b></div>
+    </div>
+    <div class="acts">${w.url ? `<a class="btn ghost" href="${esc(w.url)}" target="_blank" rel="noopener">Открыть в магазине</a>` : ''}
+      ${w.received_at ? `<button class="btn ghost" onclick="setGot(${w.id},false)">Вернуть в «Хочу»</button>` : `<button class="btn" onclick="toWardrobe(${w.id})">Получил → в гардероб</button>`}</div>
+    <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delWish(${w.id}))">Удалить из вишлиста</button></div>`);
+}
+function openWishForm() {
+  F = { image: null };
+  openSheet('Добавить в вишлист', `
+    <form class="form" style="grid-template-columns:1fr auto" onsubmit="event.preventDefault();parseWish()">
+      <label class="fld small"><span class="cap">Ссылка на товар</span><input id="wUrl" inputmode="url" placeholder="https://…" autocomplete="off"></label>
+      <button class="btn" type="submit">Найти</button></form>
+    <div class="msg" id="wParse">Вставь ссылку из магазина или маркетплейса</div>
+    <div id="wImg"></div>
+    <div class="form">
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Название</span><input id="wTitle" placeholder="Заполнится само"></label>
+      <label class="fld"><span class="cap">Цена</span><input id="wPrice" placeholder="4 990 ₽"></label>
+      <label class="fld"><span class="cap">Нужный размер</span><input id="wSize" placeholder="M"></label>
+    </div>
+    <div class="msg" id="wMsg"></div>
+    <button class="btn wide" style="margin-top:6px" onclick="saveWish()">Добавить</button>`);
+  setTimeout(() => { const i = $('wUrl'); if (i) i.addEventListener('paste', () => setTimeout(parseWish, 50)); }, 0);
+}
+async function parseWish() {
+  const url = $('wUrl').value.trim(); if (!/^https?:\/\//.test(url)) return;
+  $('wParse').textContent = 'Ищу товар…'; $('wParse').className = 'msg pending';
+  try {
+    const m = await api('/parse', { method: 'POST', body: { url } });
+    if (m.title && !$('wTitle').value) $('wTitle').value = m.title;
+    if (m.price && !$('wPrice').value) $('wPrice').value = m.price;
+    if (m.image) { F.image = m.image; $('wImg').innerHTML = `<div class="ph2" style="height:180px;margin-top:10px">${img(m.image, m.title)}</div>`; }
+    $('wParse').className = 'msg'; $('wParse').textContent = m.title ? 'Нашёл. Укажи нужный размер' : 'Не всё подтянулось. Можно сохранить, данные дополнятся позже';
+  } catch (_) { $('wParse').className = 'msg'; $('wParse').textContent = 'Магазин не ответил. Сохрани, данные дополнятся позже'; }
+}
+async function saveWish() {
+  const url = $('wUrl').value.trim(), t = $('wTitle').value.trim();
+  if (!url && !t) { $('wMsg').textContent = 'Вставь ссылку или напиши название'; $('wMsg').className = 'msg err'; return; }
+  let shop = ''; try { shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
+  try {
+    const w = await api('/wishlist', { method: 'POST', body: { title: t || shop || 'Без названия', shop, url, price: $('wPrice').value.trim(), size: $('wSize').value.trim(), image: F.image, autotitle: !t } });
+    WISH.unshift(w); renderAll(); closeSheet(); toast('Добавлено в вишлист'); pollWish();
+  } catch (e) { if (e.message !== 'auth') { $('wMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('wMsg').className = 'msg err'; } }
+}
+async function setGot(id, on) {
+  try { const r = await api('/wishlist/' + id, { method: 'PATCH', body: { received: on } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: r.received_at } : w); renderAll(); openWish(id); }
+  catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
+async function toWardrobe(id) {
+  try {
+    const r = await api('/wishlist/' + id + '/to-items', { method: 'POST', body: {} });
+    WISH = WISH.map(w => w.id === id ? { ...w, received_at: w.received_at || new Date().toISOString() } : w);
+    if (r && r.item && !ITEMS.some(x => x.id === r.item.id)) ITEMS.push(r.item);
+    renderAll(); toast(r && r.existed ? 'Вещь уже в гардеробе' : 'Перенесено в гардероб'); if (r && r.item) openItemForm(r.item.id);
+  } catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
+async function delWish(id) {
+  try { await api('/wishlist/' + id, { method: 'DELETE' }); WISH = WISH.filter(w => w.id !== id); renderAll(); closeSheet(); toast('Удалено'); }
+  catch (e) { if (e.message !== 'auth') toast('Не удалилось. Попробуй ещё раз'); }
+}
+let pollT = null, pollN = 0;
+function pollWish() {
+  clearTimeout(pollT); if (!WISH.some(w => w.parse_status === 'pending')) { pollN = 0; return; }
+  if (++pollN > 12) return;
+  pollT = setTimeout(async () => { try { WISH = await api('/wishlist'); renderAll(); } catch (_) {} pollWish(); }, 5000);
+}
+
+// ══════════ ДРУЗЬЯ ══════════
+let SEC = null;
+function renderFriends() {
+  const url = shareUrl();
+  if (!SEC) SEC = { sizes: true, wishlist: true, items: true, ...(SHARE && SHARE.sections ? SHARE.sections : {}) };
+  const chk = (k, t, s) => `<button class="chk span3" role="checkbox" aria-checked="${SEC[k] !== false}" onclick="SEC.${k}=!(SEC.${k}!==false);renderFriends()"><i></i><span>${t}<small>${s}</small></span></button>`;
+  $('v-friends').innerHTML = `
+  <div class="top">
+    <div class="lt"><h1>Друзья</h1>${url ? `<a class="tbtn" href="${esc(url)}" target="_blank" rel="noopener">Как видят</a>` : ''}</div>
+    <div class="label">
+      <div class="z1 span2">ССЫЛКА ДЛЯ ДРУЗЕЙ:<b>${url ? 'Активна' : 'Не создана'}</b>${url ? 'Кто откроет, увидит то, что отмечено ниже' : 'Создай ссылку и отправь близким'}</div>
+      <div class="route"><small>СТАТУС</small>${url ? 'ON' : 'OFF'}</div>
+      ${url ? `<div class="qrbox span3" style="padding:20px 25%">${qrSvg(url)}</div><div class="url span3 num">${esc(url.replace(/^https?:\/\//, ''))}</div>` : ''}
+    </div>
+  </div>
+  <div class="body">
+    <div class="sec"><h2>Что видно</h2></div>
+    <div class="label" style="grid-template-columns:1fr;box-shadow:none">
+      ${chk('sizes', 'Размеры', 'Паспорт со всеми размерами')}
+      ${chk('items', 'Размеры по брендам', 'Бренд и размер из твоих вещей, без фото и заметок')}
+      ${chk('wishlist', 'Вишлист', 'Что ты хочешь получить, без полученного')}
+    </div>
+    <div class="acts">
+      ${url ? `<button class="btn" onclick="sendLink()">Отправить</button><button class="btn ghost" onclick="copy(shareUrl())">Скопировать</button>` : `<button class="btn wide" onclick="makeLink()">Создать ссылку</button>`}
+    </div>
+    ${url ? `<div class="acts"><button class="btn ghost" onclick="makeLink()">Применить настройки</button></div>
+      <div class="msg">При изменении настроек ссылка обновится, старая перестанет работать</div>
+      <div class="acts"><button class="btn ghost" onclick="confirmDel(this,revokeLink)">Отключить ссылку</button></div>` : ''}
+  </div>`;
+}
+async function makeLink() {
+  try { SHARE = await api('/share', { method: 'POST', body: { sections: { sizes: SEC.sizes !== false, wishlist: SEC.wishlist !== false, items: SEC.items !== false, excluded_size_keys: [], excluded_wishlist_ids: [] } } }); renderAll(); toast('Ссылка готова'); }
+  catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
+async function revokeLink() {
+  try { await api('/share/revoke', { method: 'POST' }); SHARE = null; renderAll(); toast('Ссылка отключена'); }
+  catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
+
+// ══════════ ПРОФИЛЬ ══════════
+let GEN = null;
+function renderProfile() {
+  if (GEN === null) GEN = SIZES.profile_gender || '';
+  const f = (k, t, ph, mode = 'text', span = '') => `<label class="fld ${span}"><span class="cap">${t}</span><input id="p_${k}" value="${esc(SIZES[k] || '')}" placeholder="${ph}" inputmode="${mode}" autocomplete="off"></label>`;
+  $('v-profile').innerHTML = `
+  <div class="top">
+    <div class="lt"><h1>Профиль</h1><a class="tbtn" href="/" onclick="LS.set('sb_page','profile')">Старый вид</a></div>
+    <div class="label">
+      <div class="z1 span3">АККАУНТ:<b>${esc((user && user.username) || '—')}</b>${esc((user && user.email) || '')}</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="sec"><h2>О себе</h2></div>
+    <div class="msg" style="margin-top:0">Пол и рост помогают переводить размеры между системами</div>
+    <div class="form">
+      ${f('profile_name', 'Имя', 'Иван')}${f('profile_lastname', 'Фамилия', 'Тихонов')}
+      ${f('profile_height', 'Рост, см', '182', 'numeric')}${f('profile_weight', 'Вес, кг', '78', 'numeric')}
+      ${f('profile_age', 'Возраст', '30', 'numeric', 'span3')}
+    </div>
+    <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this)">${g[1]}</button>`).join('')}</div>
+    <div class="msg" id="pMsg"></div>
+    <button class="btn wide" onclick="saveProfile()">Сохранить</button>
+
+    <div class="sec"><h2>Telegram</h2></div>
+    <div class="label" style="grid-template-columns:1fr">
+      <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Подключи бота @${esc(TG.bot)} и пересылай ему товары из магазинов и каналов`}</div>
+    </div>
+    <div class="acts">${TG && TG.enabled ? (TG.linked ? `<a class="btn ghost" href="https://t.me/${esc(TG.bot)}" target="_blank" rel="noopener">Открыть бота</a><button class="btn ghost" onclick="confirmDel(this,unlinkTg)">Отвязать</button>` : `<a class="btn" href="${esc(TG.link)}" target="_blank" rel="noopener">Подключить бота</a>`) : ''}</div>
+
+    <div class="sec"><h2>Ещё</h2></div>
+    <div class="acts"><a class="btn ghost" href="/" onclick="LS.set('sb_page','daily')">Старая версия приложения</a></div>
+    <div class="acts"><button class="btn ghost" onclick="confirmDel(this,logout)">Выйти из аккаунта</button></div>
+  </div>`;
+}
+async function saveProfile() {
+  const body = {}; ['profile_name', 'profile_lastname', 'profile_height', 'profile_weight', 'profile_age'].forEach(k => body[k] = $('p_' + k).value.trim());
+  if (GEN) body.profile_gender = GEN;
+  try { await api('/sizes', { method: 'POST', body }); Object.assign(SIZES, body); renderAll(); toast('Профиль сохранён'); }
+  catch (e) { if (e.message !== 'auth') { $('pMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('pMsg').className = 'msg err'; } }
+}
+async function unlinkTg() { try { await api('/me/telegram/unlink', { method: 'POST' }); TG = await api('/me/telegram'); renderAll(); toast('Бот отвязан'); } catch (_) {} }
+function logout() { LS.del('sb_token'); LS.del('sb_user'); location.href = '/'; }
+
+// ══════════ Навигация ══════════
+const VIEWS = ['wardrobe', 'wishlist', 'friends', 'profile'];
+let CUR = 'wardrobe';
+function go(v, push = true) {
+  if (!VIEWS.includes(v)) v = 'wardrobe';
+  CUR = v; closeSheet(true);
+  VIEWS.forEach(x => { $('v-' + x).hidden = x !== v; });
+  document.querySelectorAll('.tb button').forEach(b => b.dataset.v === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+  document.title = 'SizeBook · ' + { wardrobe: 'Гардероб', wishlist: 'Вишлист', friends: 'Друзья', profile: 'Профиль' }[v];
+  if (push) history.replaceState(null, '', v === 'wardrobe' ? '/passport' : '/passport#' + v);
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tb button').forEach(b => b.addEventListener('click', () => go(b.dataset.v)));
+function renderAll() { renderWardrobe(); renderWishlist(); renderFriends(); renderProfile(); }
+
+// ══════════ Шторка: открытие, закрытие, свайп вниз ══════════
+const sheet = $('sheet'), dim = $('dim');
+function openSheet(title, html) {
+  $('shTitle').textContent = title; $('shBody').innerHTML = html; $('shBody').scrollTop = 0;
+  sheet.style.transform = ''; sheet.classList.add('on'); dim.classList.add('on'); document.body.classList.add('lock');
+}
+function closeSheet(instant) {
+  if (!sheet.classList.contains('on')) return;
+  sheet.classList.remove('on'); dim.classList.remove('on'); document.body.classList.remove('lock'); sheet.style.transform = ''; dim.style.opacity = '';
+  if (instant) { sheet.classList.add('drag'); requestAnimationFrame(() => sheet.classList.remove('drag')); }
+}
+dim.addEventListener('click', () => closeSheet());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+(function swipe() {
+  let y0 = null, dy = 0, t0 = 0, fromBody = false;
+  const body = $('shBody');
+  const start = (y, isBody) => { y0 = y; dy = 0; t0 = Date.now(); fromBody = isBody; };
+  const move = (y, e) => {
+    if (y0 === null) return;
+    dy = Math.max(0, y - y0);
+    if (fromBody && (body.scrollTop > 0 || dy === 0)) { if (body.scrollTop > 0) y0 = null; return; }
+    if (e.cancelable) e.preventDefault();
+    sheet.classList.add('drag');
+    sheet.style.transform = `translate(-50%, ${dy}px)`;
+    dim.style.opacity = String(Math.max(0, 1 - dy / 400));
+  };
+  const end = () => {
+    if (y0 === null) return;
+    const v = dy / Math.max(1, Date.now() - t0);
+    sheet.classList.remove('drag');
+    if (dy > 110 || (dy > 30 && v > .5)) closeSheet(); else { sheet.style.transform = ''; dim.style.opacity = ''; }
+    y0 = null; dy = 0;
+  };
+  $('shHead').addEventListener('touchstart', e => start(e.touches[0].clientY, false), { passive: true });
+  body.addEventListener('touchstart', e => { if (body.scrollTop <= 0) start(e.touches[0].clientY, true); }, { passive: true });
+  sheet.addEventListener('touchmove', e => move(e.touches[0].clientY, e), { passive: false });
+  sheet.addEventListener('touchend', end); sheet.addEventListener('touchcancel', end);
+  // мышью — за шапку
+  $('shHead').addEventListener('mousedown', e => { if (e.target.closest('.x')) return; start(e.clientY, false); const mm = ev => move(ev.clientY, ev), mu = () => { end(); removeEventListener('mousemove', mm); removeEventListener('mouseup', mu); }; addEventListener('mousemove', mm); addEventListener('mouseup', mu); });
+})();
+
+let toastT; function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
+function showLogin(msg) { $('app').innerHTML = `<div class="center">${esc(msg)}<br><br><a class="btn" href="/">Войти</a></div>`; document.querySelector('.tb').hidden = true; }
 
 async function load() {
-  if (!token) {
-    document.getElementById('app').innerHTML = '<div class="login">Чтобы увидеть паспорт, войди в SizeBook.<br><a href="/">Войти</a></div>';
-    return;
-  }
+  if (!token) return showLogin('Чтобы открыть гардероб, войди в SizeBook.');
+  go((location.hash || '').slice(1) || 'wardrobe', false);
   try {
-    const [s, i, sh] = await Promise.all([
-      fetch(API + '/sizes', { headers: H() }), fetch(API + '/items', { headers: H() }), fetch(API + '/share', { headers: H() })
-    ]);
-    if (s.status === 401 || s.status === 403) { document.getElementById('app').innerHTML = '<div class="login">Сессия истекла. Войди заново.<br><a href="/">Войти</a></div>'; return; }
-    SIZES = await s.json() || {}; ITEMS = i.ok ? await i.json() : []; SHARE = sh.ok ? await sh.json() : null;
-    render();
-  } catch (_) {
-    document.getElementById('app').innerHTML = '<div class="login">Не удалось загрузить данные. Проверь интернет и обнови страницу.<br><a href="/passport">Обновить</a></div>';
-  }
+    const [s, i, w, sh] = await Promise.all([api('/sizes'), api('/items').catch(() => []), api('/wishlist').catch(() => []), api('/share').catch(() => null)]);
+    SIZES = s || {}; ITEMS = i || []; WISH = w || []; SHARE = sh;
+    renderAll(); pollWish();
+    api('/me/telegram').then(t => { TG = t; renderProfile(); }).catch(() => { TG = { enabled: false }; renderProfile(); });
+  } catch (e) { if (e.message !== 'auth') showLogin('Не удалось загрузить данные. Проверь интернет и обнови страницу.'); }
 }
 load();
 </script>
