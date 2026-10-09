@@ -364,6 +364,7 @@ function renderWardrobe() {
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
       <button class="route num" onclick="openCat('shoes')"><small>ОБУВЬ EU</small>${esc(val(CATS[3]) || '—')}</button>
       ${CATS.map(c => { const v = val(c); return `<button class="cell" onclick="openCat('${c.id}')"><span class="cap">${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
+      ${bodyRow()}
       <div class="qrbox">${url ? qrSvg(url) : '<div class="qrph">QR после создания ссылки</div>'}</div>
       <div class="gift span2"><b>Подарок в размер</b>${url ? 'Отсканируй, чтобы увидеть все размеры и вишлист' : 'Создай ссылку, и друзья увидят твои размеры и вишлист'}<button class="btn" onclick="sendLink()">${url ? 'Отправить ссылку' : 'Создать ссылку'}</button></div>
     </div>
@@ -378,6 +379,29 @@ function renderWardrobe() {
   </div>`;
 }
 
+// Параметры фигуры: грудь-талия-бёдра (показываем для женского пола или если уже заполнены)
+const BODY = [['chest', 'Грудь'], ['waist', 'Талия'], ['hips', 'Бёдра']];
+const bodyVal = () => BODY.map(([k]) => SIZES[k] ? String(SIZES[k]).trim() : '');
+function bodyRow() {
+  const v = bodyVal();
+  if (!female() && !v.some(Boolean)) return '';
+  return `<button class="cell span3" onclick="openBody()" style="display:flex;justify-content:space-between;align-items:flex-end"><span><span class="cap">Параметры · грудь — талия — бёдра</span><b class="num ${v.some(Boolean) ? '' : 'empty'}">${v.some(Boolean) ? v.map(x => esc(x || '—')).join('-') : '—'}</b></span><span class="cap" style="color:var(--ink2)">СМ →</span></button>`;
+}
+function openBody() {
+  openSheet('Параметры фигуры', `
+    <div class="sub">Обхваты в сантиметрах. Помогают подобрать платья, купальники и бельё</div>
+    <form class="form" style="grid-template-columns:repeat(3,minmax(0,1fr))" onsubmit="saveBody(event)">
+      ${BODY.map(([k, t], i) => `<label class="fld"><span class="cap">${t}</span><input id="b_${k}" value="${esc(SIZES[k] || '')}" placeholder="${['90', '60', '90'][i]}" inputmode="decimal" autocomplete="off"></label>`).join('')}
+      <button class="btn" type="submit" style="grid-column:1/-1;padding:13px">Сохранить</button>
+    </form>
+    <div class="msg" id="bMsg">Грудь по самой выступающей точке, талия по самой узкой, бёдра по самой широкой. Сантиметр держи ровно, не затягивая</div>`);
+}
+async function saveBody(e) {
+  e.preventDefault();
+  const body = {}; BODY.forEach(([k]) => body[k] = $('b_' + k).value.trim().replace(',', '.'));
+  try { await api('/sizes', { method: 'POST', body }); Object.assign(SIZES, body); renderAll(); closeSheet(); toast('Параметры сохранены'); }
+  catch (er) { if (er.message !== 'auth') { $('bMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('bMsg').className = 'msg err'; } }
+}
 function openCat(id) {
   const c = CATS.find(x => x.id === id), v = val(c), conv = convert(c, v), its = itemsOf(c);
   openSheet(c.full, `
@@ -744,15 +768,22 @@ function renderProfile() {
       ${f('profile_height', 'Рост, см', '182', 'numeric')}${f('profile_weight', 'Вес, кг', '78', 'numeric')}
       ${f('profile_age', 'Возраст', '30', 'numeric', 'span3')}
     </div>
-    <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this)">${g[1]}</button>`).join('')}</div></div>
+    <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this);$('pBody').hidden=GEN!=='female'">${g[1]}</button>`).join('')}</div>
+    <div id="pBody" ${GEN === 'female' ? '' : 'hidden'}>
+      <div class="cap" style="margin-top:14px">Параметры, см</div>
+      <div class="form" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:6px">
+        ${f('chest', 'Грудь', '90', 'decimal')}${f('waist', 'Талия', '60', 'decimal')}${f('hips', 'Бёдра', '90', 'decimal')}
+      </div>
+      <div class="msg">Обхват груди по самой выступающей точке, талии по самой узкой, бёдер по самой широкой. Сантиметр держи ровно, не затягивая</div>
+    </div></div>
     <div class="msg" id="pMsg"></div>
     <button class="btn wide" onclick="saveProfile()">Сохранить</button>
 
     <div class="sec"><h2>Telegram</h2></div>
     <div class="label" id="tgBox" style="grid-template-columns:1fr">
-      <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту @${esc(TG.bot)} ссылки на товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Бот общий для всех, свой создавать не нужно. Нажми «Подключить бота», в Telegram откроется @${esc(TG.bot)}, там нажми «Старт». После этого пересылай ему ссылки и посты из каналов`}</div>
+      <div class="z1">${TG === null ? 'Загружаю…' : !TG.enabled ? 'Бот сейчас недоступен' : TG.linked ? `<b>Подключён</b>Пересылай боту @${esc(TG.bot)} ссылки на товары и посты из каналов, они попадут в вишлист` : `<b>Не подключён</b>Нажми «Подключить бота», в Telegram откроется @${esc(TG.bot)}, там нажми «Старт» и вернись сюда. После этого пересылай боту ссылки и посты из каналов`}</div>
     </div>
-    <div class="acts">${TG && TG.enabled ? (TG.linked ? `<a class="btn ghost" href="https://t.me/${esc(TG.bot)}" target="_blank" rel="noopener">Открыть бота</a><button class="btn ghost" onclick="confirmDel(this,unlinkTg)">Отвязать</button>` : `<a class="btn" href="${esc(TG.link)}" target="_blank" rel="noopener">Подключить бота</a>`) : ''}</div>
+    <div class="acts">${TG && TG.enabled ? (TG.linked ? `<a class="btn ghost" href="https://t.me/${esc(TG.bot)}" target="_blank" rel="noopener">Открыть бота</a><button class="btn ghost" onclick="confirmDel(this,unlinkTg)">Отвязать</button>` : `<a class="btn" href="${esc(TG.link)}" target="_blank" rel="noopener" onclick="watchTg()">Подключить бота</a>`) : ''}</div>
 
     <div class="sec"><h2>Ещё</h2></div>
     <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>
@@ -762,11 +793,19 @@ function renderProfile() {
   </div>`;
 }
 async function saveProfile() {
-  const body = {}; ['profile_name', 'profile_lastname', 'profile_height', 'profile_weight', 'profile_age'].forEach(k => body[k] = $('p_' + k).value.trim());
+  const body = {}; ['profile_name', 'profile_lastname', 'profile_height', 'profile_weight', 'profile_age', 'chest', 'waist', 'hips'].forEach(k => { const el = $('p_' + k); if (el) body[k] = el.value.trim(); });
   if (GEN) body.profile_gender = GEN;
   try { await api('/sizes', { method: 'POST', body }); Object.assign(SIZES, body); renderAll(); toast('Профиль сохранён'); }
   catch (e) { if (e.message !== 'auth') { $('pMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('pMsg').className = 'msg err'; } }
 }
+// После нажатия «Подключить» проверяем привязку, пока пользователь в Telegram и когда вернётся
+let tgWatch = null;
+async function checkTg() {
+  try { const t = await api('/me/telegram'); const was = TG && TG.linked; TG = t; if (t.linked && !was) { renderProfile(); renderWardrobe(); toast('Telegram подключён ✓'); clearInterval(tgWatch); tgWatch = null; } } catch (_) {}
+}
+function watchTg() { clearInterval(tgWatch); let n = 0; tgWatch = setInterval(() => { if (++n > 60) { clearInterval(tgWatch); tgWatch = null; } checkTg(); }, 3000); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && TG && !TG.linked && token) checkTg(); });
+addEventListener('pageshow', () => { if (TG && !TG.linked && token) checkTg(); });
 async function unlinkTg() { try { await api('/me/telegram/unlink', { method: 'POST' }); TG = await api('/me/telegram'); renderAll(); toast('Бот отвязан'); } catch (_) {} }
 function logout() { LS.del('sb_token'); LS.del('sb_user'); location.href = '/'; }
 
@@ -859,11 +898,11 @@ function startTour() { runGuide(TOUR, 'tour'); }
 function checklist() {
   const filled = CATS.filter(c => val(c)).length, empty = CATS.find(c => !val(c)) || CATS[0];
   return [
-    { k: 'profile', ok: !!(SIZES.profile_gender && SIZES.profile_height), v: 'profile', sel: '#pAbout', t: 'Пол и рост', p: 'Впиши <b>рост</b> и выбери <b>пол</b>, потом нажми «Сохранить». От этого зависит перевод размеров.', cta: 'Понятно', act: () => $('p_profile_height') && $('p_profile_height').focus() },
+    { k: 'profile', ok: !!(SIZES.profile_gender && SIZES.profile_height), v: 'profile', sel: '#pAbout', t: 'Пол и рост', p: 'Впиши <b>рост</b> и выбери <b>пол</b>, потом нажми «Сохранить». От этого зависит перевод размеров. Если выберешь женский, появятся <b>параметры: грудь, талия, бёдра</b>.', cta: 'Понятно', act: () => $('p_profile_height') && $('p_profile_height').focus() },
     { k: 'sizes', ok: filled >= 3, v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Три размера', p: `Нажми на ячейку и впиши размер. Заполнено <b>${filled} из 6</b>. Начни с обуви и верха.`, cta: 'Вписать размер', act: () => openCat(empty.id) },
     { k: 'item', ok: ITEMS.length > 0, v: 'wardrobe', sel: '#v-wardrobe .body .sec', t: 'Первая вещь', p: 'Добавь вещь, которая <b>хорошо сидит</b>. Вставь ссылку из магазина или заполни вручную, укажи размер и посадку.', cta: 'Добавить вещь', act: () => openItemForm() },
     { k: 'wish', ok: WISH.length > 0, v: 'wishlist', sel: '#v-wishlist .lt .tbtn', t: 'Первое желание', p: 'Нажми <b>«+ По ссылке»</b> и вставь ссылку на вещь, которую хочешь получить.', cta: 'Добавить в вишлист', act: () => openWishForm() },
-    { k: 'bot', ok: !!(TG && TG.linked), v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'Нажми <b>«Подключить бота»</b>, в Telegram нажми <b>«Старт»</b>. Потом пересылай боту ссылки и посты, и они попадут в вишлист.', cta: 'Подключить', act: () => { if (TG && TG.link) location.href = TG.link; } },
+    { k: 'bot', ok: !!(TG && TG.linked), v: 'profile', sel: '#tgBox', t: 'Telegram-бот', p: 'Нажми <b>«Подключить бота»</b>, в Telegram нажми <b>«Старт»</b>. Потом пересылай боту ссылки и посты, и они попадут в вишлист.', cta: 'Подключить', act: () => { if (TG && TG.link) { watchTg(); location.href = TG.link; } } },
     { k: 'link', ok: !!SHARE, v: 'friends', sel: '#fSend', t: 'Ссылка близким', p: 'Отметь, что показывать, и нажми <b>«Создать ссылку»</b>. Отправь её тем, кто будет дарить подарки.', cta: 'Создать ссылку', act: () => makeLink() },
   ];
 }

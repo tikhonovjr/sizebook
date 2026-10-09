@@ -763,15 +763,19 @@ app.post('/tg/webhook/:secret', async (req, res) => {
     if (start) {
       const code = start[1];
       if (code) {
-        const u = await pool.query('UPDATE users SET tg_chat_id=$1, tg_link_code=NULL WHERE tg_link_code=$2 RETURNING id', [chatId, code]);
-        if (u.rows[0]) return tgSend(chatId, 'Готово, Telegram подключён к SizeBook ✓\n\nТеперь в любом приложении магазина нажмите «Поделиться» → Telegram → этот чат, и вещь окажется в вашем вишлисте.');
-        return tgSend(chatId, 'Ссылка для подключения устарела. Откройте SizeBook → Вишлист и нажмите «Подключить Telegram» ещё раз.');
+        const who = await pool.query('SELECT id, username FROM users WHERE tg_link_code=$1', [code]);
+        if (!who.rows[0]) return tgSend(chatId, 'Ссылка для подключения устарела. Откройте SizeBook → Профиль и нажмите «Подключить бота» ещё раз.');
+        // Один Telegram — один аккаунт SizeBook: если чат был привязан к другому аккаунту, переносим привязку
+        const prev = await pool.query('UPDATE users SET tg_chat_id=NULL WHERE tg_chat_id=$1 AND id<>$2 RETURNING username', [chatId, who.rows[0].id]);
+        await pool.query('UPDATE users SET tg_chat_id=$1, tg_link_code=NULL WHERE id=$2', [chatId, who.rows[0].id]);
+        const moved = prev.rows[0] ? `\n(Раньше этот Telegram был подключён к аккаунту ${prev.rows[0].username}, теперь он отвязан от него.)` : '';
+        return tgSend(chatId, `Готово, Telegram подключён к аккаунту ${who.rows[0].username} ✓${moved}\n\nТеперь пересылайте сюда ссылки на товары и посты из каналов, и они окажутся в вишлисте. Можно вернуться в приложение.`);
       }
       const linked = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
-      return tgSend(chatId, linked.rows[0] ? 'Присылайте ссылки на товары, я добавлю их в ваш вишлист.' : 'Чтобы подключить бота, откройте SizeBook → Вишлист → «Подключить Telegram».');
+      return tgSend(chatId, linked.rows[0] ? 'Присылайте ссылки на товары, я добавлю их в ваш вишлист.' : 'Чтобы подключить бота, откройте SizeBook → Профиль → «Подключить бота».');
     }
     const u = await pool.query('SELECT id FROM users WHERE tg_chat_id=$1', [chatId]);
-    if (!u.rows[0]) return tgSend(chatId, 'Бот ещё не подключён. Откройте SizeBook → Вишлист → «Подключить Telegram».');
+    if (!u.rows[0]) return tgSend(chatId, 'Бот ещё не подключён. Откройте SizeBook → Профиль → «Подключить бота».');
     const userId = u.rows[0].id;
     if (msg.media_group_id) return tgQueueAlbum(chatId, userId, msg);
     const isPost = !!(msg.forward_origin || msg.forward_from_chat || msg.photo || msg.video || msg.animation);
