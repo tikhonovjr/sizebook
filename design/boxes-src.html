@@ -1,0 +1,435 @@
+<title>SizeBook · Коробки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Archivo:wght@500;700;800;900&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: витрина — сверху 5 вариантов коробки, слева «телефон», справа заметки. Каждый вариант — своё прочтение коробки от обуви: материал, наклейка, печать */
+:root{
+  --bg:#f4f4f2; --surface:#fff; --line:rgba(20,20,18,.12); --text:#151513; --text2:#65655f; --text3:#9a9a93; --accent:#1f5fa6;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --noise:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --fiber:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.1 0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121212;--surface:#1d1d1f;--line:rgba(255,255,255,.12);--text:#f1f1ee;--text2:#a6a6a0;--text3:#74746e;--accent:#77aee6;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:14px;padding-inline:16px;padding-block:20px 40px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;display:grid;gap:18px}
+.head h1{font-size:24px;font-weight:650;letter-spacing:-.02em;margin:0 0 4px}
+.head p{margin:0;color:var(--text2);max-width:64ch;line-height:1.5}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{display:flex;align-items:center;gap:8px;padding:8px 13px 8px 8px;border-radius:999px;background:var(--surface);border:.5px solid var(--line);font-weight:500}
+.pills .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--bg);font-size:12px}
+.pills button[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.pills button[aria-pressed="true"] .n{background:var(--bg);color:var(--text)}
+.stage{display:grid;grid-template-columns:392px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:840px){.stage{grid-template-columns:minmax(0,1fr)}}
+.notes{display:grid;gap:14px;min-width:0;padding-top:6px}
+.notes h2{margin:0;font-size:20px}
+.notes .insp{color:var(--text2);font-size:13px;margin-top:2px}
+.notes p{margin:0;line-height:1.55;max-width:60ch}
+.notes h3{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.notes ul{margin:0;padding-left:18px;display:grid;gap:4px;line-height:1.5}
+.box{padding:14px;border-radius:14px;background:var(--surface);border:.5px solid var(--line);display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:480px){.box{grid-template-columns:1fr}}
+.hint{font-size:12px;color:var(--text3);line-height:1.5}
+
+.phone{width:392px;max-width:100%;height:812px;border-radius:46px;background:#0d0d0d;padding:10px;justify-self:center;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen{position:relative;height:100%;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+@media (max-width:440px){.phone{padding:0;background:none;box-shadow:none;width:100%;height:780px}.screen{border-radius:26px;border:.5px solid var(--line)}}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 14px var(--ui);position:absolute;top:0;left:0;right:0;z-index:4;transition:background .2s}
+.status.sc{background:var(--sb);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.main{padding-top:46px;padding-bottom:96px}
+.strip{display:flex;overflow-x:auto;scrollbar-width:none;gap:10px;margin:0 -18px;padding:0 18px}
+.strip::-webkit-scrollbar{display:none}
+.ph{position:relative;display:grid;place-items:center;overflow:hidden}
+.ph img{width:84%;height:84%;object-fit:contain;display:block}
+.num{font-variant-numeric:tabular-nums}
+.top{position:relative;padding:56px 16px 22px;margin-top:-46px}
+.lt{display:flex;justify-content:space-between;align-items:center;padding:0 2px 16px}
+.lt h2{margin:0}
+.shelves{padding:0 18px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 0 4px}
+.shelf{margin-top:16px}
+.shead{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding-bottom:10px}
+.shead .chev{margin-left:auto}
+.it{flex:none;width:118px;text-align:left}
+.it .ph{height:132px}
+.it .tagsz{position:absolute}
+.it .nm{margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabbar{position:absolute;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 26px}
+.tabbar div{display:grid;justify-items:center;gap:3px}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:8}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:84%;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:9;display:flex;flex-direction:column;border-radius:22px 22px 0 0}
+.sheet.on{transform:none}
+.sheet .scroll{padding:4px 18px 28px}
+.grab{width:38px;height:5px;border-radius:3px;margin:8px auto 6px;flex:none;opacity:.3;background:currentColor}
+.sheet h3{margin:4px 0 2px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.sgrid .ph{aspect-ratio:1;max-width:100%}
+.sysrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.bars{display:flex;height:40px;align-items:stretch;min-width:0;overflow:hidden}
+.bars i{display:block;background:currentColor;flex:none}
+.qr{display:grid;grid-template-columns:repeat(21,1fr);aspect-ratio:1;width:100%}
+.qr i{background:currentColor}
+.qr b{background:transparent}
+@media (prefers-reduced-motion:reduce){.sheet,.dim{transition:none}}
+
+/* ═════ 1. КРАФТ ═════ */
+.v-kraft{--sb:rgba(242,240,235,.88);--k-kraft:#b98a5c;--k-dark:#3a2410;--k-paper:#fcfbf7;--k-ink:#121212;--k-2:#6d6a62;--k-acc:#e2412b;--k-bg:#f2f0eb;background:var(--k-bg);color:var(--k-ink);font-family:var(--cond)}
+.v-kraft .top{background:var(--fiber),var(--noise),linear-gradient(180deg,#c6976b,var(--k-kraft) 70%);padding-bottom:54px}
+.v-kraft .top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:var(--fiber),linear-gradient(180deg,#8d6237,#a2744a);box-shadow:inset 0 6px 8px -4px rgba(0,0,0,.4)}
+.v-kraft .sideprint{position:absolute;left:0;right:0;bottom:9px;z-index:1;white-space:nowrap;overflow:hidden;font:800 13px var(--cond);letter-spacing:.42em;color:rgba(40,22,6,.55)}
+.v-kraft .lt h2{font:800 34px var(--cond);text-transform:uppercase;color:var(--k-dark)}
+.v-kraft .lt button{font:700 13px var(--cond);letter-spacing:.12em;text-transform:uppercase;color:var(--k-dark);border:1.5px solid var(--k-dark);padding:5px 10px}
+.v-kraft .label{background:var(--k-paper);border-radius:3px;padding:12px 14px;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.18),0 12px 22px -10px rgba(60,30,0,.55)}
+.v-kraft .tape{position:absolute;right:-14px;top:-12px;width:92px;height:28px;transform:rotate(28deg);background:linear-gradient(180deg,rgba(214,176,120,.78),rgba(196,156,98,.72));box-shadow:0 1px 2px rgba(0,0,0,.15);z-index:2;clip-path:polygon(3% 0,100% 0,97% 100%,0 100%)}
+.v-kraft .hdr{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;border-bottom:2px solid var(--k-ink);padding-bottom:9px}
+.v-kraft .hdr .m{font:800 25px/1 var(--cond);text-transform:uppercase}
+.v-kraft .hdr .m small{display:block;font:500 10.5px var(--mono);text-transform:none;color:var(--k-2);margin-top:5px}
+.v-kraft .hdr .bigsz{background:var(--k-ink);color:#fff;padding:5px 10px 4px;text-align:center;font:800 34px/1 var(--cond)}
+.v-kraft .hdr .bigsz small{display:block;font:600 9px var(--mono);letter-spacing:.14em}
+.v-kraft .conv{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #d9d6cd}
+.v-kraft .conv div{padding:6px 0;font:700 18px var(--cond)}
+.v-kraft .conv div small{display:block;font:500 9px var(--mono);color:var(--k-2)}
+.v-kraft table{width:100%;border-collapse:collapse;margin-top:4px}
+.v-kraft th{font:500 9.5px var(--mono);color:var(--k-2);text-align:left;padding:5px 0 3px;font-weight:500}
+.v-kraft td{font:600 18px var(--cond);padding:3px 0;border-top:1px solid #ebe8e0}
+.v-kraft td:first-child{font:500 14px var(--cond);text-transform:uppercase;letter-spacing:.05em}
+.v-kraft td.hl{font-weight:800;background:#f1eee6;padding-left:6px}
+.v-kraft tr.rowbtn{cursor:pointer}
+.v-kraft tr.rowbtn:hover td{color:var(--k-acc)}
+.v-kraft .barrow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;gap:14px;color:var(--k-ink)}
+.v-kraft .barrow small{display:block;font:400 10px var(--mono);letter-spacing:.16em;margin-top:3px}
+.v-kraft .barrow .sc{font:700 13px var(--cond);text-transform:uppercase;letter-spacing:.06em;text-align:right;color:var(--k-acc);flex:none}
+.v-kraft .sec b{font:800 26px var(--cond);text-transform:uppercase}
+.v-kraft .sec button{font:700 14px var(--cond);text-transform:uppercase;letter-spacing:.06em;color:var(--k-acc)}
+.v-kraft .shead b{font:700 18px var(--cond);text-transform:uppercase;letter-spacing:.03em}
+.v-kraft .shead .sz{font:600 11px var(--mono);color:var(--k-2)}
+.v-kraft .shead .chev{color:var(--k-2)}
+.v-kraft .it .ph{background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.v-kraft .it .tagsz{left:6px;top:6px;background:var(--fiber),linear-gradient(#c6976b,#b98a5c);color:var(--k-dark);font:800 13px var(--cond);padding:2px 7px;border-radius:2px}
+.v-kraft .it .nm{font:700 16px var(--cond);text-transform:uppercase}
+.v-kraft .it .br{font:400 11px var(--mono);color:var(--k-2)}
+.v-kraft .tabbar{background:var(--k-paper);border-top:2px solid var(--k-ink);color:var(--k-2)}
+.v-kraft .tabbar div{font:700 12px var(--cond);text-transform:uppercase;letter-spacing:.06em}
+.v-kraft .tabbar .on{color:var(--k-acc)}
+.v-kraft .sheet{background:var(--k-bg)}
+.v-kraft .sheet h3{font:800 30px var(--cond);text-transform:uppercase}
+.v-kraft .sheet .sub{font:400 12px var(--mono);color:var(--k-2)}
+.v-kraft .sysrow span{background:var(--k-paper);border:1.5px solid var(--k-ink);padding:6px 12px;font:800 20px var(--cond)}
+.v-kraft .sysrow span i{font:500 10px var(--mono);font-style:normal;color:var(--k-2);margin-right:6px}
+.v-kraft .sgrid .ph{background:#fff}
+.v-kraft .sgrid .nm{font:700 16px var(--cond);text-transform:uppercase;margin-top:6px}
+
+/* ═════ 2. ЧЁРНАЯ КОРОБКА ═════ */
+.v-black{--sb:rgba(20,20,20,.88);--b-bg:#141414;--b-box:#0b0b0b;--b-ink:#f2f1ed;--b-2:#8c8b86;--b-acc:#ff3b2f;--b-card:#1e1e1e;background:var(--b-bg);color:var(--b-ink);font-family:var(--cond)}
+.v-black .status{color:#f2f1ed}
+.v-black .top{background:var(--noise),radial-gradient(130% 90% at 50% 0%,#1c1c1c,var(--b-box) 70%);border-bottom:1px solid #262626;padding-bottom:26px}
+.v-black .emb{position:absolute;left:0;right:0;bottom:10px;font:800 74px/1 var(--cond);letter-spacing:.04em;color:#0e0e0e;text-shadow:0 1px 0 rgba(255,255,255,.05),0 -1px 0 rgba(0,0,0,.9);text-align:center;pointer-events:none;white-space:nowrap}
+.v-black .lt h2{font:800 32px var(--cond);text-transform:uppercase;letter-spacing:.02em}
+.v-black .lt button{font:600 13px var(--cond);letter-spacing:.14em;text-transform:uppercase;color:var(--b-2)}
+.v-black .label{position:relative;z-index:1;background:#f6f5f1;color:#111;margin:8px 0 74px;display:grid;grid-template-columns:10px 1fr;box-shadow:0 18px 30px -14px rgba(0,0,0,.9)}
+.v-black .label .bar{background:var(--b-acc)}
+.v-black .label .in{padding:12px 14px 10px}
+.v-black .r1{display:flex;justify-content:space-between;align-items:baseline;font:500 10px var(--mono);color:#77756f;letter-spacing:.06em}
+.v-black .who{font:800 28px/1 var(--cond);text-transform:uppercase;margin:6px 0 10px}
+.v-black .grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1.5px solid #111}
+.v-black .cell{padding:7px 0 6px;text-align:left;border-bottom:1px solid #dddbd4}
+.v-black .cell:nth-child(3n+2),.v-black .cell:nth-child(3n+3){padding-left:10px;border-left:1px solid #dddbd4}
+.v-black .cell span{display:block;font:500 9px var(--mono);letter-spacing:.08em;color:#77756f;text-transform:uppercase}
+.v-black .cell b{font:800 26px/1.05 var(--cond)}
+.v-black .cell:hover b{color:var(--b-acc)}
+.v-black .ft{display:flex;justify-content:space-between;align-items:center;margin-top:9px;color:#111}
+.v-black .ft .bars{height:26px;width:150px}
+.v-black .ft button{font:700 13px var(--cond);letter-spacing:.08em;text-transform:uppercase;background:#111;color:#fff;padding:7px 10px}
+.v-black .sec b{font:800 26px var(--cond);text-transform:uppercase}
+.v-black .sec button{font:700 14px var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--b-acc)}
+.v-black .shead b{font:700 18px var(--cond);text-transform:uppercase}
+.v-black .shead .sz{font:500 11px var(--mono);color:var(--b-2)}
+.v-black .shead .chev{color:var(--b-2)}
+.v-black .it .ph{background:var(--b-card)}
+.v-black .it .ph img{filter:drop-shadow(0 8px 10px rgba(0,0,0,.5))}
+.v-black .it .tagsz{left:0;bottom:0;background:#f6f5f1;color:#111;font:800 13px var(--cond);padding:2px 8px;border-left:4px solid var(--b-acc)}
+.v-black .it .nm{font:700 16px var(--cond);text-transform:uppercase}
+.v-black .it .br{font:400 11px var(--mono);color:var(--b-2)}
+.v-black .tabbar{background:#0b0b0b;border-top:1px solid #262626;color:#6f6e69}
+.v-black .tabbar div{font:700 12px var(--cond);text-transform:uppercase;letter-spacing:.08em}
+.v-black .tabbar .on{color:var(--b-ink)}
+.v-black .tabbar .on svg{color:var(--b-acc)}
+.v-black .sheet{background:#1a1a1a;color:var(--b-ink)}
+.v-black .sheet h3{font:800 30px var(--cond);text-transform:uppercase}
+.v-black .sheet .sub{font:400 12px var(--mono);color:var(--b-2)}
+.v-black .sysrow span{background:#f6f5f1;color:#111;padding:6px 12px;font:800 20px var(--cond);border-left:4px solid var(--b-acc)}
+.v-black .sysrow span i{font:500 10px var(--mono);font-style:normal;color:#77756f;margin-right:6px}
+.v-black .sgrid .ph{background:var(--b-card)}
+.v-black .sgrid .nm{font:700 16px var(--cond);text-transform:uppercase;margin-top:6px}
+
+/* ═════ 3. СТЕНА КОРОБОК ═════ */
+.v-wall{--sb:rgba(239,238,234,.88);--w-bg:#efeeea;--w-ink:#131313;--w-2:#6c6b65;background:var(--w-bg);color:var(--w-ink);font-family:var(--cond)}
+.v-wall .top{background:linear-gradient(180deg,#e2e0da,var(--w-bg))}
+.v-wall .lt h2{font:800 34px var(--cond);text-transform:uppercase}
+.v-wall .lt button{font:700 13px var(--cond);letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid var(--w-ink)}
+.v-wall .owner{display:flex;justify-content:space-between;align-items:baseline;font:500 11px var(--mono);color:var(--w-2);padding:0 2px 10px}
+.v-wall .owner b{font:800 18px var(--cond);text-transform:uppercase;color:var(--w-ink)}
+.v-wall .wall{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:linear-gradient(180deg,#d8d6cf,#cfcdc5);border-radius:4px;box-shadow:inset 0 2px 6px rgba(0,0,0,.18)}
+.v-wall .bx{position:relative;height:96px;text-align:left;padding:10px;display:flex;align-items:flex-end;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.25),0 2px 3px rgba(0,0,0,.18);background-image:var(--noise);overflow:hidden}
+.v-wall .bx::before{content:"";position:absolute;left:0;right:0;top:0;height:18px;background:rgba(0,0,0,.12);box-shadow:0 1px 0 rgba(255,255,255,.15)}
+.v-wall .bx:hover{transform:translateY(-2px)}
+.v-wall .bx .stk{position:relative;background:#fbfaf7;color:#111;padding:5px 8px 4px;width:100%;display:grid;grid-template-columns:1fr auto;align-items:end;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.v-wall .bx .stk span{font:600 13px var(--cond);text-transform:uppercase;letter-spacing:.04em}
+.v-wall .bx .stk span em{display:block;font:500 9px var(--mono);font-style:normal;color:#77756f;text-transform:none;letter-spacing:0}
+.v-wall .bx .stk b{font:800 28px/1 var(--cond)}
+.v-wall .bx .brand{position:absolute;left:10px;top:3px;font:800 10px var(--cond);letter-spacing:.3em;color:rgba(255,255,255,.75)}
+.v-wall .share{margin-top:12px;width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--w-ink);color:#fff;padding:12px 14px;font:700 15px var(--cond);text-transform:uppercase;letter-spacing:.08em}
+.v-wall .sec b{font:800 26px var(--cond);text-transform:uppercase}
+.v-wall .sec button{font:700 14px var(--cond);text-transform:uppercase;letter-spacing:.06em}
+.v-wall .shead b{font:700 18px var(--cond);text-transform:uppercase}
+.v-wall .shead .sw{width:12px;height:12px;align-self:center}
+.v-wall .shead .sz{font:500 11px var(--mono);color:var(--w-2)}
+.v-wall .shead .chev{color:var(--w-2)}
+.v-wall .it .ph{background:#fff}
+.v-wall .it .tagsz{left:0;top:0;color:#fff;font:800 14px var(--cond);padding:2px 8px}
+.v-wall .it .nm{font:700 16px var(--cond);text-transform:uppercase}
+.v-wall .it .br{font:400 11px var(--mono);color:var(--w-2)}
+.v-wall .tabbar{background:#fbfaf7;border-top:1px solid #d6d4cd;color:var(--w-2)}
+.v-wall .tabbar div{font:700 12px var(--cond);text-transform:uppercase;letter-spacing:.06em}
+.v-wall .tabbar .on{color:var(--w-ink)}
+.v-wall .sheet{background:var(--w-bg)}
+.v-wall .sheet h3{font:800 30px var(--cond);text-transform:uppercase}
+.v-wall .sheet .sub{font:400 12px var(--mono);color:var(--w-2)}
+.v-wall .sysrow span{background:#fbfaf7;padding:6px 12px;font:800 20px var(--cond);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.v-wall .sysrow span i{font:500 10px var(--mono);font-style:normal;color:var(--w-2);margin-right:6px}
+.v-wall .sgrid .ph{background:#fff}
+.v-wall .sgrid .nm{font:700 16px var(--cond);text-transform:uppercase;margin-top:6px}
+
+/* ═════ 4. ТЕРМОЭТИКЕТКА ═════ */
+.v-ship{--sb:rgba(231,232,234,.88);--s-bg:#e7e8ea;--s-ink:#0d0d0d;--s-2:#5f6166;--s-label:#fdfdfb;background:var(--s-bg);color:var(--s-ink);font-family:"Archivo",sans-serif}
+.v-ship .top{padding-bottom:26px;background:
+  radial-gradient(60% 40% at 20% 30%,rgba(255,255,255,.55),transparent 70%),
+  radial-gradient(50% 30% at 80% 70%,rgba(255,255,255,.4),transparent 70%),
+  linear-gradient(160deg,#9aa0a8,#b9bec5 40%,#8f959e 60%,#aeb3ba)}
+.v-ship .lt h2{font:900 30px "Archivo",sans-serif;text-transform:uppercase;letter-spacing:-.02em}
+.v-ship .lt button{font:700 12px var(--mono);text-transform:uppercase;background:var(--s-label);padding:6px 10px;border:2px solid var(--s-ink)}
+.v-ship .label{background:var(--s-label);border:3px solid var(--s-ink);box-shadow:0 14px 26px -12px rgba(0,0,0,.45);transform:rotate(.6deg)}
+.v-ship .zone{border-bottom:3px solid var(--s-ink);padding:7px 10px}
+.v-ship .r1{display:grid;grid-template-columns:1fr auto;padding:0;border-bottom:3px solid var(--s-ink)}
+.v-ship .r1 .z1{padding:7px 10px;font:500 10px var(--mono);line-height:1.45}
+.v-ship .r1 .z1 b{display:block;font:900 22px/1.05 "Archivo",sans-serif;text-transform:uppercase;margin-top:2px;letter-spacing:-.01em}
+.v-ship .r1 .route{background:var(--s-ink);color:#fff;display:grid;place-items:center;padding:4px 12px;font:900 40px/1 "Archivo",sans-serif}
+.v-ship .r1 .route small{font:600 9px var(--mono);letter-spacing:.14em}
+.v-ship .grid{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:3px solid var(--s-ink)}
+.v-ship .cell{padding:6px 8px;text-align:left;border-right:2px solid var(--s-ink);border-bottom:2px solid var(--s-ink)}
+.v-ship .cell:nth-child(3n){border-right:0}
+.v-ship .cell:nth-child(n+4){border-bottom:0}
+.v-ship .cell span{display:block;font:600 9px var(--mono);text-transform:uppercase}
+.v-ship .cell b{font:900 26px/1.05 "Archivo",sans-serif;letter-spacing:-.02em}
+.v-ship .cell:hover{background:var(--s-ink);color:#fff}
+.v-ship .r3{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:8px 10px;align-items:center}
+.v-ship .r3 .qr{color:var(--s-ink)}
+.v-ship .r3 .t{font:500 10px/1.5 var(--mono)}
+.v-ship .r3 .t b{display:block;font:900 15px "Archivo",sans-serif;text-transform:uppercase;margin-bottom:2px}
+.v-ship .r3 .t button{margin-top:8px;background:var(--s-ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:6px 9px}
+.v-ship .sec b{font:900 22px "Archivo",sans-serif;text-transform:uppercase;letter-spacing:-.01em}
+.v-ship .sec button{font:700 12px var(--mono);text-transform:uppercase}
+.v-ship .shead b{font:800 15px "Archivo",sans-serif;text-transform:uppercase}
+.v-ship .shead .sz{font:600 11px var(--mono);border:2px solid var(--s-ink);padding:0 5px}
+.v-ship .shead .chev{color:var(--s-2)}
+.v-ship .it .ph{background:var(--s-label)}
+.v-ship .it .tagsz{right:6px;top:6px;background:#fff;border:2px solid var(--s-ink);font:800 12px var(--mono);padding:1px 6px}
+.v-ship .it .nm{font:700 13px "Archivo",sans-serif}
+.v-ship .it .br{font:400 11px var(--mono);color:var(--s-2)}
+.v-ship .tabbar{background:var(--s-label);border-top:3px solid var(--s-ink);color:var(--s-2)}
+.v-ship .tabbar div{font:700 10px var(--mono);text-transform:uppercase}
+.v-ship .tabbar .on{color:var(--s-ink)}
+.v-ship .sheet{background:var(--s-bg)}
+.v-ship .sheet h3{font:900 26px "Archivo",sans-serif;text-transform:uppercase}
+.v-ship .sheet .sub{font:400 12px var(--mono);color:var(--s-2)}
+.v-ship .sysrow span{background:var(--s-label);border:2px solid var(--s-ink);padding:6px 10px;font:900 18px "Archivo",sans-serif}
+.v-ship .sysrow span i{font:600 10px var(--mono);font-style:normal;margin-right:6px}
+.v-ship .sgrid .ph{background:var(--s-label)}
+.v-ship .sgrid .nm{font:700 13px "Archivo",sans-serif;margin-top:6px}
+
+/* ═════ 5. БЕЛАЯ КОРОБКА ═════ */
+.v-white{--sb:rgba(247,247,246,.9);--x-bg:#f7f7f6;--x-box:#ffffff;--x-ink:#1c1c1c;--x-2:#8d8d89;--x-hair:#e6e6e3;--x-acc:#c8102e;background:var(--x-bg);color:var(--x-ink);font-family:"Instrument Sans",sans-serif}
+.v-white .top{padding:62px 22px 26px;background:var(--x-box);box-shadow:0 1px 0 var(--x-hair),0 18px 30px -24px rgba(0,0,0,.25)}
+.v-white .lt{padding-bottom:30px}
+.v-white .lt h2{font:500 15px "Instrument Sans",sans-serif;letter-spacing:.3em;text-transform:uppercase}
+.v-white .lt button{font:500 12px "Instrument Sans",sans-serif;color:var(--x-2);letter-spacing:.06em}
+.v-white .tiny{display:flex;justify-content:space-between;font:400 10px var(--mono);color:var(--x-2);letter-spacing:.04em}
+.v-white .who{font:500 30px/1.1 "Instrument Sans",sans-serif;letter-spacing:-.02em;margin:10px 0 2px}
+.v-white .meta{font:400 13px "Instrument Sans",sans-serif;color:var(--x-2)}
+.v-white .hero{display:flex;align-items:flex-end;justify-content:space-between;margin:26px 0 18px}
+.v-white .hero .n{font:300 84px/0.85 "Instrument Sans",sans-serif;letter-spacing:-.06em}
+.v-white .hero .n sup{font:500 12px var(--mono);letter-spacing:.1em;vertical-align:top;margin-left:4px;color:var(--x-acc)}
+.v-white .hero .alt{text-align:right;font:400 11px/1.7 var(--mono);color:var(--x-2)}
+.v-white .rows{border-top:1px solid var(--x-ink)}
+.v-white .cell{display:grid;grid-template-columns:96px 1fr auto;align-items:baseline;width:100%;padding:9px 0;border-bottom:1px solid var(--x-hair);text-align:left}
+.v-white .cell span{font:400 12px "Instrument Sans",sans-serif;color:var(--x-2)}
+.v-white .cell em{font:400 10px var(--mono);font-style:normal;color:var(--x-2)}
+.v-white .cell b{font:500 19px "Instrument Sans",sans-serif;letter-spacing:-.01em}
+.v-white .cell:hover b{color:var(--x-acc)}
+.v-white .ft{display:flex;justify-content:space-between;align-items:center;margin-top:16px;color:var(--x-ink)}
+.v-white .ft .bars{height:22px;width:120px}
+.v-white .ft button{font:500 13px "Instrument Sans",sans-serif;padding:9px 16px;border-radius:999px;border:1px solid var(--x-ink)}
+.v-white .sec b{font:500 13px "Instrument Sans",sans-serif;letter-spacing:.24em;text-transform:uppercase}
+.v-white .sec button{font:500 13px "Instrument Sans",sans-serif;color:var(--x-2)}
+.v-white .shead b{font:500 15px "Instrument Sans",sans-serif}
+.v-white .shead .sz{font:400 11px var(--mono);color:var(--x-2)}
+.v-white .shead .chev{color:var(--x-2)}
+.v-white .it .ph{background:var(--x-box)}
+.v-white .it .tagsz{left:8px;bottom:6px;font:400 11px var(--mono);color:var(--x-2)}
+.v-white .it .nm{font:500 13px "Instrument Sans",sans-serif}
+.v-white .it .br{font:400 12px "Instrument Sans",sans-serif;color:var(--x-2)}
+.v-white .tabbar{background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-top:1px solid var(--x-hair);color:var(--x-2)}
+.v-white .tabbar div{font:500 10px "Instrument Sans",sans-serif;letter-spacing:.04em}
+.v-white .tabbar .on{color:var(--x-ink)}
+.v-white .sheet{background:var(--x-box)}
+.v-white .sheet h3{font:500 24px "Instrument Sans",sans-serif;letter-spacing:-.02em}
+.v-white .sheet .sub{font:400 13px "Instrument Sans",sans-serif;color:var(--x-2)}
+.v-white .sysrow{gap:0;border-top:1px solid var(--x-ink)}
+.v-white .sysrow span{flex:1;padding:10px 0;font:500 20px "Instrument Sans",sans-serif}
+.v-white .sysrow span i{display:block;font:400 10px var(--mono);font-style:normal;color:var(--x-2)}
+.v-white .sgrid .ph{background:var(--x-bg)}
+.v-white .sgrid .nm{font:500 13px "Instrument Sans",sans-serif;margin-top:6px}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <h1>Паспорт как коробка: 5 вариантов</h1>
+    <p>Все варианты по мотивам коробки от обуви. Нажми на размер или строку таблицы, чтобы открыть шторку с системами и вещами.</p>
+  </header>
+  <div class="pills" id="pills"></div>
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <section class="notes" id="notes"></section>
+  </div>
+</div>
+
+<script>
+const IMG=__IMGS__;
+const ICON={share:'<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/>',chev:'<path d="M9 6l6 6-6 6"/>',
+ hanger:'<path d="M12 7a2 2 0 1 1 2-2"/><path d="M12 7v2l9 7v2H3v-2l9-7"/>',heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+ users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2.2.6 3.5 2.4 3.5 5.2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'};
+const ic=(n,s=20,w=1.8)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+const CATS=[
+ {id:'tops',title:'Верх',full:'Футболки и рубашки',base:'M',box:'#2c4fd6',sys:[['INT','M'],['RU','48'],['EU','48'],['US','38']],
+  items:[['shirt','Рубашка из поплина','COS','M'],['tee','Футболка Supima','Uniqlo','L'],['stripe','Тельняшка','Arket','S'],['polo','Поло из пике','Zara','M'],['sweat','Джемпер из мерино','COS','M']]},
+ {id:'bottoms',title:'Низ',full:'Джинсы и брюки',base:'32/32',box:'#1d1d1d',sys:[['W/L','32/32'],['RU','48'],['EU','48'],['US','32']],
+  items:[['jeans','501 Original',"Levi's",'32/32'],['chino','Брюки Wide','Carhartt WIP','32/32'],['linen','Брюки из льна','Uniqlo','31']]},
+ {id:'outer',title:'Верхняя',full:'Верхняя одежда',base:'L',box:'#b98a5c',sys:[['INT','L'],['RU','50'],['EU','50'],['US','40']],
+  items:[['puffer','Пуховик Nuptse','The North Face','L'],['coat','Стёганое пальто','Mango','XL']]},
+ {id:'shoes',title:'Обувь',full:'Обувь',base:'43',box:'#e2412b',sys:[['EU','43'],['US','10'],['UK','9'],['СМ','27,5']],
+  items:[['af1','Air Force 1','Nike','43'],['samba','Ultraboost','Adidas','43⅓'],['nb','Gel-Kayano','Asics','43,5'],['boots','Desert Boot','Clarks','42,5']]},
+ {id:'hats',title:'Шапка',full:'Головные уборы',base:'58',box:'#2f6b4f',sys:[['СМ','58'],['INT','M'],['RU','58'],['US','7¼']],items:[['cap','Кепка из кожи','Stetson','58']]},
+ {id:'ring',title:'Кольцо',full:'Кольцо',base:'17,5',box:'#d8d4ca',sys:[['ММ','17,5'],['RU','17,5'],['EU','55'],['US','7½']],items:[]},
+];
+const C=id=>CATS.find(c=>c.id===id);
+const g=(c,k)=>(c.sys.find(s=>s[0]===k)||['','—'])[1];
+const alt=c=>c.sys.filter(s=>s[1]!==c.base).slice(0,2).map(s=>s[0]+' '+s[1]).join(' · ');
+const cells=()=>CATS.map(c=>`<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><b class="num">${c.base}</b></button>`).join('');
+function rnd(seed){let x=seed;return()=>(x=(x*9301+49297)%233280)/233280}
+function barcode(seed,n=46){const r=rnd(seed);let o='';for(let i=0;i<n;i++){o+=`<i style="width:${1+Math.floor(r()*3)}px;margin-right:${1+Math.floor(r()*3)}px"></i>`}return o}
+function qr(seed){const r=rnd(seed),N=21;let o='';const fin=(x,y,a,b)=>{const dx=x-a,dy=y-b;if(dx<0||dy<0||dx>6||dy>6)return null;return (dx===0||dy===0||dx===6||dy===6||(dx>=2&&dx<=4&&dy>=2&&dy<=4))};
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){let f=fin(x,y,0,0);if(f===null)f=fin(x,y,14,0);if(f===null)f=fin(x,y,0,14);
+  const near=(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12);const on=f!==null?f:(!near&&r()>.52);o+=on?'<i></i>':'<b></b>'}return `<div class="qr">${o}</div>`}
+const table=()=>`<table><thead><tr><th></th><th>РАЗМ.</th><th>RU</th><th>EU</th><th>US</th></tr></thead><tbody>${CATS.map(c=>`<tr class="rowbtn" onclick="openSheet('${c.id}')"><td>${c.title}</td><td class="hl num">${c.base}</td><td class="num">${g(c,'RU')}</td><td class="num">${g(c,'EU')}</td><td class="num">${g(c,'US')}</td></tr>`).join('')}</tbody></table>`;
+
+const V=[
+ {k:'kraft',n:'Крафт',insp:'доработка прошлого варианта: крышка коробки, боковина с печатью, кусок скотча',
+  idea:'Та же наклейка на крафте, но собранная аккуратнее. Под шапкой строка конвертации обуви EU/US/UK/см, столбец твоего размера выделен. Ниже видна боковина коробки с печатью SIZEBOOK, угол наклейки придавлен скотчем.',
+  pros:['Самый близкий к тому, что понравилось, только чище','Таблица по системам видна сразу'],cons:['Крафт задаёт тёплый, немного «складской» тон всему приложению'],
+  pass:()=>`<div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label"><i class="tape"></i>
+    <div class="hdr"><div class="m">Тихонов Иван<small class="num">ART. SB-0182-78 · рост 182 · вес 78</small></div><div class="bigsz num"><small>EU</small>43</div></div>
+    <div class="conv">${C('shoes').sys.map(s=>`<div class="num"><small>${s[0]}</small>${s[1]}</div>`).join('')}</div>
+    ${table()}
+    <div class="barrow"><div style="flex:1;min-width:0"><div class="bars">${barcode(182)}</div><small class="num">4 600182 078430</small></div><button class="sc">Отправить<br>по ссылке →</button></div>
+   </div>
+   <div class="sideprint">SIZEBOOK · SIZEBOOK · SIZEBOOK · SIZEBOOK · SIZEBOOK</div></div>`},
+ {k:'black',n:'Чёрная коробка',insp:'матовые чёрные коробки премиальных кроссовок, вытисненный логотип, цветной кант на наклейке',
+  idea:'Матовая чёрная крышка с вытисненным крупным словом SIZEBOOK. Наклейка маленькая и белая, с красным кантом слева. Всё приложение в тёмной теме, вещи на графитовых карточках с белой «наклейкой» размера.',
+  pros:['Выглядит дорого и собранно, фото вещей на тёмном выигрывают','Тёмная тема удобна вечером и экономит батарею на OLED'],cons:['Тёмный интерфейс для «подарочного» сценария может показаться строгим'],
+  pass:()=>`<div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label"><i class="bar"></i><div class="in">
+    <div class="r1 num"><span>SIZEBOOK / ART. 0182-78</span><span>182 СМ · 78 КГ</span></div>
+    <div class="who">Тихонов Иван</div>
+    <div class="grid">${cells()}</div>
+    <div class="ft"><div class="bars">${barcode(77,34)}</div><button>Отправить</button></div>
+   </div></div>
+   <div class="emb">SIZEBOOK</div></div>`},
+ {k:'wall',n:'Стена коробок',insp:'стены с коробками в кроссовочных магазинах: торцы разного цвета, на каждом своя наклейка',
+  idea:'Паспорт превращается в полку с коробками. Каждая категория — торец своей коробки своего цвета с наклейкой и размером. Этот цвет повторяется в категориях вещей ниже, так разделы легко различать.',
+  pros:['Самый игровой и наглядный, каждая категория — отдельная «вещь»','Легко добавлять новые категории: просто ещё одна коробка'],cons:['Шесть цветов надо держать в узде, иначе станет пёстро','Нет общей сводки по системам, она открывается по нажатию'],
+  pass:()=>`<div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="owner"><b>Тихонов Иван</b><span class="num">182 см · 78 кг</span></div>
+   <div class="wall">${CATS.map(c=>`<button class="bx" style="background-color:${c.box}" onclick="openSheet('${c.id}')"><span class="brand" style="${c.id==='ring'?'color:rgba(0,0,0,.45)':''}">SIZEBOOK</span><div class="stk"><span>${c.title}<em class="num">${alt(c)}</em></span><b class="num">${c.base}</b></div></button>`).join('')}</div>
+   <button class="share"><span>Отправить по ссылке</span>${ic('share',18,2)}</button></div>`},
+ {k:'ship',n:'Термоэтикетка',insp:'транспортные этикетки на пакетах доставки: жирные рамки, крупный код сортировки, QR',
+  idea:'Паспорт как этикетка на посылке: «Получатель — Иван Тихонов», крупный блок с размером обуви, зоны с размерами в жирных рамках. QR-код — ссылка для друзей, которые выбирают подарок. Фон — серый пакет доставки.',
+  pros:['Прямо про подарки: «вот куда и в каком размере отправлять»','Очень читаемый, крупные цифры в рамках'],cons:['Грубая эстетика, нужна аккуратность, чтобы не выглядело как накладная'],
+  pass:()=>`<div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="label">
+    <div class="r1"><div class="z1">ПОЛУЧАТЕЛЬ / TO:<b>Тихонов Иван</b><span class="num">рост 182 · вес 78 · обычная посадка</span></div><div class="route num"><small>ОБУВЬ EU</small>43</div></div>
+    <div class="grid">${cells()}</div>
+    <div class="r3">${qr(7)}<div class="t"><b>Подарок в размер</b>Отсканируй, чтобы увидеть все размеры и вишлист<br><button>Отправить ссылку</button></div></div>
+   </div></div>`},
+ {k:'white',n:'Белая коробка',insp:'белые коробки техники и минималистичных брендов: тонкая печать, воздух, одна крупная цифра',
+  idea:'Чистая белая крышка, на которой напечатано минимум. Крупно — один главный размер, рядом его перевод в другие системы. Остальные размеры строками с тонкими линиями, штрихкод маленький. Самый спокойный вариант.',
+  pros:['Максимум воздуха, ничто не спорит с фото вещей','Легко делать светлую и тёмную тему'],cons:['Меньше всего характера из пяти','Главный размер один, его надо уметь выбирать'],
+  pass:()=>`<div class="top"><div class="lt"><h2>Гардероб</h2><button>Поделиться</button></div>
+   <div class="tiny num"><span>SIZEBOOK — ART. 0182-78</span><span>MADE FOR YOU</span></div>
+   <div class="who">Иван Тихонов</div><div class="meta num">182 см · 78 кг · обычная посадка</div>
+   <div class="hero"><div class="n num">43<sup>EU</sup></div><div class="alt num">US 10<br>UK 9<br>27,5 см</div></div>
+   <div class="rows">${CATS.filter(c=>c.id!=='shoes').map(c=>`<button class="cell" onclick="openSheet('${c.id}')"><span>${c.title}</span><em class="num">${alt(c)}</em><b class="num">${c.base}</b></button>`).join('')}</div>
+   <div class="ft"><div class="bars">${barcode(43,30)}</div><button>Отправить по ссылке</button></div></div>`},
+];
+
+let K=0,sheetId=null,resetTop=0;
+try{K=+localStorage.getItem('sb_box')||0}catch(e){}
+function screen(){
+  const v=V[K];
+  return `<div class="status"><span class="num">18:39</span><span>●●● ▮</span></div>
+  <div class="scroll main" id="main">${v.pass()}
+   <div class="shelves">
+    <div class="sec"><b>Мои вещи</b><button>+ Добавить</button></div>
+    ${CATS.filter(c=>c.items.length).map(c=>`<div class="shelf">
+     <button class="shead" onclick="openSheet('${c.id}')">${v.k==='wall'?`<i class="sw" style="background:${c.box}"></i>`:''}<b>${c.full}</b><span class="sz num">${c.base}</span><span class="chev">${ic('chev',16)}</span></button>
+     <div class="strip">${c.items.map(i=>`<button class="it" onclick="openSheet('${c.id}')"><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"><span class="tagsz num"${v.k==='wall'?` style="background:${c.box};${c.id==='ring'?'color:#111':''}"`:''}>${i[3]}</span></div><div class="nm">${i[1]}</div><div class="br">${i[2]}</div></button>`).join('')}</div>
+    </div>`).join('')}
+   </div>
+  </div>
+  <nav class="tabbar">${[['hanger','Гардероб'],['heart','Вишлист'],['users','Друзья'],['user','Профиль']].map((t,i)=>`<div class="${i===0?'on':''}">${ic(t[0],22)}<span>${t[1]}</span></div>`).join('')}</nav>
+  <div class="dim" id="dim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Категория"><div class="grab"></div><div class="scroll" id="sheetBody"></div></div>`;
+}
+function openSheet(id){
+  sheetId=id;const c=C(id);
+  document.getElementById('sheetBody').innerHTML=`<h3>${c.full}</h3><div class="sub">Твой размер ${c.base} · ${c.items.length?c.items.length+' в гардеробе':'вещей пока нет'}</div>
+  <div class="sysrow">${c.sys.map(s=>`<span class="num"><i>${s[0]}</i>${s[1]}</span>`).join('')}</div>
+  ${c.items.length?`<div class="sgrid">${c.items.map(i=>`<div><div class="ph"><img src="${IMG[i[0]]}" alt="${i[1]}"></div><div class="nm">${i[1]} · ${i[3]}</div></div>`).join('')}</div>`:''}`;
+  document.getElementById('sheet').classList.add('on');document.getElementById('dim').classList.add('on');
+}
+function closeSheet(){sheetId=null;document.getElementById('sheet').classList.remove('on');document.getElementById('dim').classList.remove('on')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+function render(){
+  try{localStorage.setItem('sb_box',K)}catch(e){}
+  const scr=document.getElementById('screen');const prev=document.getElementById('main');const top=prev?prev.scrollTop:0;
+  scr.className='screen v-'+V[K].k;scr.innerHTML=screen();document.getElementById('main').scrollTop=resetTop?0:top;resetTop=0;
+  const m=document.getElementById('main'),st=scr.querySelector('.status');const upd=()=>st.classList.toggle('sc',m.scrollTop>40);m.addEventListener('scroll',upd,{passive:true});upd();
+  if(sheetId)openSheet(sheetId);
+  document.getElementById('pills').innerHTML=V.map((v,i)=>`<button aria-pressed="${i===K}" onclick="K=${i};resetTop=1;sheetId=null;render()"><span class="n">${i+1}</span>${v.n}</button>`).join('');
+  const v=V[K];
+  document.getElementById('notes').innerHTML=`<div><h2>${K+1}. ${v.n}</h2><div class="insp">Откуда идея: ${v.insp}</div></div><p>${v.idea}</p>
+  <div class="box"><div><h3>Плюсы</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul></div><div><h3>Минусы</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul></div></div>
+  <p class="hint">Фото вещей примерные, из открытого датасета, с вырезанным фоном. Штрихкод и QR декоративные, в приложении они будут вести на ссылку паспорта.</p>`;
+}
+render();
+</script>
