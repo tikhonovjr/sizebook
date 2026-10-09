@@ -539,6 +539,18 @@ async def wb_product(url):
             await asyncio.wait_for(done.wait(), 5)
         except asyncio.TimeoutError:
             pass
+    if not captured.get('p'):
+        # бывает на «холодном» браузере: проверка WB пройдена, но карточка не догрузилась —
+        # повторяем один раз, куки уже есть
+        steps.append({'retry': 'reload'})
+        html, final, status, st = await open_page('wb', page_url, on_response=lambda r: asyncio.ensure_future(on_response(r)),
+                                                  ready=lambda h: done.is_set(), timeout=15)
+        steps += st
+        if not done.is_set():
+            try:
+                await asyncio.wait_for(done.wait(), 3)
+            except asyncio.TimeoutError:
+                pass
     p = captured.get('p')
     if not p:
         return {'ok': False, 'error': 'no_card_json', 'final_url': final, 'steps': steps}
