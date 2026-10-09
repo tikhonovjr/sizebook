@@ -220,6 +220,7 @@ async function initDB() {
     ALTER TABLE items ADD COLUMN IF NOT EXISTS wishlist_id INTEGER;
     ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
     ALTER TABLE items ADD COLUMN IF NOT EXISTS my_photo TEXT;
+    CREATE TABLE IF NOT EXISTS img_cache (key TEXT PRIMARY KEY, mime TEXT NOT NULL, data BYTEA NOT NULL, created_at TIMESTAMP DEFAULT NOW());
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
@@ -401,6 +402,7 @@ app.post('/wishlist', authenticateToken, async (req, res) => {
       [req.user.id, title, shop||null, url||null, price||null, size||null, image||null, needsEnrich ? 'pending' : null]
     );
     res.json(r.rows[0]);
+    warmImage(image);
     if (needsEnrich) enrichWishlistItem(r.rows[0].id, req.user.id, url, autotitle ? title : null);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
@@ -924,6 +926,7 @@ app.post('/items', authenticateToken, async (req, res) => {
        f.url || null, f.image || null, f.shop || null, f.fit || null, source, f.my_photo || null]
     );
     res.json(r.rows[0]);
+    warmImage(f.image);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
 });
 
@@ -985,6 +988,7 @@ async function wishlistToItem(userId, wishlistId, extra) {
     [userId, zone, f.name || w.title, f.brand || null, f.size || w.size || null, f.note || null,
      w.url || null, f.image || w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id, f.my_photo || null]
   );
+  warmImage(r.rows[0].image);
   await pool.query('UPDATE wishlist SET received_at=COALESCE(received_at, NOW()) WHERE id=$1 AND user_id=$2', [w.id, userId]);
   return { item: r.rows[0], existed: false };
 }
@@ -1750,24 +1754,60 @@ function _privIp(ip) {
   return p[0] === 10 || p[0] === 127 || p[0] === 0 || (p[0] === 169 && p[1] === 254) ||
     (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 192 && p[1] === 168);
 }
+// Картинки товаров: тянем один раз (напрямую, при неудаче — через РФ-прокси), ужимаем до нужной ширины
+// в WebP и кладём в img_cache. Дальше отдаём из базы — быстро и мало весит.
+let sharp = null; try { sharp = require('sharp'); } catch (_) { console.log('[img] sharp не установлен — картинки без сжатия'); }
+const IMG_WIDTHS = [400, 1200];
+const IMG_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1';
+const _imgInflight = new Map();
+async function fetchImageBytes(u) {
+  const host = new URL(u).hostname;
+  const addrs = await _dns.lookup(host, { all: true });
+  if (!addrs.length || addrs.some(a => _privIp(a.address))) throw new Error('private');
+  const opts = { headers: { 'User-Agent': IMG_UA, 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8', 'Referer': new URL(u).origin + '/' }, redirect: 'follow' };
+  const tryOne = async (fn, ms) => {
+    const r = await fn(u, { ...opts, signal: AbortSignal.timeout(ms) });
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !/^image\//i.test(ct)) throw new Error('bad ' + r.status);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 15 * 1024 * 1024) throw new Error('size');
+    return { buf, ct };
+  };
+  try { return await tryOne(fetch, 8000); }
+  catch (e) { if (ruProxyAgent) return await tryOne(ruFetch, 15000); throw e; }
+}
+async function getImage(u, w) {
+  const key = w + ':' + u;
+  const hit = await pool.query('SELECT mime, data FROM img_cache WHERE key=$1', [key]);
+  if (hit.rows[0]) return { ct: hit.rows[0].mime, buf: hit.rows[0].data };
+  if (_imgInflight.has(key)) return _imgInflight.get(key);
+  const p = (async () => {
+    const { buf, ct } = await fetchImageBytes(u);
+    let out = buf, mime = ct;
+    if (sharp) {
+      try { out = await sharp(buf, { failOn: 'none' }).rotate().resize({ width: w, height: w, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toBuffer(); mime = 'image/webp'; }
+      catch (_) { out = buf; mime = ct; }
+    }
+    if (out.length < 3 * 1024 * 1024) await pool.query('INSERT INTO img_cache (key, mime, data) VALUES ($1,$2,$3) ON CONFLICT (key) DO NOTHING', [key, mime, out]);
+    return { buf: out, ct: mime };
+  })().finally(() => _imgInflight.delete(key));
+  _imgInflight.set(key, p);
+  return p;
+}
+// Прогрев кэша сразу после сохранения товара, чтобы первое открытие тоже было быстрым
+function warmImage(u) {
+  if (!u || !/^https?:\/\//i.test(u) || (PUBLIC_BASE && u.startsWith(PUBLIC_BASE))) return;
+  getImage(u, 400).then(() => getImage(u, 1200)).catch(e => console.log('[img] warm fail', String(u).slice(0, 80), e.message));
+}
 app.get('/img', async (req, res) => {
   try {
     const u = String(req.query.u || '');
     if (!/^https?:\/\//i.test(u) || u.length > 2000) return res.status(400).end();
-    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 UNION ALL SELECT 1 FROM items WHERE image=$1 LIMIT 1', [u]);
+    const w = IMG_WIDTHS.includes(+req.query.w) ? +req.query.w : 1200;
+    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 UNION ALL SELECT 1 FROM items WHERE image=$1 OR my_photo=$1 LIMIT 1', [u]);
     if (!known.rowCount) return res.status(404).end();
-    const host = new URL(u).hostname;
-    const addrs = await _dns.lookup(host, { all: true });
-    if (!addrs.length || addrs.some(a => _privIp(a.address))) return res.status(403).end();
-    const r = await fetch(u, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8' },
-      signal: AbortSignal.timeout(15000), redirect: 'follow'
-    });
-    const ct = r.headers.get('content-type') || '';
-    if (!r.ok || !/^image\//i.test(ct)) return res.status(502).end();
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length > 10 * 1024 * 1024) return res.status(413).end();
-    res.set({ 'Content-Type': ct, 'Cache-Control': 'public, max-age=604800' });
+    const { buf, ct } = await getImage(u, w);
+    res.set({ 'Content-Type': ct, 'Cache-Control': 'public, max-age=2592000, immutable' });
     res.send(buf);
   } catch (e) { res.status(502).end(); }
 });
@@ -1829,6 +1869,7 @@ async function enrichWishlistItem(id, userId, url, fallbackTitle) {
       [titleEmpty && m.title ? m.title : cur.title, m.price || null, m.image || null,
        (m.title || m.price || m.image) ? 'done' : 'failed', id, userId]
     );
+    warmImage(cur.image || m.image);
     return { title: newTitle, price: cur.price || m.price || null, image: cur.image || m.image || null, found: !!(m.title || m.price || m.image) };
   } catch (e) {
     console.error('[enrich]', e.message);
