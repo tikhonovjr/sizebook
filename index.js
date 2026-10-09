@@ -220,10 +220,20 @@ async function initDB() {
     ALTER TABLE items ADD COLUMN IF NOT EXISTS wishlist_id INTEGER;
     ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
     ALTER TABLE items ADD COLUMN IF NOT EXISTS my_photo TEXT;
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS label_photo TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS brand TEXT;
     CREATE TABLE IF NOT EXISTS img_cache (key TEXT PRIMARY KEY, mime TEXT NOT NULL, data BYTEA NOT NULL, created_at TIMESTAMP DEFAULT NOW());
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
+  try {
+    const wl = await pool.query("SELECT id, title, url FROM wishlist WHERE COALESCE(brand,'')='' AND url IS NOT NULL");
+    let n = 0;
+    for (const r of wl.rows) { const b = guessBrand(r.title, r.url); if (b) { await pool.query('UPDATE wishlist SET brand=$1 WHERE id=$2', [b, r.id]); n++; } }
+    const it = await pool.query("SELECT id, name, url FROM items WHERE COALESCE(brand,'')='' AND url IS NOT NULL");
+    for (const r of it.rows) { const b = guessBrand(r.name, r.url); if (b) { await pool.query('UPDATE items SET brand=$1 WHERE id=$2', [b, r.id]); n++; } }
+    if (n) console.log('[migrate] бренды заполнены у', n, 'записей');
+  } catch (e) { console.log('[migrate] бренды:', e.message); }
 
   const usersCountRes = await pool.query('SELECT COUNT(*)::int AS c FROM users');
   const usersCount = usersCountRes.rows[0].c;
@@ -392,14 +402,15 @@ app.get('/wishlist', authenticateToken, async (req, res) => {
 
 app.post('/wishlist', authenticateToken, async (req, res) => {
   const { title, shop, url, price, size, image, autotitle } = req.body;
+  const brand = (req.body.brand ? String(req.body.brand).trim().slice(0, 60) : '') || null;
   if (!title) return res.status(400).json({ error: 'Нужно название' });
   let valid = false;
   try { valid = !!url && /^https?:$/.test(new URL(url).protocol); } catch (_) {}
-  const needsEnrich = valid && (autotitle || !price || !image);
+  const needsEnrich = valid && (autotitle || !price || !image || !(req.body.brand));
   try {
     const r = await pool.query(
-      'INSERT INTO wishlist (user_id,title,shop,url,price,size,image,parse_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-      [req.user.id, title, shop||null, url||null, price||null, size||null, image||null, needsEnrich ? 'pending' : null]
+      'INSERT INTO wishlist (user_id,title,shop,url,price,size,image,parse_status,brand) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+      [req.user.id, title, shop||null, url||null, price||null, size||null, image||null, (needsEnrich || (valid && !brand)) ? 'pending' : null, brand]
     );
     res.json(r.rows[0]);
     warmImage(image);
@@ -895,9 +906,9 @@ function cleanItemFields(b) {
   const out = {
     zone: str(b.zone, 40), name: str(b.name, 200), brand: str(b.brand, 80), size: str(b.size, 40),
     note: str(b.note, 500), shop: str(b.shop, 80), fit: str(b.fit, 10),
-    url: str(b.url, 2000), image: str(b.image, 2000), my_photo: str(b.my_photo, 2000),
+    url: str(b.url, 2000), image: str(b.image, 2000), my_photo: str(b.my_photo, 2000), label_photo: str(b.label_photo, 2000),
   };
-  for (const k of ['url', 'image', 'my_photo']) {
+  for (const k of ['url', 'image', 'my_photo', 'label_photo']) {
     if (out[k] && !/^https?:\/\//i.test(out[k])) out[k] = null;
   }
   if (out.fit && !ITEM_FITS.includes(out.fit)) out.fit = null;
@@ -920,10 +931,10 @@ app.post('/items', authenticateToken, async (req, res) => {
     if (!f.zone || !f.name) return res.status(400).json({ error: 'zone и name обязательны' });
     const source = ITEM_SOURCES.includes(req.body.source) ? req.body.source : 'manual';
     const r = await pool.query(
-      `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, my_photo)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, my_photo, label_photo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [req.user.id, f.zone, f.name, f.brand || null, f.size || null, f.note || null,
-       f.url || null, f.image || null, f.shop || null, f.fit || null, source, f.my_photo || null]
+       f.url || null, f.image || null, f.shop || null, f.fit || null, source, f.my_photo || null, f.label_photo || null]
     );
     res.json(r.rows[0]);
     warmImage(f.image);
@@ -934,7 +945,7 @@ app.post('/items', authenticateToken, async (req, res) => {
 app.patch('/items/:id', authenticateToken, async (req, res) => {
   try {
     const f = cleanItemFields(req.body || {});
-    const cols = ['zone', 'name', 'brand', 'size', 'note', 'url', 'image', 'shop', 'fit', 'my_photo'];
+    const cols = ['zone', 'name', 'brand', 'size', 'note', 'url', 'image', 'shop', 'fit', 'my_photo', 'label_photo'];
     const sets = [], vals = [];
     for (const c of cols) {
       if (f[c] === undefined) continue;
@@ -983,10 +994,10 @@ async function wishlistToItem(userId, wishlistId, extra) {
   const f = cleanItemFields(extra || {});
   const zone = f.zone || guessZone(w.title) || 'tops';
   const r = await pool.query(
-    `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id, my_photo)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [userId, zone, f.name || w.title, f.brand || null, f.size || w.size || null, f.note || null,
-     w.url || null, f.image || w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id, f.my_photo || null]
+    `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id, my_photo, label_photo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+    [userId, zone, f.name || w.title, f.brand || w.brand || null, f.size || w.size || null, f.note || null,
+     w.url || null, f.image || w.image || null, w.shop || null, f.fit || null, (extra && extra.source) === 'tg' ? 'tg' : 'wishlist', w.id, f.my_photo || null, f.label_photo || null]
   );
   warmImage(r.rows[0].image);
   await pool.query('UPDATE wishlist SET received_at=COALESCE(received_at, NOW()) WHERE id=$1 AND user_id=$2', [w.id, userId]);
@@ -1484,7 +1495,7 @@ async function parseViaFirecrawl(url, { waitFor = 4000, country = null, proxy = 
 // Универсальный HTML-парсер
 function parseProductFromHtml(html, url) {
   const $ = cheerio.load(html);
-  let title = null, price = null, image = null;
+  let title = null, price = null, image = null, brand = null;
 
   // 1. JSON-LD
   $('script[type="application/ld+json"]').each((_, el) => {
@@ -1496,6 +1507,7 @@ function parseProductFromHtml(html, url) {
         if (!obj && item['@graph']) obj = item['@graph'].find(x => x['@type'] === 'Product');
         if (!obj) continue;
         title = title || obj.name || null;
+        if (!brand && obj.brand) brand = (typeof obj.brand === 'string' ? obj.brand : (Array.isArray(obj.brand) ? obj.brand[0]?.name : obj.brand.name)) || null;
         const img = obj.image;
         image = image || (Array.isArray(img) ? img[0] : img) || null;
         const offer = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
@@ -1509,6 +1521,9 @@ function parseProductFromHtml(html, url) {
 
   // 2. OpenGraph
   title = title || $('meta[property="og:title"]').attr('content') || null;
+  brand = brand || $('meta[property="product:brand"]').attr('content') || $('meta[property="og:brand"]').attr('content')
+    || $('meta[itemprop="brand"]').attr('content') || $('[itemprop="brand"] [itemprop="name"]').first().attr('content')
+    || $('[itemprop="brand"] [itemprop="name"]').first().text().trim() || null;
   image = image || $('meta[property="og:image"]').attr('content') || null;
   // Если вместо названия товара — только имя магазина (Спортмастер и т.п.), берём h1 или <title> без хвоста магазина
   {
@@ -1633,7 +1648,44 @@ function parseProductFromHtml(html, url) {
     return { title: null, price: null, image: null };
   }
 
-  return { title, price, image };
+  return { title, price, image, brand: cleanBrand(brand, url) };
+}
+
+// ── Бренд товара ──
+// Монобрендовые магазины: бренд = сам магазин
+const SHOP_BRANDS = { 'lime-shop.com': 'Lime', 'lime-shop.ru': 'Lime', '12storeez.com': '12 Storeez', 'zarina.ru': 'Zarina', 'befree.ru': 'Befree',
+  'gloria-jeans.ru': 'Gloria Jeans', 'loverepublic.ru': 'Love Republic', 'sela.ru': 'Sela', 'ostin.com': "O'stin", 'ushatava.ru': 'Ushatava',
+  'zara.com': 'Zara', 'uniqlo.com': 'Uniqlo', 'hm.com': 'H&M', 'cos.com': 'COS', 'cosstores.com': 'COS', 'arket.com': 'ARKET', 'massimodutti.com': 'Massimo Dutti',
+  'mango.com': 'Mango', 'nike.com': 'Nike', 'adidas.com': 'Adidas', 'adidas.ru': 'Adidas', 'newbalance.com': 'New Balance', 'timberland.com': 'Timberland',
+  'ralphlauren.com': 'Ralph Lauren', 'carhartt-wip.com': 'Carhartt WIP', 'thenorthface.com': 'The North Face', 'levi.com': "Levi's", 'tomford.com': 'Tom Ford',
+  'asos.com': null, 'finn-flare.ru': 'Finn Flare', 'henderson.ru': 'Henderson', 'kanzler-style.ru': 'Kanzler', 'charuel.ru': 'Charuel', '2moodstore.com': '2Mood',
+  'studio29.ru': 'Studio 29', 'monochrome.ru': 'Monochrome', 'gate31.ru': 'Gate31', 'lesyanebo.com': 'Lesyanebo' };
+// Мультибрендовые площадки: их имя брендом не считаем
+const MARKETPLACES = /^(lamoda|ozon|wildberries|wb|tsum|farfetch|net-a-porter|mrporter|ssense|mytheresa|matchesfashion|brandshop|sneakerhead|streetbeat|street-beat|sportmaster|yoox|asos|endclothing|end|aizel|kixbox|superstep|rendez-vous|ekonika|goldapple|kuzнецкий|dlt|bosco|yandex|market|megamarket|aliexpress|avito|t)$/i;
+function shopKey(url) { try { return new URL(url).hostname.replace(/^(www|m|shop|store|ru|en)\./, '').toLowerCase(); } catch (_) { return ''; } }
+function cleanBrand(b, url) {
+  if (!b) return null;
+  b = String(b).replace(/\s+/g, ' ').trim();
+  if (!b || b.length > 40) return null;
+  const base = shopKey(url).split('.')[0];
+  const norm = b.toLowerCase().replace(/[^a-zа-яё0-9]/g, '');
+  if (MARKETPLACES.test(base) && norm === base.replace(/[^a-z0-9]/g, '')) return null;
+  if (/^(без бренда|no brand|noname|нет бренда|ozon|wildberries|lamoda)$/i.test(b)) return null;
+  return b;
+}
+const KNOWN_BRANDS = ["Tom Ford","Ermenegildo Zegna","Zegna","Brunello Cucinelli","Loro Piana","Kiton","Brioni","Canali","Corneliani","Isaia","Thom Browne","Bottega Veneta","Givenchy","Fendi","Dolce & Gabbana","Alexander Wang","Balmain","Max Mara","Jil Sander","The Row","Khaite","Toteme","Lemaire","Comme des Garçons","Junya Watanabe","Sacai","Visvim","Auralee","Aimé Leon Dore","Drake's","Officine Générale","Church's","Crockett & Jones","John Lobb","Paraboot","Red Wing","Tricker's","Santoni","Berluti","Hermès","Chanel","Louis Vuitton","Etro","Missoni","Zimmermann","Ganni","Nanushka","The Kooples","Claudie Pierlot","Vince","Theory","Polo Ralph Lauren","Ralph Lauren","Moon Boot","Mackintosh","Paul Smith","Vivienne Westwood","Marine Serre","Maison Margiela","MM6","Y-3","Mastermind","Neighborhood","Wtaps","Palm Angels","Amiri","Rhude","Casablanca","Jacquemus","Lanvin","Ami Paris","Charuel","Studio 29","Monochrome","Gate31","2Mood","Lesyanebo","Alexander Terekhov","Vassa","Ruban","Lime","Ushatava","Zarina","Carhartt WIP","Carhartt","The North Face","New Balance","Under Armour","Tommy Hilfiger","Tommy Jeans","Ralph Lauren","Polo Ralph Lauren","Calvin Klein","Massimo Dutti","Stone Island","Acne Studios","Our Legacy","Canada Goose","Helly Hansen","Fred Perry","Dr. Martens","Golden Goose","Common Projects","Saint Laurent","Alexander McQueen","Maison Margiela","Maison Kitsuné","Ami Paris","Lyle & Scott","Pull&Bear","Off-White","On Running","La Sportiva","Arc'teryx","Levi's","A.P.C.","Nike","Jordan","Adidas","Puma","Reebok","ASICS","Salomon","Vans","Converse","Timberland","UGG","Birkenstock","Clarks","Ecco","Geox","Camper","Hoka","Saucony","Brooks","Merrell","Mizuno","Fila","Kappa","Umbro","Lacoste","Boss","Hugo","Diesel","G-Star Raw","Wrangler","Lee","Gant","Burberry","Barbour","Patagonia","Columbia","Moncler","Woolrich","Sandro","Maje","Jacquemus","Valentino","Gucci","Prada","Miu Miu","Balenciaga","Versace","Dior","Celine","Loewe","Bottega Veneta","Uniqlo","Zara","H&M","COS","ARKET","Mango","Weekday","Monki","Reserved","Bershka","Stradivarius","ASOS","Stüssy","Stussy","Supreme","Dickies","Champion","Kangol","New Era","Napapijri","Mammut","Jack Wolfskin","Kith","Represent","Essentials","Fear of God","Rick Owens","Yeezy","Marni","Kenzo","Moschino","Love Republic","12 Storeez","Befree","Gloria Jeans","Lime","Ushatava","Zarina","Sela","O'stin","Kanzler","Henderson","Lamoda","Finn Flare","Sportmaster","Demix","Outventure","Termit","Sevenext"].sort((a, b) => b.length - a.length);
+function guessBrand(title, url) {
+  const key = shopKey(url);
+  if (SHOP_BRANDS[key]) return SHOP_BRANDS[key];
+  const t = String(title || '');
+  const known = KNOWN_BRANDS.find(b => new RegExp('(^|[^\\p{L}\\p{N}])' + b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=$|[^\\p{L}\\p{N}])', 'iu').test(t));
+  if (known) return known;
+  // В русских названиях бренд обычно единственный кусок латиницей: «Рубашка Zegna в клетку», «Ermenegildo Zegna рубашка»
+  if (/[а-яё]/i.test(t)) {
+    const m = t.match(/(?:^|(?<=[а-яёА-ЯЁ],?\s)|(?<=[«"(]))([A-Z][A-Za-z0-9'&.\-]*(?:\s+(?:&\s+)?[A-Z][A-Za-z0-9'&.\-]*){0,2})(?=$|[\s,»")])/);
+    if (m && !/^(XS|S|M|L|XL|XXL|EU|US|UK|RU|SALE|NEW|OG|PRO|II|III)$/i.test(m[1])) return m[1].trim();
+  }
+  return null;
 }
 
 function mergeParseResults(a, b) {
@@ -1644,6 +1696,7 @@ function mergeParseResults(a, b) {
     title: a.title || b.title || null,
     price: a.price || b.price || null,
     image: a.image || b.image || null,
+    brand: a.brand || b.brand || null,
   };
 }
 
@@ -1723,6 +1776,7 @@ function runParse(url) {
     const fakeRes = { statusCode: 200, status(c) { this.statusCode = c; return this; }, json(o) { resolve({ ...o, _status: this.statusCode }); return this; } };
     parseHandler({ body: { url } }, fakeRes).catch(e => resolve({ error: e.message, _status: 500 }));
   }).then(r => {
+    if (r._status === 200 && (r.title || r.price || r.image)) r.brand = cleanBrand(r.brand, url) || guessBrand(r.title, url);
     if (r._status === 200 && (r.title || r.price || r.image)) {
       // неполный результат (нет цены) держим недолго — повторная попытка может дать больше
       const ttl = (r.title && r.price) ? PARSE_CACHE_TTL : 2 * 60 * 1000;
@@ -1804,7 +1858,7 @@ app.get('/img', async (req, res) => {
     const u = String(req.query.u || '');
     if (!/^https?:\/\//i.test(u) || u.length > 2000) return res.status(400).end();
     const w = IMG_WIDTHS.includes(+req.query.w) ? +req.query.w : 1200;
-    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 UNION ALL SELECT 1 FROM items WHERE image=$1 OR my_photo=$1 LIMIT 1', [u]);
+    const known = await pool.query('SELECT 1 FROM wishlist WHERE image=$1 UNION ALL SELECT 1 FROM items WHERE image=$1 OR my_photo=$1 OR label_photo=$1 LIMIT 1', [u]);
     if (!known.rowCount) return res.status(404).end();
     const { buf, ct } = await getImage(u, w);
     res.set({ 'Content-Type': ct, 'Cache-Control': 'public, max-age=2592000, immutable' });
@@ -1860,14 +1914,15 @@ async function enrichWishlistItem(id, userId, url, fallbackTitle) {
   try {
     await pool.query('UPDATE wishlist SET parse_attempts=COALESCE(parse_attempts,0)+1 WHERE id=$1', [id]);
     const m = await runParse(url);
-    const cur = (await pool.query('SELECT title, price, image FROM wishlist WHERE id=$1 AND user_id=$2', [id, userId])).rows[0];
+    const cur = (await pool.query('SELECT title, price, image, brand FROM wishlist WHERE id=$1 AND user_id=$2', [id, userId])).rows[0];
     if (!cur) return null; // удалили, пока парсили
     const titleEmpty = !cur.title || cur.title === fallbackTitle;
     const newTitle = titleEmpty && m.title ? m.title : cur.title;
     await pool.query(
-      `UPDATE wishlist SET title=$1, price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3), parse_status=$4 WHERE id=$5 AND user_id=$6`,
+      `UPDATE wishlist SET title=$1, price=COALESCE(NULLIF(price,''),$2), image=COALESCE(NULLIF(image,''),$3), parse_status=$4,
+         brand=COALESCE(NULLIF(brand,''),$7) WHERE id=$5 AND user_id=$6`,
       [titleEmpty && m.title ? m.title : cur.title, m.price || null, m.image || null,
-       (m.title || m.price || m.image) ? 'done' : 'failed', id, userId]
+       (m.title || m.price || m.image) ? 'done' : 'failed', id, userId, m.brand || guessBrand(newTitle, url) || null]
     );
     warmImage(cur.image || m.image);
     return { title: newTitle, price: cur.price || m.price || null, image: cur.image || m.image || null, found: !!(m.title || m.price || m.image) };
