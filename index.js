@@ -3,7 +3,6 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cheerio = require('cheerio');
-const { chromium } = require('playwright-core');
 const crypto = require('crypto');
 const { ProxyAgent, fetch: undiciFetch } = require('undici');
 
@@ -313,6 +312,17 @@ async function maintBackupAndReport() {
         console.log('[maint] копия таблиц сделана в схеме backup_20261010');
       } else console.log('[maint] копия пропущена: таблицы больше 200 МБ');
     }
+    // Решение владельца 10.10.2026: оставить только admin и julia. Удаляем тестовые аккаунты по id и имени (копия — в backup_20261010).
+    const DROP = [[11, 'postcleanup_mqqzd65f'], [12, 'igjjj'], [13, 'profileform_mqr0sf0d'], [14, 'profileui_mqr0x4fj'], [15, '1']];
+    for (const [id, name] of DROP) {
+      const ex = await pool.query('SELECT 1 FROM users WHERE id=$1 AND username=$2', [id, name]);
+      if (!ex.rowCount) continue;
+      for (const t of ['activity', 'share_links', 'items', 'wishlist', 'sizes', 'tg_media']) {
+        try { await pool.query(`DELETE FROM ${t} WHERE user_id=$1`, [id]); } catch (e) { console.log('[maint] очистка', t, e.message); }
+      }
+      await pool.query('DELETE FROM users WHERE id=$1 AND username=$2', [id, name]);
+      console.log('[maint] удалён тестовый аккаунт', id, name);
+    }
     const u = await pool.query(`SELECT u.id, u.username, split_part(u.email,'@',2) AS dom, u.created_at,
         (SELECT COUNT(*) FROM wishlist w WHERE w.user_id=u.id) AS wl,
         (SELECT COUNT(*) FROM items i WHERE i.user_id=u.id) AS it,
@@ -335,6 +345,22 @@ app.use((req, res, next) => {
 
 // Гостевой режим (user_id=1) — только по явному флагу ALLOW_GUEST_MODE=1, по умолчанию выключен.
 const ALLOW_GUEST_MODE = process.env.ALLOW_GUEST_MODE === '1';
+const MAX_USERS = Math.max(1, parseInt(process.env.MAX_USERS || '10', 10) || 10);
+const DUMMY_HASH = bcrypt.hashSync('sizebook-dummy', 10);
+
+// Простой лимит частоты в памяти: не больше max событий за windowMs на ключ
+const _rate = new Map();
+function rateOk(key, max, windowMs) {
+  const now = Date.now();
+  const arr = (_rate.get(key) || []).filter(t => now - t < windowMs);
+  if (arr.length >= max) { _rate.set(key, arr); return false; }
+  arr.push(now); _rate.set(key, arr);
+  if (_rate.size > 20000) _rate.delete(_rate.keys().next().value);
+  return true;
+}
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+}
 
 function authenticateToken(req, res, next) {
   const token = (req.headers['authorization'] || '').split(' ')[1];
@@ -352,16 +378,19 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// /parse не привязан к пользователю (только разбор ссылки) и вызывается из CI без токена —
-// оставляем прежнее поведение (открыт), токен если есть — проверяем мягко.
-function optionalAuth(req, res, next) {
+// /parse: только с входом или с ключом для проверок из GitHub Actions (CI_PARSE_KEY), не чаще 40 разборов в час
+function parseAuth(req, res, next) {
+  const ci = process.env.CI_PARSE_KEY;
+  if (ci && req.headers['x-ci-key'] === ci) { req.user = { id: 0, ci: true }; return next(); }
   const token = (req.headers['authorization'] || '').split(' ')[1];
-  if (!token) { req.user = { id: 1 }; return next(); }
-  jwt.verify(token, JWT_SECRET, (err, user) => { req.user = err ? { id: 1 } : user; next(); });
+  if (!token) return res.status(401).json({ error: 'Требуется авторизация' });
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(401).json({ error: 'Недействительный токен' });
+    if (!rateOk('parse:' + user.id, 40, 60 * 60 * 1000)) return res.status(429).json({ error: 'Слишком много ссылок подряд, попробуй через час' });
+    req.user = user; next();
+  });
 }
 
-// /debug/* — только при ENABLE_DEBUG=1 в Railway Variables (по умолчанию выключено: эндпоинты открыты и жгут кредиты Firecrawl)
-app.use('/debug', (req, res, next) => process.env.ENABLE_DEBUG === '1' ? next() : res.status(404).json({ error: 'Not found' }));
 
 // ── ЖУРНАЛ ДЕЙСТВИЙ (путь пользователя) ─────────────────────────────────────
 function logAct(userId, kind, text, ref) {
@@ -386,10 +415,13 @@ app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password)
     return res.status(400).json({ error: 'Заполни все поля' });
+  if (String(password).length < 8) return res.status(400).json({ error: 'Пароль — минимум 8 символов' });
+  if (!/^[a-zA-Z0-9_.-]{2,40}$/.test(String(username))) return res.status(400).json({ error: 'Логин: латиница, цифры, точка, дефис, от 2 до 40 символов' });
+  if (!rateOk('reg:' + clientIp(req), 5, 60 * 60 * 1000)) return res.status(429).json({ error: 'Слишком много попыток, попробуй позже' });
   try {
     const countRes = await pool.query('SELECT COUNT(*)::int AS c FROM users');
-    if (countRes.rows[0].c >= 10) {
-      return res.status(403).json({ error: 'Достигнут лимит регистраций (10 аккаунтов)' });
+    if (countRes.rows[0].c >= MAX_USERS) {
+      return res.status(403).json({ error: 'Регистрация пока закрыта: SizeBook в закрытом тесте' });
     }
     const hash = await bcrypt.hash(password, 10);
     const r = await pool.query(
@@ -409,15 +441,17 @@ app.post('/auth/register', async (req, res) => {
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Заполни все поля' });
+  const login = String(email).toLowerCase().trim();
+  if (!rateOk('login:' + clientIp(req), 20, 15 * 60 * 1000) || !rateOk('login-u:' + login, 10, 15 * 60 * 1000))
+    return res.status(429).json({ error: 'Слишком много попыток входа. Подожди 15 минут' });
   try {
     const r = await pool.query(
       'SELECT * FROM users WHERE email=$1 OR username=$1',
-      [email.toLowerCase()]
+      [login]
     );
     const user = r.rows[0];
-    if (!user) return res.status(401).json({ error: 'Пользователь не найден' });
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(401).json({ error: 'Неверный пароль' });
+    const ok = user ? await bcrypt.compare(String(password), user.password_hash) : (await bcrypt.compare('x', DUMMY_HASH), false);
+    if (!user || !ok) return res.status(401).json({ error: 'Неверный логин или пароль' });
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
     logAct(user.id, 'login', 'Вход в приложение');
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
@@ -452,7 +486,7 @@ app.get('/sizes', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [req.user.id]);
     res.json(r.rows[0]?.data || {});
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.post('/sizes', authenticateToken, async (req, res) => {
@@ -469,7 +503,7 @@ app.post('/sizes', authenticateToken, async (req, res) => {
     if (prof.length) logAct(req.user.id, 'profile', 'Профиль: ' + prof.map(([k]) => k === 'profile_gender' ? 'пол' : (SIZE_LABELS[k] || k).toLowerCase()).join(', '));
     if (body.length) logAct(req.user.id, 'body', 'Параметры фигуры: ' + ['chest', 'waist', 'hips'].map(k => (req.body[k] ?? before[k]) || '—').join('-'));
     for (const [k, v] of sz) logAct(req.user.id, 'size', `Размер «${SIZE_LABELS[k] || k}»: ${v === '' || v == null ? 'удалён' : v}`);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ── WISHLIST ──────────────────────────────────────────────────────────────────
@@ -480,7 +514,7 @@ app.get('/wishlist', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     res.json(r.rows);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.post('/wishlist', authenticateToken, async (req, res) => {
@@ -499,7 +533,7 @@ app.post('/wishlist', authenticateToken, async (req, res) => {
     logAct(req.user.id, 'wish_add', 'В вишлист: ' + shortTitle(title), url);
     warmImage(image);
     if (needsEnrich) enrichWishlistItem(r.rows[0].id, req.user.id, url, autotitle ? title : null);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ── БЫСТРОЕ ДОБАВЛЕНИЕ ИЗ «ПОДЕЛИТЬСЯ» (iOS Команды / Android) ───────────────
@@ -904,7 +938,7 @@ app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
     const d = await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2 RETURNING title', [req.params.id, req.user.id]);
     if (d.rows[0]) logAct(req.user.id, 'wish_del', 'Удалено из вишлиста: ' + shortTitle(d.rows[0].title));
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ── ПУБЛИЧНЫЙ ПРОФИЛЬ ─────────────────────────────────────────────────────────
@@ -928,7 +962,7 @@ app.post('/share', authenticateToken, async (req, res) => {
     const sec = sections || {};
     logAct(req.user.id, 'share', 'Ссылка для друзей создана: ' + [sec.sizes !== false && 'размеры', sec.items !== false && 'по брендам', sec.wishlist && 'вишлист'].filter(Boolean).join(', '));
     res.json(r.rows[0]);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.get('/share', authenticateToken, async (req, res) => {
@@ -941,7 +975,7 @@ app.get('/share', authenticateToken, async (req, res) => {
     const link = r.rows[0];
     if (link.expires_at && new Date(link.expires_at) < new Date()) return res.json(null);
     res.json(link);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.post('/share/revoke', authenticateToken, async (req, res) => {
@@ -952,7 +986,7 @@ app.post('/share/revoke', authenticateToken, async (req, res) => {
     );
     logAct(req.user.id, 'share_off', 'Ссылка для друзей отключена');
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 const _shareSeen = new Map();
@@ -1006,7 +1040,7 @@ app.get('/share/:token', async (req, res) => {
     }
 
     res.json(result);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // ── ITEMS ─────────────────────────────────────────────────────────────────────
@@ -1033,7 +1067,7 @@ app.get('/items', authenticateToken, async (req, res) => {
       ? await pool.query('SELECT * FROM items WHERE user_id=$1 AND zone=$2 ORDER BY id ASC', [req.user.id, zone])
       : await pool.query('SELECT * FROM items WHERE user_id=$1 ORDER BY id ASC', [req.user.id]);
     res.json(r.rows);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.post('/items', authenticateToken, async (req, res) => {
@@ -1050,7 +1084,7 @@ app.post('/items', authenticateToken, async (req, res) => {
     res.json(r.rows[0]);
     logAct(req.user.id, 'item_add', 'В гардероб: ' + shortTitle(f.name) + (f.size ? ` · размер ${f.size}` : ''));
     warmImage(f.image);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // Правка вещи: меняются только присланные поля
@@ -1076,7 +1110,7 @@ app.patch('/items/:id', authenticateToken, async (req, res) => {
     const PH = { image: 'фото вещи', my_photo: 'своё фото', label_photo: 'фото бирки' };
     if (photo && sets.length === 1) logAct(req.user.id, 'photo', `Добавлено ${PH[photo]}: ` + shortTitle(r.rows[0].name));
     else logAct(req.user.id, 'item_edit', 'Изменена вещь: ' + shortTitle(r.rows[0].name) + (r.rows[0].size ? ` · размер ${r.rows[0].size}` : ''));
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // Вещь из гардероба обратно в вишлист (если нажал «Получил» случайно или передумал)
@@ -1100,7 +1134,7 @@ app.delete('/items/:id', authenticateToken, async (req, res) => {
     if (d.rows[0] && d.rows[0].wishlist_id) await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2 AND received_at IS NOT NULL', [d.rows[0].wishlist_id, req.user.id]);
     if (d.rows[0]) logAct(req.user.id, 'item_del', 'Удалено из гардероба: ' + shortTitle(d.rows[0].name));
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 // Категория вещи по названию товара (для ссылки, вишлиста и бота). null — не угадали.
@@ -1143,7 +1177,7 @@ app.post('/wishlist/:id/to-items', authenticateToken, async (req, res) => {
     if (!out) return res.status(404).json({ error: 'Не найдено' });
     if (!out.existed) logAct(req.user.id, 'item_got', 'Получено → в гардероб: ' + shortTitle(out.item.name) + (out.item.size ? ` · размер ${out.item.size}` : '') + (out.item.fit ? ` · ${{ small: 'маломерит', true: 'в размер', large: 'большемерит' }[out.item.fit] || ''}` : ''));
     res.json(out);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка', detail: e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
 app.post('/items/guess-zone', authenticateToken, (req, res) => {
@@ -1170,119 +1204,6 @@ const FETCH_HEADERS = {
   'Connection': 'keep-alive',
 };
 
-// Headless browser — синглтон, переиспользуется между запросами
-// Парсим RU_PROXY_URL в формат, который понимает Playwright (server/username/password)
-function getPlaywrightProxyConfig() {
-  if (!RU_PROXY_URL) return null;
-  try {
-    const u = new URL(RU_PROXY_URL);
-    return {
-      server: `${u.protocol}//${u.hostname}:${u.port}`,
-      username: decodeURIComponent(u.username),
-      password: decodeURIComponent(u.password),
-    };
-  } catch (e) {
-    console.log('[ru-proxy] не удалось распарсить RU_PROXY_URL для Playwright:', e.message);
-    return null;
-  }
-}
-
-let _browser = null;
-async function getHeadlessBrowser() {
-  if (_browser && _browser.isConnected()) return _browser;
-  _browser = await chromium.launch({
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || 'chromium',
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
-  });
-  _browser.on('disconnected', () => { _browser = null; });
-  return _browser;
-}
-
-// Для сайтов с JS-челленджем (Servicepipe и др.)
-// useRuProxy=true — пускает headless-браузер через РФ-прокси (для WB/Ozon,
-// где блокировка идёт по гео-IP, а не только по антибот-фингерпринту).
-async function parseViaPlaywright(url, locale = 'ru-RU', useRuProxy = false) {
-  try {
-    const browser = await getHeadlessBrowser();
-    const proxyConfig = useRuProxy ? getPlaywrightProxyConfig() : null;
-    const ctx = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      viewport: { width: 1440, height: 900 },
-      locale,
-      extraHTTPHeaders: { 'Accept-Language': `${locale},en;q=0.8` },
-      ...(proxyConfig ? { proxy: proxyConfig } : {}),
-    });
-    console.log(`[playwright] контекст создан${proxyConfig ? ' с РФ-прокси' : ''} для ${url}`);
-    const page = await ctx.newPage();
-    await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
-    try {
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-    } catch (_) {}
-    await page.waitForTimeout(2000);
-
-    const result = await page.evaluate(() => {
-      let title = null, price = null, image = null;
-      for (const el of document.querySelectorAll('script[type="application/ld+json"]')) {
-        try {
-          const data = JSON.parse(el.textContent);
-          for (const obj of (data['@graph'] || (Array.isArray(data) ? data : [data]))) {
-            if (obj['@type'] !== 'Product') continue;
-            title = title || obj.name || null;
-            const imgs = obj.image;
-            if (!image) image = Array.isArray(imgs) ? (imgs[0]?.contentUrl || imgs[0] || null) : (imgs?.contentUrl || imgs || null);
-            const offer = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
-            if (offer?.price && !price) {
-              const cur = offer.priceCurrency || '';
-              price = cur ? `${offer.price} ${cur}` : String(offer.price);
-            }
-          }
-        } catch (_) {}
-      }
-      const og = k => document.querySelector(`meta[property="${k}"]`)?.content;
-      title = title || og('og:title') || null;
-      image = image || og('og:image') || null;
-      if (!price) {
-        const p = og('og:price:amount') || og('product:price:amount');
-        const c = og('og:price:currency') || og('product:price:currency');
-        if (p) price = c ? `${p} ${c}` : p;
-      }
-      // Fallback для 12storeez — ищем картинку в DOM и в src img-тегов
-      if (!image) {
-        const imgEl = document.querySelector('.TempProductMedia img, .TempProductMediaItem__image, [class*="ProductMedia"] img, [class*="product-media"] img, [class*="Gallery"] img');
-        if (imgEl) image = imgEl.src || imgEl.dataset.src || null;
-      }
-      if (!image) {
-        // Ищем любой URL image.12storeez.com в тексте страницы
-        const html = document.documentElement.innerHTML;
-        const m = html.match(/https:\/\/image\.12storeez\.com\/images\/[^"'\s]+/);
-        if (m) image = m[0].replace(/\/\d+xP_/, '/800xP_');
-      }
-      // Фолбэк цены по видимому DOM (Farfetch и похожие SPA, где og:price/JSON-LD
-      // не содержат актуальную цену со скидкой)
-      if (!price) {
-        const candidates = document.querySelectorAll(
-          '[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]'
-        );
-        for (const el of candidates) {
-          const t = (el.textContent || '').trim();
-          if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) {
-            const m = t.match(/[£$€₽]\s?[\d\s.,]+|\d[\d\s.,]*\s?[£$€₽]/);
-            price = m ? m[0].trim() : t;
-            break;
-          }
-        }
-      }
-      return { title, price, image };
-    });
-
-    await ctx.close();
-    return result;
-  } catch (e) {
-    console.error('Playwright parse error:', e.message);
-    return null;
-  }
-}
 
 // Wildberries — публичный CDN, не требует антибота
 async function parseWildberries(url) {
@@ -1447,16 +1368,6 @@ async function parseViaJsonlink(url) {
   } catch (_) { return null; }
 }
 
-async function parseViaIframely(url) {
-  try {
-    const r = await fetch(`https://open.iframe.ly/api/oembed?url=${encodeURIComponent(url)}&origin=embedly`, {
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    return { title: d.title || null, image: d.thumbnail_url || null, price: null };
-  } catch (_) { return null; }
-}
 
 // Firecrawl — обходит антибот-защиту, возвращает чистый markdown/html
 // ── Scrape.do (основной платный провайдер) ───────────────────────────────────
@@ -1528,7 +1439,17 @@ function strategyFor(host) {
 const WA_UA = 'WhatsApp/2.23.20.0 A';
 async function fetchParse(url, ua) {
   try {
-    const r = await fetch(url, { headers: { ...FETCH_HEADERS, ...(ua ? { 'User-Agent': ua } : {}) }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
+    // Редиректы проходим вручную: каждый следующий адрес тоже должен вести в интернет
+    let cur = url, r = null;
+    const signal = AbortSignal.timeout(12000);
+    for (let hop = 0; hop < 6; hop++) {
+      if (!(await isPublicUrl(cur))) return null;
+      r = await fetch(cur, { headers: { ...FETCH_HEADERS, ...(ua ? { 'User-Agent': ua } : {}) }, redirect: 'manual', signal });
+      const loc = r.status >= 300 && r.status < 400 && r.headers.get('location');
+      if (!loc) break;
+      cur = new URL(loc, cur).toString();
+    }
+    if (!r || (r.status >= 300 && r.status < 400)) return null;
     if (!r.ok && r.status >= 500) return null;
     const p = parseProductFromHtml(await r.text(), url);
     if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
@@ -1878,6 +1799,7 @@ async function parseHandler(req, res) {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
+  if (!(await isPublicUrl(url))) return res.status(400).json({ error: 'Некорректный URL' });
 
   const host = new URL(url).hostname;
   const t = timer();
@@ -1963,10 +1885,11 @@ function runParse(url) {
   return p;
 }
 
-app.post('/parse', optionalAuth, async (req, res) => {
+app.post('/parse', parseAuth, async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
   try { new URL(url); } catch { return res.status(400).json({ error: 'Некорректный URL' }); }
+  if (!(await isPublicUrl(url))) return res.status(400).json({ error: 'Некорректный URL' });
   const r = await runParse(url);
   const { _status, ...body } = r;
   res.status(_status || 200).json(body);
@@ -1977,10 +1900,25 @@ app.post('/parse', optionalAuth, async (req, res) => {
 const _dns = require('dns').promises;
 const _net = require('net');
 function _privIp(ip) {
-  if (_net.isIPv6(ip)) return /^(::1|fc|fd|fe80)/i.test(ip) || ip === '::';
+  const m = String(ip).match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (m) ip = m[1];
+  if (_net.isIPv6(ip)) return /^(::1$|::$|fc|fd|fe[89ab])/i.test(ip);
   const p = ip.split('.').map(Number);
   return p[0] === 10 || p[0] === 127 || p[0] === 0 || (p[0] === 169 && p[1] === 254) ||
-    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 192 && p[1] === 168);
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) || (p[0] === 192 && p[1] === 168) ||
+    (p[0] === 100 && p[1] >= 64 && p[1] <= 127) || p[0] >= 224;
+}
+// Ссылка ведёт в интернет, а не во внутреннюю сеть Railway / на сам сервер
+async function isPublicUrl(u) {
+  try {
+    const x = new URL(u);
+    if (!/^https?:$/.test(x.protocol)) return false;
+    const h = x.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if (!h || h === 'localhost' || /\.(internal|local|localhost)$/.test(h)) return false;
+    if (_net.isIP(h)) return !_privIp(h);
+    const addrs = await _dns.lookup(h, { all: true });
+    return addrs.length > 0 && !addrs.some(a => _privIp(a.address));
+  } catch (_) { return false; }
 }
 // Картинки товаров: тянем один раз (напрямую, при неудаче — через РФ-прокси), ужимаем до нужной ширины
 // в WebP и кладём в img_cache. Дальше отдаём из базы — быстро и мало весит.
@@ -1989,12 +1927,18 @@ const IMG_WIDTHS = [400, 1200];
 const IMG_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1';
 const _imgInflight = new Map();
 async function fetchImageBytes(u) {
-  const host = new URL(u).hostname;
-  const addrs = await _dns.lookup(host, { all: true });
-  if (!addrs.length || addrs.some(a => _privIp(a.address))) throw new Error('private');
-  const opts = { headers: { 'User-Agent': IMG_UA, 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8', 'Referer': new URL(u).origin + '/' }, redirect: 'follow' };
+  if (!(await isPublicUrl(u))) throw new Error('private');
+  const opts = { headers: { 'User-Agent': IMG_UA, 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8', 'Referer': new URL(u).origin + '/' }, redirect: 'manual' };
   const tryOne = async (fn, ms) => {
-    const r = await fn(u, { ...opts, signal: AbortSignal.timeout(ms) });
+    const signal = AbortSignal.timeout(ms);
+    let cur = u, r = null;
+    for (let hop = 0; hop < 6; hop++) {
+      r = await fn(cur, { ...opts, signal });
+      const loc = r.status >= 300 && r.status < 400 && r.headers.get('location');
+      if (!loc) break;
+      cur = new URL(loc, cur).toString();
+      if (!(await isPublicUrl(cur))) throw new Error('private');
+    }
     const ct = r.headers.get('content-type') || '';
     if (!r.ok || !/^image\//i.test(ct)) throw new Error('bad ' + r.status);
     const buf = Buffer.from(await r.arrayBuffer());
@@ -2147,489 +2091,6 @@ setTimeout(() => { retryWishlistEnrichment(); setInterval(retryWishlistEnrichmen
 
 
 
-// ── PROBE: Спортмастер через РФ-прокси ──────────────────────────────────────
-app.get('/debug/smproxy', async (req, res) => {
-  const pid = req.query.pid || '37250110299';
-  const sku = req.query.sku || '83264660299';
-  const pageUrl = `https://www.sportmaster.ru/product/${pid}/?skuId=${sku}`;
-  const v = String(req.query.v || '1');
-  const t0 = Date.now();
-  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-  try {
-    // v1: ruFetch (Timeweb РФ-прокси) прямо на страницу товара
-    if (v === '1') {
-      const r = await ruFetch(pageUrl, {
-        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                   'Accept-Language': 'ru-RU,ru;q=0.9', 'Referer': 'https://www.sportmaster.ru/' },
-        signal: AbortSignal.timeout(20000),
-      });
-      const txt = await r.text();
-      const p = parseProductFromHtml(txt, pageUrl);
-      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      return res.json({ variant: 'ruFetch_proxy', status: r.status, ms: Date.now() - t0, len: txt.length,
-        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
-        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null,
-        head: p.title ? undefined : txt.slice(0, 200) });
-    }
-
-    // v2: cookie-цепочка через РФ-прокси (главная → товар)
-    if (v === '2') {
-      const r = await fetchWithCookies(pageUrl, {
-        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml',
-                   'Accept-Language': 'ru-RU,ru;q=0.9' },
-        signal: AbortSignal.timeout(25000),
-      }, 20);
-      const txt = await r.text();
-      const p = parseProductFromHtml(txt, pageUrl);
-      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      return res.json({ variant: 'cookies_via_proxy', status: r.status, ms: Date.now() - t0, len: txt.length,
-        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
-        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null,
-        head: p.title ? undefined : txt.slice(0, 200) });
-    }
-
-    // v3: Playwright через РФ-прокси — настоящий браузер + российский IP
-    const browser = await getHeadlessBrowser();
-    const proxyCfg = getPlaywrightProxyConfig();
-    const ctx = await browser.newContext(Object.assign({
-      userAgent: UA, viewport: { width: 1440, height: 900 }, locale: 'ru-RU',
-      extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' },
-    }, proxyCfg ? { proxy: proxyCfg } : {}));
-    const page = await ctx.newPage();
-    await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
-    let navStatus = null;
-    try {
-      const resp = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 35000 });
-      navStatus = resp && resp.status();
-    } catch (_) {}
-    await page.waitForTimeout(7000);
-    const data = await page.evaluate(() => {
-      const og = k => { const el = document.querySelector(`meta[property="${k}"]`); return el && el.content; };
-      let price = null;
-      for (const sel of ['[itemprop="price"]', '[data-test*="price"]', '[class*="price"]']) {
-        const el = document.querySelector(sel);
-        if (el) { price = (el.getAttribute('content') || el.textContent || '').trim().slice(0, 40); if (price) break; }
-      }
-      return { title: document.title, og_title: og('og:title'), og_image: !!og('og:image'), price,
-               body: document.body ? document.body.innerText.slice(0, 200) : '' };
-    });
-    await ctx.close();
-    res.json({ variant: 'playwright_ru_proxy', ms: Date.now() - t0, navStatus, proxyUsed: !!proxyCfg, ...data });
-  } catch (err) {
-    res.json({ v, error: err.message.slice(0, 100), ms: Date.now() - t0 });
-  }
-});
-
-// ── PROBE: Спортмастер — обход 401 ──────────────────────────────────────────
-app.get('/debug/smprobe', async (req, res) => {
-  const productId = req.query.pid || '37250110299';
-  const skuId = req.query.sku || '83264660299';
-  const pageUrl = `https://www.sportmaster.ru/product/${productId}/?skuId=${skuId}`;
-  const v = String(req.query.v || '1');
-  const t0 = Date.now();
-  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
-  function summarize(txt, label, status) {
-    const e = { variant: label, status, ms: Date.now() - t0, len: txt.length };
-    if (txt.trim().startsWith('{') || txt.trim().startsWith('[')) {
-      try {
-        const d = JSON.parse(txt);
-        e.json_keys = Object.keys(d).slice(0, 15).join(',');
-        e.sample = JSON.stringify(d).slice(0, 400);
-      } catch (_) { e.head = txt.slice(0, 200); }
-    } else {
-      const p = parseProductFromHtml(txt, pageUrl);
-      e.title = p.title ? p.title.slice(0, 60) : null;
-      e.price = p.price;
-      e.image = !!p.image;
-      const m = txt.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
-      if (!e.title) e.head = txt.slice(0, 200);
-    }
-    return e;
-  }
-
-  try {
-    // v1: cookie-цепочка — сначала главная, потом товар с накопленными куками
-    if (v === '1') {
-      const home = await fetch('https://www.sportmaster.ru/', {
-        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9' },
-        signal: AbortSignal.timeout(15000),
-      });
-      const raw = home.headers.getSetCookie ? home.headers.getSetCookie() : [];
-      const cookie = raw.map(s => s.split(';')[0]).join('; ');
-      const r = await fetch(pageUrl, {
-        headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9',
-                   'Referer': 'https://www.sportmaster.ru/', Cookie: cookie },
-        signal: AbortSignal.timeout(15000),
-      });
-      const txt = await r.text();
-      const e = summarize(txt, 'cookie_chain', r.status);
-      e.home_status = home.status;
-      e.cookies_got = raw.length;
-      return res.json(e);
-    }
-
-    // v2: AJAX-заголовки
-    if (v === '2') {
-      const r = await fetch(pageUrl, {
-        headers: { 'User-Agent': UA, 'Accept': 'application/json, text/plain, */*',
-                   'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://www.sportmaster.ru/',
-                   'Accept-Language': 'ru-RU,ru;q=0.9', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin' },
-        signal: AbortSignal.timeout(15000),
-      });
-      return res.json(summarize(await r.text(), 'ajax_headers', r.status));
-    }
-
-    // v3: внутренние API-эндпоинты
-    if (v === '3') {
-      const candidates = [
-        `https://www.sportmaster.ru/product/api/product/${productId}`,
-        `https://www.sportmaster.ru/api/product/${productId}`,
-        `https://www.sportmaster.ru/product/${productId}/api/`,
-        `https://www.sportmaster.ru/api/v1/product/${productId}`,
-        `https://www.sportmaster.ru/catalogapi/product/${productId}`,
-      ];
-      const results = {};
-      for (const u of candidates) {
-        try {
-          const r = await fetch(u, {
-            headers: { 'User-Agent': UA, Accept: 'application/json', 'Referer': pageUrl,
-                       'X-Requested-With': 'XMLHttpRequest' },
-            signal: AbortSignal.timeout(8000),
-          });
-          const txt = await r.text();
-          results[u.replace('https://www.sportmaster.ru', '')] = {
-            status: r.status, len: txt.length, head: txt.slice(0, 120),
-          };
-        } catch (e) { results[u.replace('https://www.sportmaster.ru', '')] = { error: e.message.slice(0, 50) }; }
-      }
-      return res.json({ variant: 'api_endpoints', ms: Date.now() - t0, results });
-    }
-
-    // v4: Playwright — реальный браузер, ждём рендер цены
-    if (v === '4') {
-      const browser = await getHeadlessBrowser();
-      const ctx = await browser.newContext({ userAgent: UA, viewport: { width: 1440, height: 900 },
-        locale: 'ru-RU', extraHTTPHeaders: { 'Accept-Language': 'ru-RU,ru;q=0.9' } });
-      const page = await ctx.newPage();
-      await page.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
-      let navStatus = null;
-      try {
-        const resp = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        navStatus = resp && resp.status();
-      } catch (_) {}
-      await page.waitForTimeout(6000);
-      const data = await page.evaluate(() => {
-        const og = k => { const el = document.querySelector(`meta[property="${k}"]`); return el && el.content; };
-        const bodyText = document.body ? document.body.innerText.slice(0, 300) : '';
-        let price = null;
-        const sel = document.querySelector('[class*="price"],[data-test*="price"],[itemprop="price"]');
-        if (sel) price = (sel.getAttribute('content') || sel.textContent || '').trim().slice(0, 40);
-        return { title: document.title, og_title: og('og:title'), og_image: og('og:image'), price, bodyText };
-      });
-      await ctx.close();
-      return res.json({ variant: 'playwright_deep', ms: Date.now() - t0, navStatus, ...data });
-    }
-
-    // v5: Firecrawl с actions (ожидание + скролл)
-    const apiKey = process.env.FIRECRAWL_API_KEY;
-    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: pageUrl, formats: ['html'], onlyMainContent: false, timeout: 50000,
-        location: { country: 'RU' },
-        actions: [{ type: 'wait', milliseconds: 5000 }, { type: 'scroll', direction: 'down' }, { type: 'wait', milliseconds: 4000 }],
-      }),
-      signal: AbortSignal.timeout(75000),
-    });
-    const e = { variant: 'fc_actions', http: r.status, ms: Date.now() - t0 };
-    if (!r.ok) { e.body = (await r.text()).slice(0, 200); return res.json(e); }
-    const d = await r.json();
-    const html = d.data && d.data.html;
-    const meta = (d.data && d.data.metadata) || {};
-    e.meta_status = meta.statusCode;
-    e.meta_title = meta.title && String(meta.title).slice(0, 50);
-    e.html_len = html ? html.length : 0;
-    if (html) {
-      const p = parseProductFromHtml(html, pageUrl);
-      e.title = p.title && p.title.slice(0, 60);
-      e.price = p.price;
-      e.image = !!p.image;
-      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
-    }
-    res.json(e);
-  } catch (err) {
-    res.json({ v, error: err.message.slice(0, 100), ms: Date.now() - t0 });
-  }
-});
-
-// ── PROBE: универсальный тест вариантов Firecrawl для любого URL ────────────
-app.get('/debug/fcprobe', async (req, res) => {
-  const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
-  const url = req.query.url;
-  if (!url) return res.json({ error: 'url required' });
-  const v = String(req.query.v || '0');
-
-  const variants = {
-    '0': { label: 'direct_fetch', direct: true },
-    '1': { label: 'fc_plain',     body: { waitFor: 5000 } },
-    '2': { label: 'fc_loc_ru',    body: { waitFor: 6000, location: { country: 'RU' } } },
-    '3': { label: 'fc_stealth_ru',body: { waitFor: 8000, proxy: 'stealth', location: { country: 'RU' } } },
-    '4': { label: 'playwright',   playwright: true },
-  };
-  const variant = variants[v] || variants['1'];
-  const t0 = Date.now();
-
-  try {
-    if (variant.direct) {
-      const r = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow', signal: AbortSignal.timeout(15000) });
-      const html = await r.text();
-      const p = parseProductFromHtml(html, url);
-      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      return res.json({ variant: variant.label, status: r.status, ms: Date.now() - t0, html_len: html.length,
-        title: p.title && p.title.slice(0, 60), price: p.price, image: !!p.image,
-        price_regex: m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null });
-    }
-
-    if (variant.playwright) {
-      const p = await parseViaPlaywright(url, 'ru-RU', false);
-      return res.json({ variant: variant.label, ms: Date.now() - t0,
-        title: p && p.title && p.title.slice(0, 60), price: p && p.price, image: !!(p && p.image) });
-    }
-
-    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ url, formats: ['html'], onlyMainContent: false, timeout: 45000 }, variant.body)),
-      signal: AbortSignal.timeout(70000),
-    });
-    const e = { variant: variant.label, http: r.status, ms: Date.now() - t0 };
-    if (!r.ok) { e.body = (await r.text()).slice(0, 180); return res.json(e); }
-    const d = await r.json();
-    const html = d.data && d.data.html;
-    const meta = (d.data && d.data.metadata) || {};
-    e.html_len = html ? html.length : 0;
-    e.meta_title = meta.title ? String(meta.title).slice(0, 60) : null;
-    e.meta_status = meta.statusCode;
-    if (html) {
-      const p = parseProductFromHtml(html, url);
-      e.title = p.title ? p.title.slice(0, 60) : null;
-      e.price = p.price;
-      e.image = !!p.image;
-      const m = html.match(/(\d[\d\s\u00a0]{2,9})\s*(?:₽|руб)/);
-      e.price_regex = m ? m[1].replace(/[\s\u00a0]/g, '') + ' RUB' : null;
-    }
-    res.json(e);
-  } catch (err) {
-    res.json({ variant: variant.label, error: err.message.slice(0, 90), ms: Date.now() - t0 });
-  }
-});
-
-// ── DEBUG: замеры скорости Firecrawl с произвольными параметрами (временно) ──
-// /debug/fcspeed?url=...&wf=0&loc=RU&fmt=rawHtml&maxAge=0&raw=1&actions=none
-app.get('/debug/fcspeed', async (req, res) => {
-  const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return res.json({ error: 'no FIRECRAWL_API_KEY' });
-  const url = req.query.url;
-  if (!url) return res.json({ error: 'url required' });
-  const body = { url, formats: [req.query.fmt || 'rawHtml'], onlyMainContent: false, timeout: Number(req.query.timeout) || 30000 };
-  if (req.query.wf !== undefined) body.waitFor = Number(req.query.wf);
-  if (req.query.loc) body.location = { country: req.query.loc };
-  if (req.query.maxAge !== undefined) body.maxAge = Number(req.query.maxAge);
-  if (req.query.proxy) body.proxy = req.query.proxy;
-  const t0 = Date.now();
-  try {
-    const r = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
-    });
-    const e = { sent: { ...body, url: undefined }, http: r.status, ms: Date.now() - t0 };
-    const txt = await r.text();
-    let d = null; try { d = JSON.parse(txt); } catch (_) {}
-    if (!d) { e.body = txt.slice(0, 200); return res.json(e); }
-    if (!d.success) { e.err = JSON.stringify(d).slice(0, 200); return res.json(e); }
-    const html = d.data && (d.data.rawHtml || d.data.html);
-    const meta = d.data.metadata || {};
-    e.html_len = html ? html.length : 0;
-    e.meta_status = meta.statusCode; e.meta_title = meta.title ? String(meta.title).slice(0, 60) : null;
-    e.cache = meta.cacheState || null;
-    if (html) {
-      const p = parseProductFromHtml(html, url);
-      e.title = p.title ? p.title.slice(0, 60) : null; e.price = p.price; e.image = !!p.image;
-      if (req.query.raw === '1') e.raw = html.slice(0, 700);
-    }
-    res.json(e);
-  } catch (err) { res.json({ error: err.message.slice(0, 120), ms: Date.now() - t0 }); }
-});
-
-// Scrape.do — провайдер скрейпинга (параметры: render, super, geo, wait)
-async function fetchViaScrapedo(url, o = {}) {
-  const token = process.env.SCRAPEDO_TOKEN;
-  if (!token) return { error: 'no SCRAPEDO_TOKEN' };
-  const p = new URLSearchParams({ token, url });
-  if (o.render) p.set('render', 'true');
-  if (o.super) p.set('super', 'true');
-  if (o.geo) p.set('geoCode', o.geo);
-  if (o.wait) { p.set('waitUntil', 'networkidle2'); }
-  if (o.customWait) p.set('customWait', String(o.customWait));
-  const t0 = Date.now();
-  try {
-    const r = await fetch('https://api.scrape.do/?' + p.toString(), { signal: AbortSignal.timeout(o.timeout || 60000) });
-    const html = await r.text();
-    return { http: r.status, ms: Date.now() - t0, html, cost: r.headers.get('scrape.do-request-cost'), remaining: r.headers.get('scrape.do-remaining-credits') };
-  } catch (e) { return { error: e.message.slice(0, 120), ms: Date.now() - t0 }; }
-}
-
-app.get('/debug/sdprobe', async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.json({ error: 'url required' });
-  const r = await fetchViaScrapedo(url, {
-    render: req.query.render === '1', super: req.query.super === '1', geo: req.query.geo || null,
-    wait: req.query.wait === '1', customWait: Number(req.query.cw) || 0,
-  });
-  const e = { http: r.http, ms: r.ms, cost: r.cost, remaining: r.remaining, error: r.error };
-  if (r.html) {
-    e.html_len = r.html.length;
-    const p = parseProductFromHtml(r.html, url);
-    e.title = p.title ? p.title.slice(0, 60) : null; e.price = p.price; e.image = !!p.image;
-    if (!p.title && !p.price) e.head = r.html.slice(0, 160).replace(/\s+/g, ' ');
-  }
-  res.json(e);
-});
-
-// ВРЕМЕННО: что лежит в вишлисте у пользователей, подключивших Telegram (только поля отображения)
-// /debug/uaprobe?url=...&ua=chrome|tg|fb|google|wa — прямой fetch с Railway-IP под разными User-Agent
-app.get('/debug/uaprobe', async (req, res) => {
-  const url = req.query.url;
-  if (!url) return res.json({ error: 'url required' });
-  const UAS = {
-    chrome: FETCH_HEADERS['User-Agent'],
-    tg: 'TelegramBot (like TwitterBot)',
-    fb: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-    google: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-    wa: 'WhatsApp/2.23.20.0 A',
-    tw: 'Twitterbot/1.0',
-    slack: 'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)',
-  };
-  const ua = String(req.query.ua || 'chrome');
-  const t0 = Date.now();
-  try {
-    const r = await fetch(url, { headers: { ...FETCH_HEADERS, 'User-Agent': UAS[ua] || UAS.chrome }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
-    const html = await r.text();
-    const p = parseProductFromHtml(html, url);
-    res.json({ ua, status: r.status, ms: Date.now() - t0, html_len: html.length,
-      json_ld: /application\/ld\+json/.test(html), og_title: /property=["']og:title/.test(html),
-      title: p.title ? p.title.slice(0, 70) : null, price: p.price, image: !!p.image });
-  } catch (err) { res.json({ ua, error: err.message.slice(0, 100), ms: Date.now() - t0 }); }
-});
-
-// ── DEBUG: диагностика прокси ────────────────────────────────────────────────
-app.get('/debug/proxy-check', async (req, res) => {
-  const result = {
-    RU_PROXY_URL_set: !!process.env.RU_PROXY_URL,
-    RU_PROXY_URL_preview: process.env.RU_PROXY_URL
-      ? process.env.RU_PROXY_URL.replace(/:([^@]+)@/, ':***@')  // скрываем пароль
-      : null,
-    ruProxyAgent_created: !!ruProxyAgent,
-    tests: {}
-  };
-
-  // Тест 1: что видит внешний мир как наш IP (без прокси)
-  try {
-    const r = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
-    result.tests.direct_ip = (await r.json()).ip;
-  } catch(e) { result.tests.direct_ip_error = e.message; }
-
-  // Тест 2: IP через прокси + его ASN (чтобы понять провайдера)
-  if (ruProxyAgent) {
-    try {
-      const r = await ruFetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(8000) });
-      const ip = (await r.json()).ip;
-      result.tests.proxy_ip = ip;
-      result.tests.proxy_works = true;
-      // Получаем ASN
-      try {
-        const asnR = await ruFetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(5000) });
-        const asnD = await asnR.json();
-        result.tests.proxy_asn = asnD.asn;
-        result.tests.proxy_org = asnD.org;
-        result.tests.proxy_city = asnD.city;
-      } catch(_) {}
-    } catch(e) {
-      result.tests.proxy_ip_error = e.message;
-      result.tests.proxy_works = false;
-    }
-  }
-
-  // Тест 3: WB цена через card.wb.ru (не геоблокирован) и search.wb.ru через прокси
-  const WB_NM = '1510075000';
-  try {
-    // card.wb.ru — без прокси
-    const cr = await fetch(`https://card.wb.ru/cards/v1/detail?appType=1&curr=rub&dest=-1257786&nm=${WB_NM}`,
-      { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Referer: 'https://www.wildberries.ru/' },
-        signal: AbortSignal.timeout(6000) });
-    result.tests.wb_card_status = cr.status;
-    if (cr.ok) {
-      const cd = await cr.json();
-      const prod = cd?.data?.products?.find(p => String(p.id) === WB_NM);
-      result.tests.wb_card_found = !!prod;
-      if (prod) {
-        result.tests.wb_card_keys = Object.keys(prod).slice(0,15).join(',');
-        const sizes = prod?.sizes || [];
-        result.tests.wb_card_sizes0_price = JSON.stringify(sizes[0]?.price);
-        result.tests.wb_card_salePriceU = prod?.salePriceU;
-        result.tests.wb_card_priceU = prod?.priceU;
-      }
-    }
-  } catch(e) { result.tests.wb_card_error = e.message; }
-
-  // search.wb.ru через прокси — с правильным форматом
-  if (ruProxyAgent) {
-    try {
-      const sr = await ruFetch(
-        `https://search.wb.ru/exactmatch/ru/common/v7/search?appType=1&curr=rub&dest=-1257786&resultset=catalog&limit=1&nm=${WB_NM}`,
-        { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Referer: 'https://www.wildberries.ru/' },
-          signal: AbortSignal.timeout(8000) });
-      result.tests.wb_search_nm_status = sr.status;
-      if (sr.ok) {
-        const sd = await sr.json();
-        const prod = sd?.data?.products?.find(p => String(p.id) === WB_NM);
-        result.tests.wb_search_nm_found = !!prod;
-        if (prod) {
-          const kopecks = prod?.salePriceU ?? prod?.priceU ?? prod?.sizes?.[0]?.price?.total;
-          result.tests.wb_search_nm_price = kopecks ? Math.round(kopecks/100) + ' ₽' : 'no price';
-        }
-      }
-    } catch(e) { result.tests.wb_search_nm_error = e.message; }
-  }
-
-  // Тест 4: Ozon через прокси — несколько хостов
-  if (ruProxyAgent) {
-    for (const [label, url] of [
-      ['ozon_main', 'https://www.ozon.ru/'],
-      ['ozon_api', 'https://api.ozon.ru/composer-api.bx/page/json/v2?url=/'],
-      ['ozon_cdn', 'https://cdn1.ozone.ru/'],
-    ]) {
-      try {
-        const r = await ruFetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15', Accept: 'text/html,application/json' },
-          signal: AbortSignal.timeout(6000)
-        });
-        result.tests[label] = r.status;
-      } catch(e) { result.tests[label + '_error'] = e.message.slice(0,80); }
-    }
-  }
-
-  res.json(result);
-});
-
 // ── HEALTHLOG (просмотр логов из чата) ───────────────────────────────────────
 app.get('/healthlog', (req, res) => {
   const secret = process.env.LOG_SECRET;
@@ -2641,7 +2102,6 @@ app.get('/healthlog', (req, res) => {
 });
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
-app.get('/proto', (req, res) => res.sendFile(__dirname + '/sizebook-proto.html'));
 // Экспериментальный вид «паспорт-термоэтикетка»; основное приложение остаётся на «/»
 app.get('/passport', (req, res) => res.sendFile(__dirname + '/passport.html'));
 app.get('/sb-common.js', (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(__dirname + '/sb-common.js'); });

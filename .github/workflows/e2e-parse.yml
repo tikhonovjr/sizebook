@@ -23,6 +23,7 @@ jobs:
       - name: Parse
         env:
           URLS: ${{ github.event.inputs.urls }}
+          CI_KEY: ${{ secrets.CI_PARSE_KEY }}
           TAG: ${{ github.event.inputs.tag }}
         run: |
           python3 - <<'PYEOF'
@@ -32,7 +33,7 @@ jobs:
           for u in [x.strip() for x in os.environ["URLS"].split(",") if x.strip()]:
               t = time.time()
               req = urllib.request.Request(BASE + "/parse", data=json.dumps({"url": u}).encode(),
-                                           headers={"Content-Type": "application/json"})
+                                           headers={"Content-Type": "application/json", "X-CI-Key": os.environ.get("CI_KEY", "")})
               try:
                   with urllib.request.urlopen(req, timeout=170) as r:
                       b = json.loads(r.read().decode("utf-8", "replace"))

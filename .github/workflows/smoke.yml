@@ -31,5 +31,5 @@ jobs:
           check "GET /s/x (share-страница)"       200 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 $BASE/s/x)"
           B=$(curl -s --max-time 15 $BASE/s/x)
           echo "$B" | grep -q "esc(" && echo "PASS  share.html содержит экранирование" || { echo "FAIL  share.html без экранирования"; FAIL=1; }
-          check "POST /parse открыт (400 на мусор)" 400 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H 'Content-Type: application/json' -d '{"url":"notaurl"}' $BASE/parse)"
+          check "POST /parse без токена закрыт"    401 "$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H 'Content-Type: application/json' -d '{"url":"notaurl"}' $BASE/parse)"
           exit $FAIL

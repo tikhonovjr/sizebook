@@ -1,16 +1,12 @@
-FROM node:20-slim
+FROM node:22-slim
 
-RUN apt-get update && apt-get install -y \
-    chromium \
-    --no-install-recommends \
+# Шрифты нужны для картинки-превью ссылки (sharp рисует SVG через librsvg)
+RUN apt-get update && apt-get install -y fonts-dejavu-core --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
-
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 COPY . .
 
 EXPOSE 3000
