@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#a9aeb6">
 <meta name="robots" content="noindex">
 <title>SizeBook · Подарок в размер</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
@@ -95,7 +98,7 @@ const FIT = { small: 'маломерит', true: 'в размер', large: 'бо
 const sval = v => v && typeof v === 'object' ? [v.value, v.brand].filter(Boolean).join(' · ') : (v == null ? '' : String(v).trim());
 
 function state(title, sub) {
-  $('app').innerHTML = `<div class="top"><div class="lt"><h1>SizeBook</h1></div></div><div class="state"><b>${esc(title)}</b>${esc(sub)}<br><br><a href="/passport" style="color:var(--ink);font-weight:700">Открыть SizeBook</a></div>`;
+  $('app').innerHTML = `<div class="top"><div class="lt"><h1>SizeBook</h1></div></div><div class="state"><b>${esc(title)}</b>${esc(sub)}<br><br><a href="/" style="color:var(--ink);font-weight:700">Открыть SizeBook</a></div>`;
 }
 
 function render(d) {
@@ -132,7 +135,7 @@ function render(d) {
       <div class="hint">Нажми на вещь, чтобы открыть её в магазине</div>
       <div class="rows" id="wl">${wishRows(d.wishlist)}</div>`;
   }
-  html += `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/passport">Создать свой паспорт</a></div></div>`;
+  html += `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/">Создать свой паспорт</a></div></div>`;
   $('app').innerHTML = html;
   window._wl = d.wishlist || [];
 }

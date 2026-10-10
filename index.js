@@ -2103,10 +2103,16 @@ app.get('/healthlog', (req, res) => {
 
 // ── СТАТИКА ───────────────────────────────────────────────────────────────────
 // Экспериментальный вид «паспорт-термоэтикетка»; основное приложение остаётся на «/»
+// «Паспорт» — основная версия с 10.10.2026; старая доступна на /classic до ноября
 app.get('/passport', (req, res) => res.sendFile(__dirname + '/passport.html'));
+app.get('/classic', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
+app.get('/manifest.webmanifest', (req, res) => { res.set('Content-Type', 'application/manifest+json; charset=utf-8'); res.sendFile(__dirname + '/static/manifest.webmanifest'); });
+for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'favicon.png'])
+  app.get('/' + f, (req, res) => { res.set('Cache-Control', 'public, max-age=604800'); res.sendFile(__dirname + '/static/' + f); });
+app.get(['/favicon.ico', '/apple-touch-icon-precomposed.png'], (req, res) => res.redirect(301, req.path === '/favicon.ico' ? '/favicon.png' : '/apple-touch-icon.png'));
 app.get('/sb-common.js', (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(__dirname + '/sb-common.js'); });
 app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
-app.get('/', (req, res) => res.sendFile(__dirname + '/sizebook4.html'));
+app.get('/', (req, res) => res.sendFile(__dirname + '/passport.html'));
 
 // ── СТАРТ ─────────────────────────────────────────────────────────────────────
 initDB().then(() => {

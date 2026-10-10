@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>SizeBook · Гардероб</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
@@ -84,6 +87,14 @@ button.cell:active,button.route:active{filter:invert(1)}
 .ph2 .tg{position:absolute;right:6px;top:6px;background:#fff;border:2px solid var(--ink);font:800 12px var(--mono);padding:1px 6px}
 .nm{font:700 13px var(--disp);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .br{font:400 11px var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp{border:2px solid var(--ink);background:var(--ink);display:grid;gap:2px;margin-top:10px}
+.grp>*{background:var(--lab)}
+.ghead{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px;min-height:48px;font:800 14px var(--disp);text-transform:uppercase;text-align:left}
+.ghead span{font:600 11px var(--mono);text-transform:none;color:var(--ink2)}
+.gcells{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;background:var(--ink)}
+.gcells>*{background:var(--lab)}
+.gcells .cell b{font:900 20px var(--disp)}
+.gcells .cell b.empty{color:var(--ink3)}
 .note{background:var(--lab);border:2px dashed var(--line);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2);margin-top:12px}
 
 /* строки-этикетки (вишлист): одинаковая высота, фото квадратом, цена в своей колонке */
@@ -366,7 +377,7 @@ function renderWardrobe() {
   const withItems = CATS.filter(c => itemsOf(c).length);
   $('v-wardrobe').innerHTML = `
   <div class="top">
-    <div class="lt"><h1>Гардероб</h1><a class="tbtn" href="/" onclick="LS.set('sb_page','daily')">Старый вид</a></div>
+    <div class="lt"><h1>Гардероб</h1></div>
     ${startBanner()}
     <div class="label">
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
@@ -378,6 +389,8 @@ function renderWardrobe() {
     </div>
   </div>
   <div class="body">
+    <div class="sec"><h2>Все размеры</h2></div>
+    ${extraGroups()}
     <div class="sec"><h2>Мои вещи</h2><button onclick="openItemForm()">+ Добавить</button></div>
     ${withItems.length ? withItems.map(c => `
       <div class="shelf">
@@ -410,6 +423,46 @@ async function saveBody(e) {
   try { await api('/sizes', { method: 'POST', body }); Object.assign(SIZES, body); renderAll(); closeSheet(); toast('Параметры сохранены'); }
   catch (er) { if (er.message !== 'auth') { $('bMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('bMsg').className = 'msg err'; } }
 }
+// ══════════ Все размеры: бельё, спорт, пляж, официальное и т. д. (ключи те же, что в старой версии) ══════════
+const EXTRA_GROUPS = [
+  { id: 'under', title: 'Бельё и носки', rows: [['under_bra', 'Бюстгальтер', '75B', 'f'], ['under_bottom', 'Трусы', 'S'], ['under_body', 'Боди', 'S', 'f'], ['under_tights', 'Колготки', '2', 'f'], ['under_stockings', 'Чулки', '2', 'f'], ['under_socks', 'Носки', '39–42']] },
+  { id: 'shoes2', title: 'Обувь по видам', rows: [['shoes_sneaker', 'Кроссовки', '43'], ['shoes_dress', 'Туфли, ботинки', '43'], ['shoes_boot', 'Сапоги', '43'], ['shoes_sandal', 'Сандалии', '43']] },
+  { id: 'outer2', title: 'Верхняя и головные', rows: [['outer_down', 'Пуховик', 'L'], ['hat_cap', 'Кепка', '58'], ['hat_winter', 'Зимняя шапка', '58']] },
+  { id: 'acc2', title: 'Перчатки и аксессуары', rows: [['gloves_size', 'Перчатки', '8'], ['bracelet_cm', 'Браслет, см', '17'], ['belt_cm', 'Ремень, см', '90']] },
+  { id: 'sport', title: 'Спорт', rows: [['sport_top', 'Верх', 'L'], ['sport_bottom', 'Низ', 'L'], ['sport_shoes', 'Обувь', '43']] },
+  { id: 'beach', title: 'Пляж', rows: [['beach_swim', 'Плавки, шорты', 'L'], ['beach_one', 'Купальник слитный', 'S', 'f'], ['beach_two', 'Купальник раздельный', 'S', 'f']] },
+  { id: 'formal', title: 'Официальное', rows: [['formal_shirt', 'Рубашка', '39'], ['formal_pants', 'Брюки', '50'], ['formal_jacket', 'Пиджак', '50']] },
+];
+const OPEN_GROUPS = new Set();
+const sz = k => SIZES[k] !== undefined && SIZES[k] !== null ? String(typeof SIZES[k] === 'object' ? (SIZES[k].value || '') : SIZES[k]).trim() : '';
+const groupRows = g => g.rows.filter(r => r[3] !== 'f' || female() || sz(r[0]));
+function extraGroups() {
+  return `<div class="grp">${EXTRA_GROUPS.map(g => {
+    const rows = groupRows(g); if (!rows.length) return '';
+    const filled = rows.filter(r => sz(r[0])).length, open = OPEN_GROUPS.has(g.id);
+    return `<button class="ghead" onclick="toggleGroup('${g.id}')" aria-expanded="${open}">${g.title}<span>${filled} из ${rows.length} ${open ? '▲' : '▼'}</span></button>
+      ${open ? `<div class="gcells">${rows.map(r => { const v = sz(r[0]); return `<button class="cell" onclick="openExtra('${r[0]}')"><span class="cap">${r[1]}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}${rows.length % 2 ? '<div></div>' : ''}</div>` : ''}`;
+  }).join('')}</div>`;
+}
+function toggleGroup(id) { OPEN_GROUPS.has(id) ? OPEN_GROUPS.delete(id) : OPEN_GROUPS.add(id); renderWardrobe(); }
+function openExtra(key) {
+  const g = EXTRA_GROUPS.find(x => x.rows.some(r => r[0] === key)), r = g.rows.find(x => x[0] === key);
+  openSheet(r[1], `
+    <div class="sub">${esc(g.title)} · ${sz(key) ? 'твой размер ' + esc(sz(key)) : 'размер ещё не указан'}</div>
+    <form class="form" onsubmit="saveExtra(event,'${key}')" style="grid-template-columns:1fr auto">
+      <label class="fld"><span class="cap">Мой размер</span><input id="exIn" value="${esc(sz(key))}" placeholder="${esc(r[2])}" autocomplete="off" enterkeyhint="done"></label>
+      <button class="btn" type="submit" style="border-radius:0">Сохранить</button>
+    </form>
+    <div class="msg" id="exMsg">Пустое поле — размер убран. Друзья видят его по ссылке, если включены «Размеры»</div>`);
+}
+async function saveExtra(e, key) {
+  e.preventDefault();
+  const v = $('exIn').value.trim();
+  try { await api('/sizes', { method: 'POST', body: { [key]: v } }); SIZES[key] = v; renderAll(); closeSheet(); toast('Сохранено'); }
+  catch (er) { if (er.message !== 'auth') { $('exMsg').textContent = 'Не сохранилось. Проверь интернет и попробуй ещё раз'; $('exMsg').className = 'msg err'; } }
+}
+const RING_HINT = '<div class="msg">Не знаешь размер? Оберни ниткой основание пальца, отметь место, где она сошлась, и измерь линейкой длину в миллиметрах. Длину раздели на 3,14 — это и есть размер кольца (например, 55 мм → 17,5)</div>';
+
 function openCat(id) {
   const c = CATS.find(x => x.id === id), v = val(c), conv = convert(c, v), its = itemsOf(c);
   openSheet(c.full, `
@@ -419,6 +472,7 @@ function openCat(id) {
       <button class="btn" type="submit" style="border-radius:0">Сохранить</button>
     </form>
     <div class="msg" id="szMsg"></div>
+    ${c.kind === 'ring' && !v ? RING_HINT : ''}
     ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="msg">Перевод примерный, у брендов бывают отличия</div>` : ''}
     ${its.length ? `<div class="sgrid">${its.map(i => `<button onclick="openItem(${i.id})">${tile(i, true)}<div class="nm">${esc(normTitle(i.name, '', brandOf(i)).name)}</div><div class="br">${esc([brandOf(i), fitName(i.fit)].filter(Boolean).join(' · '))}</div></button>`).join('')}</div>` : ''}
     <div class="acts"><button class="btn ghost" onclick="openItemForm(null,'${c.zones[0]}')">+ Вещь в «${esc(c.full)}»</button></div>`);
@@ -792,7 +846,7 @@ function renderProfile() {
   const f = (k, t, ph, mode = 'text', span = '') => `<label class="fld ${span}"><span class="cap">${t}</span><input id="p_${k}" value="${esc(SIZES[k] || '')}" placeholder="${ph}" inputmode="${mode}" autocomplete="off"></label>`;
   $('v-profile').innerHTML = `
   <div class="top">
-    <div class="lt"><h1>Профиль</h1><a class="tbtn" href="/" onclick="LS.set('sb_page','profile')">Старый вид</a></div>
+    <div class="lt"><h1>Профиль</h1></div>
     <div class="label">
       <div class="z1 span3">АККАУНТ:<b>${esc((user && user.username) || '—')}</b>${esc((user && user.email) || '')}</div>
     </div>
@@ -829,7 +883,7 @@ function renderProfile() {
     <div class="sec"><h2>Ещё</h2></div>
     <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>
     <div class="acts"><button class="btn ghost" onclick="setFlag('ui_checklist_hidden','');renderAll();go('wardrobe');runTasks()">С чего начать</button></div>
-    <div class="acts"><a class="btn ghost" href="/" onclick="LS.set('sb_page','daily')">Старая версия приложения</a></div>
+    <div class="acts"><a class="btn ghost" href="/classic" onclick="LS.set('sb_page','daily')">Старая версия (до ноября)</a></div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,logout)">Выйти из аккаунта</button></div>
   </div>`;
 }
@@ -966,7 +1020,7 @@ function go(v, push = true) {
   VIEWS.forEach(x => { $('v-' + x).hidden = x !== v; });
   document.querySelectorAll('.tb button').forEach(b => b.dataset.v === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
   document.title = 'SizeBook · ' + { wardrobe: 'Гардероб', wishlist: 'Вишлист', friends: 'Друзья', profile: 'Профиль' }[v];
-  if (push) history.replaceState(null, '', v === 'wardrobe' ? '/passport' : '/passport#' + v);
+  if (push) history.replaceState(null, '', v === 'wardrobe' ? '/' : '/#' + v);
   if (v === 'profile' && ACT === null && token) loadActivity();
   window.scrollTo(0, 0);
 }
@@ -1046,7 +1100,7 @@ async function doAuth(e) {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.token) throw new Error(j.error || 'Не получилось войти');
     LS.set('sb_token', j.token); LS.set('sb_user', JSON.stringify(j.user || {}));
-    location.href = '/passport';
+    location.href = '/';
   } catch (er) { $('aMsg').className = 'msg err'; $('aMsg').textContent = er.message === 'Failed to fetch' ? 'Нет связи с сервером. Проверь интернет' : er.message; }
 }
 
