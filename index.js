@@ -290,7 +290,38 @@ async function initDB() {
       console.log(`[seed] WARNING: users не была пустой (count=${usersCount}); id admin может не совпасть с legacy user_id=1.`);
     }
   }
+  await maintBackupAndReport();
   console.log('DB ready');
+}
+
+// ── Обслуживание 10.10.2026: копия таблиц в схеме backup_20261010 и отчёт по пользователям ──
+// Копия делается один раз (если схемы ещё нет); img_cache не копируем — это кэш картинок.
+async function maintBackupAndReport() {
+  try {
+    const sz = await pool.query(`SELECT relname AS t, pg_total_relation_size(c.oid) AS b FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='public' AND c.relkind='r' ORDER BY 2 DESC`);
+    console.log('[maint] таблицы:', sz.rows.map(r => `${r.t}=${Math.round(r.b / 1024)}KB`).join(' '));
+    const has = await pool.query("SELECT 1 FROM pg_namespace WHERE nspname='backup_20261010'");
+    if (!has.rowCount) {
+      const total = sz.rows.filter(r => r.t !== 'img_cache').reduce((s, r) => s + Number(r.b), 0);
+      if (total < 200 * 1024 * 1024) {
+        await pool.query('CREATE SCHEMA backup_20261010');
+        for (const r of sz.rows) {
+          if (r.t === 'img_cache' || r.t.startsWith('sizes_backup')) continue;
+          await pool.query(`CREATE TABLE backup_20261010."${r.t}" AS SELECT * FROM public."${r.t}"`);
+        }
+        console.log('[maint] копия таблиц сделана в схеме backup_20261010');
+      } else console.log('[maint] копия пропущена: таблицы больше 200 МБ');
+    }
+    const u = await pool.query(`SELECT u.id, u.username, split_part(u.email,'@',2) AS dom, u.created_at,
+        (SELECT COUNT(*) FROM wishlist w WHERE w.user_id=u.id) AS wl,
+        (SELECT COUNT(*) FROM items i WHERE i.user_id=u.id) AS it,
+        (SELECT COUNT(*) FROM jsonb_object_keys(COALESCE((SELECT data FROM sizes s WHERE s.user_id=u.id),'{}'::jsonb))) AS sz,
+        (SELECT MAX(created_at) FROM activity a WHERE a.user_id=u.id) AS last,
+        (u.tg_chat_id IS NOT NULL) AS tg
+      FROM users u ORDER BY u.id`);
+    for (const r of u.rows) console.log(`[maint] user id=${r.id} ${r.username} @${r.dom} created=${r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : '-'} wishlist=${r.wl} items=${r.it} sizes=${r.sz} tg=${r.tg} last=${r.last ? new Date(r.last).toISOString() : '-'}`);
+  } catch (e) { console.log('[maint] ошибка:', e.message); }
 }
 
 app.use(express.json());
