@@ -224,6 +224,11 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS img_cache (key TEXT PRIMARY KEY, mime TEXT NOT NULL, data BYTEA NOT NULL, created_at TIMESTAMP DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS activity (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, text TEXT NOT NULL, ref TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
     CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id, created_at DESC);
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS note TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS color TEXT;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 1;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT FALSE;
+    CREATE TABLE IF NOT EXISTS gift_claims (id SERIAL PRIMARY KEY, wishlist_id INTEGER UNIQUE REFERENCES wishlist(id) ON DELETE CASCADE, name TEXT, guest_key TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
   `);
 
   await pool.query("UPDATE wishlist SET parse_status='failed' WHERE parse_status='pending'");
@@ -406,6 +411,17 @@ app.get('/me/activity', authenticateToken, async (req, res) => {
   try {
     const lim = Math.min(200, Math.max(1, +req.query.limit || 50));
     const r = await pool.query('SELECT kind, text, ref, created_at FROM activity WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2', [req.user.id, lim]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
+});
+
+// Путь тестировщиков: журнал всех пользователей, кроме самого админа. Только для аккаунта admin.
+app.get('/admin/activity', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.username !== 'admin') return res.status(403).json({ error: 'Нет доступа' });
+    const lim = Math.min(500, Math.max(1, +req.query.limit || 150));
+    const r = await pool.query(`SELECT u.username, a.kind, a.text, a.created_at FROM activity a JOIN users u ON u.id=a.user_id
+      WHERE u.username <> 'admin' ORDER BY a.created_at DESC LIMIT $1`, [lim]);
     res.json(r.rows);
   } catch (e) { res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -918,9 +934,32 @@ app.post('/wishlist/quick', async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
+const WISH_EDIT = { title: 300, brand: 60, price: 40, size: 40, color: 60, note: 500, image: 2000, shop: 80 };
 app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
   try {
-    const received = !!(req.body && req.body.received);
+    const b = req.body || {};
+    if (!('received' in b)) {
+      // Правка желания: только присланные поля
+      const sets = [], vals = [];
+      for (const [k, n] of Object.entries(WISH_EDIT)) {
+        if (b[k] === undefined) continue;
+        let v = b[k] === null ? null : String(b[k]).trim().slice(0, n) || null;
+        if (k === 'image' && v && !/^https?:\/\//i.test(v)) v = null;
+        if (k === 'title' && !v) return res.status(400).json({ error: 'Название не может быть пустым' });
+        vals.push(v); sets.push(`${k}=$${vals.length}`);
+      }
+      if (b.priority !== undefined) { vals.push(Math.max(0, Math.min(2, parseInt(b.priority, 10) || 0))); sets.push(`priority=$${vals.length}`); }
+      if (b.hidden !== undefined) { vals.push(!!b.hidden); sets.push(`hidden=$${vals.length}`); }
+      if (!sets.length) return res.status(400).json({ error: 'Нечего менять' });
+      vals.push(req.params.id, req.user.id);
+      const r = await pool.query(`UPDATE wishlist SET ${sets.join(', ')} WHERE id=$${vals.length - 1} AND user_id=$${vals.length} RETURNING *`, vals);
+      if (!r.rows[0]) return res.status(404).json({ error: 'Не найдено' });
+      res.json(r.rows[0]);
+      if (b.image) warmImage(r.rows[0].image);
+      logAct(req.user.id, 'wish_edit', 'Изменено желание: ' + shortTitle(r.rows[0].title) + (r.rows[0].size ? ` · размер ${r.rows[0].size}` : ''));
+      return;
+    }
+    const received = !!b.received;
     const r = await pool.query(
       `UPDATE wishlist SET received_at = ${received ? 'NOW()' : 'NULL'} WHERE id=$1 AND user_id=$2 RETURNING id, received_at`,
       [req.params.id, req.user.id]
@@ -947,9 +986,31 @@ app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
 app.get('/profile/:username', (req, res) => res.status(404).json({ error: 'Не найден' }));
 
 // ── SHARE LINKS ──────────────────────────────────────────────────────────────
+// Что показывать по ссылке. Вес и параметры фигуры — только если владелец явно включил.
+function cleanSections(x) {
+  x = x || {};
+  return { sizes: x.sizes !== false, items: x.items !== false, wishlist: x.wishlist !== false, height: x.height !== false,
+    weight: x.weight === true, body: x.body === true,
+    excluded_size_keys: Array.isArray(x.excluded_size_keys) ? x.excluded_size_keys.slice(0, 100).map(String) : [],
+    excluded_wishlist_ids: Array.isArray(x.excluded_wishlist_ids) ? x.excluded_wishlist_ids.slice(0, 500).map(Number).filter(Number.isFinite) : [] };
+}
+// Изменить настройки действующей ссылки, не меняя сам адрес
+app.patch('/share', authenticateToken, async (req, res) => {
+  try {
+    const sec = cleanSections(req.body && req.body.sections);
+    const r = await pool.query(
+      `UPDATE share_links SET sections=$2 WHERE id=(SELECT id FROM share_links WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1) RETURNING *`,
+      [req.user.id, JSON.stringify(sec)]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'Ссылки нет' });
+    logAct(req.user.id, 'share', 'Настройки ссылки: ' + [sec.sizes && 'размеры', sec.items && 'по брендам', sec.wishlist && 'вишлист', sec.weight && 'вес', sec.body && 'фигура'].filter(Boolean).join(', '));
+    res.json(r.rows[0]);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+
 app.post('/share', authenticateToken, async (req, res) => {
   try {
-    const { sections, expires_at } = req.body;
+    const { expires_at } = req.body;
+    const sections = cleanSections(req.body.sections);
     const token = crypto.randomBytes(32).toString('hex');
     await pool.query(
       'UPDATE share_links SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL',
@@ -989,57 +1050,105 @@ app.post('/share/revoke', authenticateToken, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
+// Данные страницы для друзей. viewerId — кто открыл (если вошёл), guestKey — ключ гостя для «Я подарю».
+async function loadShareLink(token) {
+  const r = await pool.query('SELECT * FROM share_links WHERE token=$1 AND revoked_at IS NULL', [token]);
+  return r.rows[0] || null;
+}
+const SHARE_WISH_FIELDS = ['id', 'title', 'shop', 'url', 'price', 'size', 'image', 'brand', 'note', 'color', 'priority'];
+async function buildShare(link, viewerId, guestKey) {
+  const sections = link.sections || {};
+  const result = { token: link.token, expires_at: link.expires_at, sections: { sizes: !!sections.sizes, items: sections.items !== false, wishlist: !!sections.wishlist } };
+  const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
+  result.owner = own.rows[0] ? own.rows[0].username : null;
+  result.is_owner = !!viewerId && viewerId === link.user_id;
+  const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
+  const all = sr.rows[0]?.data || {};
+  // Имя показываем всегда (это подпись страницы), рост — если не выключен, вес и фигуру — только по явной галочке
+  const base = { profile_name: all.profile_name, profile_lastname: all.profile_lastname };
+  if (sections.height !== false) base.profile_height = all.profile_height;
+  if (sections.sizes) {
+    const excl = Array.isArray(sections.excluded_size_keys) ? sections.excluded_size_keys : [];
+    for (const [k, v] of Object.entries(all)) {
+      if (k.startsWith('ui_') || k.startsWith('profile_') || excl.includes(k)) continue;
+      if (['chest', 'waist', 'hips'].includes(k) && sections.body !== true) continue;
+      base[k] = v;
+    }
+    if (sections.weight === true) base.profile_weight = all.profile_weight;
+    if (sections.items !== false) {
+      const ir = await pool.query(
+        `SELECT brand, zone, name, size, fit FROM items
+         WHERE user_id=$1 AND COALESCE(brand,'')<>'' AND COALESCE(size,'')<>''
+         ORDER BY lower(brand), zone, id`, [link.user_id]);
+      result.brand_sizes = ir.rows;
+    }
+  }
+  result.sizes = Object.fromEntries(Object.entries(base).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  if (sections.wishlist) {
+    const wr = await pool.query(
+      `SELECT w.*, c.name AS claim_name, c.guest_key AS claim_key FROM wishlist w LEFT JOIN gift_claims c ON c.wishlist_id = w.id
+       WHERE w.user_id=$1 AND w.received_at IS NULL AND COALESCE(w.hidden, FALSE) = FALSE
+       ORDER BY COALESCE(w.priority, 1) DESC, w.id DESC`, [link.user_id]);
+    const excl = Array.isArray(sections.excluded_wishlist_ids) ? sections.excluded_wishlist_ids : [];
+    result.wishlist = wr.rows.filter(w => !excl.includes(w.id)).map(w => {
+      const o = Object.fromEntries(SHARE_WISH_FIELDS.map(k => [k, w[k] ?? null]));
+      // Владелец не видит, что ему дарят — ни в приложении, ни на своей странице
+      if (!result.is_owner && w.claim_key) { o.claimed = true; o.claim_name = w.claim_name || null; o.claim_mine = !!guestKey && guestKey === w.claim_key; }
+      return o;
+    });
+  }
+  return result;
+}
+function viewerFromReq(req) {
+  try { const t = (req.headers['authorization'] || '').split(' ')[1]; return t ? jwt.verify(t, JWT_SECRET).id : null; } catch (_) { return null; }
+}
+
 const _shareSeen = new Map();
 app.get('/share/:token', async (req, res) => {
   try {
+    const link = await loadShareLink(req.params.token);
+    if (!link) return res.status(404).json({ error: 'Ссылка недействительна' });
+    if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'Ссылка истекла' });
+    const viewer = viewerFromReq(req);
+    const result = await buildShare(link, viewer, String(req.headers['x-guest-key'] || '').slice(0, 64));
+    if (!result.is_owner) {
+      const seen = _shareSeen.get(link.token) || 0;
+      if (Date.now() - seen > 30 * 60 * 1000) { _shareSeen.set(link.token, Date.now()); logAct(link.user_id, 'share_view', 'Кто-то открыл твою ссылку для друзей'); }
+    }
+    res.set('Cache-Control', 'no-store').json(result);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+
+// «Я подарю это»: гость отмечает вещь без регистрации. Владелец этого не видит; снять отметку может только тот же гость (по ключу с его телефона).
+app.post('/share/:token/claim', async (req, res) => {
+  try {
+    if (!rateOk('claim:' + clientIp(req), 30, 60 * 60 * 1000)) return res.status(429).json({ error: 'Слишком часто' });
+    const link = await loadShareLink(req.params.token);
+    if (!link || !(link.sections || {}).wishlist) return res.status(404).json({ error: 'Ссылка недействительна' });
+    const key = String((req.body && req.body.key) || '');
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(key)) return res.status(400).json({ error: 'Нет ключа' });
+    const id = parseInt(req.body.wishlist_id, 10);
+    const w = await pool.query('SELECT id FROM wishlist WHERE id=$1 AND user_id=$2 AND received_at IS NULL AND COALESCE(hidden,FALSE)=FALSE', [id, link.user_id]);
+    if (!w.rowCount) return res.status(404).json({ error: 'Вещь не найдена' });
+    if (viewerFromReq(req) === link.user_id) return res.status(400).json({ error: 'Это твой вишлист' });
+    const name = String((req.body && req.body.name) || '').trim().slice(0, 40) || null;
     const r = await pool.query(
-      'SELECT * FROM share_links WHERE token=$1 AND revoked_at IS NULL',
-      [req.params.token]
-    );
-    if (!r.rows.length) return res.status(404).json({ error: 'Ссылка недействительна' });
-    const link = r.rows[0];
-    if (link.expires_at && new Date(link.expires_at) < new Date()) {
-      return res.status(410).json({ error: 'Ссылка истекла' });
-    }
-    const sections = link.sections || {};
-    const result = { token: link.token, expires_at: link.expires_at, sections };
-    const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
-    const seen = _shareSeen.get(link.token) || 0;
-    if (Date.now() - seen > 30 * 60 * 1000) { _shareSeen.set(link.token, Date.now()); logAct(link.user_id, 'share_view', 'Кто-то открыл твою ссылку для друзей'); }
-    result.owner = own.rows[0] ? own.rows[0].username : null;
-
-    if (sections.sizes) {
-      const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
-      let sizesData = sr.rows[0]?.data || {};
-      const excl = Array.isArray(sections.excluded_size_keys) ? sections.excluded_size_keys : [];
-      if (excl.length) {
-        sizesData = Object.fromEntries(
-          Object.entries(sizesData).filter(([k]) => !excl.includes(k))
-        );
-      }
-      result.sizes = Object.fromEntries(Object.entries(sizesData).filter(([k]) => !k.startsWith('ui_') && k !== 'profile_age'));
-      // Размеры по брендам из «Моих вещей» (без заметок, ссылок и фото); отключается sections.items === false
-      if (sections.items !== false) {
-        const ir = await pool.query(
-          `SELECT brand, zone, name, size, fit FROM items
-           WHERE user_id=$1 AND COALESCE(brand,'')<>'' AND COALESCE(size,'')<>''
-           ORDER BY lower(brand), zone, id`, [link.user_id]
-        );
-        result.brand_sizes = ir.rows;
-      }
-    }
-
-    if (sections.wishlist) {
-      const wr = await pool.query(
-        'SELECT * FROM wishlist WHERE user_id=$1 AND received_at IS NULL ORDER BY id DESC', [link.user_id]
-      );
-      const excl = Array.isArray(sections.excluded_wishlist_ids) ? sections.excluded_wishlist_ids : [];
-      result.wishlist = excl.length
-        ? wr.rows.filter(item => !excl.includes(item.id))
-        : wr.rows;
-    }
-
-    res.json(result);
+      `INSERT INTO gift_claims (wishlist_id, name, guest_key) VALUES ($1,$2,$3)
+       ON CONFLICT (wishlist_id) DO UPDATE SET name=EXCLUDED.name WHERE gift_claims.guest_key=EXCLUDED.guest_key RETURNING id`, [id, name, key]);
+    if (!r.rowCount) return res.status(409).json({ error: 'Эту вещь уже дарит кто-то другой' });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
+app.post('/share/:token/unclaim', async (req, res) => {
+  try {
+    const link = await loadShareLink(req.params.token);
+    if (!link) return res.status(404).json({ error: 'Ссылка недействительна' });
+    const key = String((req.body && req.body.key) || '');
+    const id = parseInt(req.body && req.body.wishlist_id, 10);
+    const r = await pool.query(
+      'DELETE FROM gift_claims c USING wishlist w WHERE c.wishlist_id=w.id AND w.user_id=$1 AND c.wishlist_id=$2 AND c.guest_key=$3', [link.user_id, id, key]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Отметка не найдена' });
+    res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -2111,7 +2220,68 @@ for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'favico
   app.get('/' + f, (req, res) => { res.set('Cache-Control', 'public, max-age=604800'); res.sendFile(__dirname + '/static/' + f); });
 app.get(['/favicon.ico', '/apple-touch-icon-precomposed.png'], (req, res) => res.redirect(301, req.path === '/favicon.ico' ? '/favicon.png' : '/apple-touch-icon.png'));
 app.get('/sb-common.js', (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(__dirname + '/sb-common.js'); });
-app.get('/s/:token', (req, res) => res.sendFile(__dirname + '/share.html'));
+// Страница для друзей: подставляем превью для мессенджеров (имя, размеры, картинка-этикетка)
+const fs = require('fs');
+const escAttr = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sv = v => v && typeof v === 'object' ? String(v.value || '') : (v == null ? '' : String(v).trim());
+function shareSummary(d) {
+  const S = d.sizes || {};
+  const name = [S.profile_name, S.profile_lastname].filter(Boolean).join(' ') || d.owner || 'друга';
+  const first = keys => { for (const k of keys) if (sv(S[k])) return sv(S[k]); return ''; };
+  const cells = [['ВЕРХ', first(['daily_top'])], ['НИЗ', first(['daily_bottom'])], ['ОБУВЬ', first(['shoes_eu', 'shoes_sneaker'])]];
+  const n = (d.wishlist || []).length;
+  return { name, cells, n };
+}
+app.get('/s/:token', async (req, res) => {
+  let html = fs.readFileSync(__dirname + '/share.html', 'utf8');
+  try {
+    const link = /^[0-9a-f]{64}$/.test(req.params.token) ? await loadShareLink(req.params.token) : null;
+    if (link && !(link.expires_at && new Date(link.expires_at) < new Date())) {
+      const d = await buildShare(link, null, '');
+      const { name, cells, n } = shareSummary(d);
+      const title = `${name.split(' ')[0]}: подарок в размер`;
+      const desc = [cells.filter(c => c[1]).map(c => c[0].toLowerCase() + ' ' + c[1]).join(', '), n ? `вишлист: ${n}` : ''].filter(Boolean).join(' · ') + '. Отметь, что даришь, — никто не узнает.';
+      const base = PUBLIC_BASE || (req.protocol + '://' + req.get('host'));
+      const meta = `<meta property="og:type" content="website"><meta property="og:site_name" content="SizeBook">
+<meta property="og:title" content="${escAttr(title)}"><meta property="og:description" content="${escAttr(desc)}">
+<meta property="og:image" content="${base}/og/${link.token}.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="description" content="${escAttr(desc)}">`;
+      html = html.replace('</title>', '</title>\n' + meta);
+    }
+  } catch (e) { console.log('[og] meta', e.message); }
+  res.set('Cache-Control', 'no-cache').type('html').send(html);
+});
+const _ogCache = new Map();
+app.get('/og/:token.png', async (req, res) => {
+  try {
+    if (!sharp || !/^[0-9a-f]{64}$/.test(req.params.token)) return res.status(404).end();
+    const hit = _ogCache.get(req.params.token);
+    if (hit && Date.now() - hit.at < 10 * 60 * 1000) return res.type('png').set('Cache-Control', 'public, max-age=600').send(hit.buf);
+    const link = await loadShareLink(req.params.token);
+    if (!link) return res.status(404).end();
+    const { name, cells } = shareSummary(await buildShare(link, null, ''));
+    const x = s => escAttr(s);
+    const W = 1200, H = 630, L = 80, T = 110, LW = 1040, F = "DejaVu Sans, sans-serif", M = "DejaVu Sans Mono, monospace";
+    const cw = LW / 3;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9aa0a8"/><stop offset=".45" stop-color="#b9bec5"/><stop offset=".7" stop-color="#8f959e"/><stop offset="1" stop-color="#aeb3ba"/></linearGradient></defs>
+<rect width="${W}" height="${H}" fill="url(#g)"/>
+<text x="${L}" y="78" font-family="${F}" font-weight="bold" font-size="40" fill="#0d0d0d">ПОДАРОК В РАЗМЕР</text>
+<text x="${W - L}" y="78" text-anchor="end" font-family="${M}" font-weight="bold" font-size="26" fill="#0d0d0d">SIZEBOOK</text>
+<rect x="${L}" y="${T}" width="${LW}" height="440" fill="#0d0d0d"/>
+<rect x="${L + 4}" y="${T + 4}" width="${LW - 8}" height="196" fill="#fdfdfb"/>
+<text x="${L + 36}" y="${T + 60}" font-family="${M}" font-size="26" fill="#0d0d0d">ПОЛУЧАТЕЛЬ / TO:</text>
+<text x="${L + 36}" y="${T + 150}" font-family="${F}" font-weight="bold" font-size="76" fill="#0d0d0d">${x(name.toUpperCase().slice(0, 22))}</text>
+${cells.map((c, i) => `<rect x="${L + 4 + i * cw}" y="${T + 204}" width="${cw - (i === 2 ? 8 : 4)}" height="232" fill="${i === 2 ? '#0d0d0d' : '#fdfdfb'}"/>
+<text x="${L + 36 + i * cw}" y="${T + 256}" font-family="${M}" font-weight="bold" font-size="24" fill="${i === 2 ? '#fdfdfb' : '#0d0d0d'}">${c[0]}</text>
+<text x="${L + 36 + i * cw}" y="${T + 386}" font-family="${F}" font-weight="bold" font-size="${(c[1] || '—').length > 5 ? 56 : (c[1] || '—').length > 3 ? 80 : 110}" fill="${i === 2 ? '#fdfdfb' : (c[1] ? '#0d0d0d' : '#9a9ca1')}">${x(c[1] || '—')}</text>`).join('')}
+</svg>`;
+    const buf = await sharp(Buffer.from(svg)).png().toBuffer();
+    _ogCache.set(req.params.token, { at: Date.now(), buf });
+    if (_ogCache.size > 200) _ogCache.delete(_ogCache.keys().next().value);
+    res.type('png').set('Cache-Control', 'public, max-age=600').send(buf);
+  } catch (e) { console.log('[og]', e.message); res.status(500).end(); }
+});
 app.get('/', (req, res) => res.sendFile(__dirname + '/passport.html'));
 
 // ── СТАРТ ─────────────────────────────────────────────────────────────────────

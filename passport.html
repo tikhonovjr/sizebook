@@ -150,6 +150,8 @@ button.cell:active,button.route:active{filter:invert(1)}
 .fld{display:flex;flex-direction:column;padding:7px 10px 6px;min-width:0}
 .fld input,.fld select{border:0;background:none;font:800 19px var(--disp);padding:2px 0 2px;color:var(--ink);outline:none;min-width:0;width:100%;border-radius:0;-webkit-appearance:none}
 .fld input::placeholder{color:#c2c4c8}
+.fld textarea{border:0;background:none;font:500 15px/1.4 var(--disp);padding:2px 0;color:var(--ink);outline:none;width:100%;resize:none;border-radius:0}
+.fld textarea::placeholder{color:#c2c4c8}
 .fld.small input{font:600 14px var(--mono)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;background:var(--ink)}
 .seg button{background:var(--lab);padding:11px 4px;font:700 10px var(--mono);text-transform:uppercase;text-align:center}
@@ -185,6 +187,8 @@ button.cell:active,button.route:active{filter:invert(1)}
 .sheet .in{overflow-y:auto;overscroll-behavior:contain;padding:0 16px calc(24px + var(--safe-b))}
 .sub{font:500 11px var(--mono);color:var(--ink2)}
 .sysrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.sysrow button{background:var(--lab);border:2px solid var(--ink);padding:6px 10px;font:900 18px var(--disp)}
+.sysrow button i{font:600 10px var(--mono);font-style:normal;margin-right:6px}
 .sysrow span{background:var(--lab);border:2px solid var(--ink);padding:6px 10px;font:900 18px var(--disp)}
 .sysrow span i{font:600 10px var(--mono);font-style:normal;margin-right:6px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
@@ -360,7 +364,7 @@ const shareUrl = () => SHARE ? API + '/s/' + SHARE.token : '';
 function qrSvg(text) { if (!window.qrcode || !text) return ''; const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
 async function sendLink() {
   try {
-    if (!SHARE) SHARE = await api('/share', { method: 'POST', body: { sections: { sizes: true, wishlist: true, items: true, excluded_size_keys: [], excluded_wishlist_ids: [] } } });
+    if (!SHARE) { if (!SEC) SEC = {}; SHARE = await api('/share', { method: 'POST', body: { sections: secBody() } }); }
     renderAll();
     const url = shareUrl();
     if (navigator.share) { try { await navigator.share({ title: 'Мои размеры в SizeBook', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
@@ -630,14 +634,14 @@ function confirmDel(btn, fn, ask) {
 // ══════════ ВИШЛИСТ ══════════
 function wishRow(w) {
   const n = normTitle(w.title, w.shop), it = w.received_at && ITEMS.find(x => x.wishlist_id === w.id); n.brand = wishBrand(w);
-  const meta = [w.shop && !isTg(w.url) ? w.shop.replace(/^www\./, '') : (isTg(w.url) ? 'Telegram' : ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
+  const meta = [w.priority === 2 && !w.received_at ? 'очень хочу' : '', w.hidden && !w.received_at ? 'скрыто от друзей' : '', w.shop && !isTg(w.url) ? w.shop.replace(/^www\./, '') : (isTg(w.url) ? 'Telegram' : ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
   return `<div class="sw" data-id="${w.id}"><div class="acts2">${w.received_at ? `<button onclick="unGot(${w.id})">Вернуть</button>` : `<button onclick="closeSwipes();openGotForm(${w.id})">Получил</button>`}<button class="del" onclick="confirmDel(this,()=>delWish(${w.id}),'Точно?')">Удалить</button></div><button class="row ${w.received_at ? 'got' : ''}" onclick="if(swiped(this))return;${w.received_at ? `openGot(${w.id})` : `openWish(${w.id})`}">
     <div class="th">${img((it && (it.image || it.my_photo)) || w.image, n.brand || n.name)}</div>
     <div class="tx">${n.brand ? `<span class="bd">${esc(n.brand)}</span>` : ''}<span class="tt">${esc(n.name)}</span><span class="mt">${w.parse_status === 'pending' ? '<em class="pending">ищу данные…</em>' : esc(meta)}</span></div>
     <div class="pr">${w.received_at ? `<b>${it ? 'В ГАРДЕРОБЕ →' : 'ПОЛУЧЕНО'}</b>` : priceHtml(w)}</div></button></div>`;
 }
 function renderWishlist() {
-  const want = WISH.filter(w => !w.received_at), got = WISH.filter(w => w.received_at);
+  const want = WISH.filter(w => !w.received_at).sort((a, b) => (b.priority ?? 1) - (a.priority ?? 1) || b.id - a.id), got = WISH.filter(w => w.received_at);
   const sumRub = want.reduce((a, w) => { const p = parsePrice(w.price, w.shop); const r = p && (p.cur === 'RUB' ? 1 : RATES && RATES.rub[p.cur]); return a + (r ? p.n * r : 0); }, 0);
   $('v-wishlist').innerHTML = `
   <div class="top">
@@ -693,7 +697,9 @@ function openWish(id) {
       <div class="cell span2"><span class="cap">Цена</span><b class="num" style="font-size:22px">${p ? money(p.n, p.cur) : esc(w.price || '—')}</b>${rub ? `<span class="cap" style="color:var(--ink3)">${rub.slice(3)} по курсу ЦБ</span>` : ''}</div>
       <div class="cell"><span class="cap">Размер</span><b class="num ${w.size ? '' : 'empty'}">${esc(w.size || '—')}</b></div>
     </div>
+    ${w.color || w.note || w.priority === 2 || w.hidden ? `<div class="label" style="margin-top:2px;box-shadow:none">${w.priority === 2 ? '<div class="z1 span3">ОЧЕНЬ ХОЧУ</div>' : ''}${w.color ? `<div class="z1 span3">ЦВЕТ: ${esc(w.color)}</div>` : ''}${w.note ? `<div class="z1 span3">ЗАМЕТКА ДЛЯ ДАРИТЕЛЯ:<br>${esc(w.note)}</div>` : ''}${w.hidden ? '<div class="z1 span3">СКРЫТО ОТ ДРУЗЕЙ</div>' : ''}</div>` : ''}
     ${w.title && w.title !== n.name ? `<div class="orig">Как в магазине: ${esc(w.title)}</div>` : ''}
+    <div class="acts"><button class="btn ghost" onclick="openWishEdit(${w.id})">Изменить: размер, заметка, «очень хочу»</button></div>
     <div class="acts">${w.url ? `<a class="btn ghost" href="${esc(w.url)}" target="_blank" rel="noopener">${isTg(w.url) ? 'Открыть пост в Telegram' : 'Открыть в магазине'}</a>` : ''}</div>
     <div class="acts"><button class="btn" onclick="openGotForm(${w.id})">Получил — в гардероб</button></div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delWish(${w.id}))">Удалить из вишлиста</button></div>`);
@@ -735,6 +741,48 @@ async function saveGot() {
     renderAll(); go('wardrobe'); openItem(item.id); toast('Вещь в гардеробе');
   } catch (e) { if (e.message !== 'auth') { $('fMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('fMsg').className = 'msg err'; } }
 }
+// ── Правка желания: размер для дарителя с подсказкой, цвет, цена, «насколько хочу», заметка, скрыть от друзей ──
+const PRIO = [[2, 'Очень'], [1, 'Хочу'], [0, 'Можно потом']];
+let WE = null;
+async function openWishEdit(id) {
+  const w = WISH.find(x => x.id === id); if (!w) return;
+  WE = { id, priority: w.priority ?? 1, hidden: !!w.hidden };
+  const n = normTitle(w.title, w.shop), brand = wishBrand(w);
+  openSheet('Изменить желание', `
+    <div class="sub">${esc([brand, n.name].filter(Boolean).join(' · '))}</div>
+    <form class="form" onsubmit="saveWishEdit(event)" style="grid-template-columns:1fr 1fr">
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Размер для дарителя</span><input id="weSize" value="${esc(w.size || '')}" placeholder="например, 43 или M" autocomplete="off"></label>
+      <div id="weHint" style="grid-column:1/-1;padding:0 10px;display:none"></div>
+      <label class="fld"><span class="cap">Цвет</span><input id="weColor" value="${esc(w.color || '')}" placeholder="серый" autocomplete="off"></label>
+      <label class="fld"><span class="cap">Цена</span><input id="wePrice" value="${esc(w.price || '')}" placeholder="24 990 ₽" autocomplete="off"></label>
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Название</span><input id="weTitle" value="${esc(w.title || '')}" autocomplete="off"></label>
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Бренд</span><input id="weBrand" value="${esc(w.brand || brand || '')}" autocomplete="off"></label>
+      <div style="grid-column:1/-1;padding:7px 10px 10px"><span class="cap" style="margin-bottom:6px">Насколько хочу</span><div class="seg" id="wePrio">${PRIO.map(([v, t]) => `<button type="button" aria-pressed="${WE.priority === v}" onclick="WE.priority=${v};document.querySelectorAll('#wePrio button').forEach(b=>b.setAttribute('aria-pressed','false'));this.setAttribute('aria-pressed','true')">${t}</button>`).join('')}</div></div>
+      <label class="fld" style="grid-column:1/-1"><span class="cap">Заметка для дарителя</span><textarea id="weNote" rows="3" placeholder="например: ношу 38, но эта модель маломерит — берите 38,5">${esc(w.note || '')}</textarea></label>
+      <button type="button" class="chk span3" style="grid-column:1/-1" role="checkbox" id="weHid" aria-checked="${WE.hidden}" onclick="WE.hidden=!WE.hidden;this.setAttribute('aria-checked',WE.hidden)"><i></i><span>Скрыть от друзей<small>Вещь останется только у тебя</small></span></button>
+      <button class="btn" type="submit" style="grid-column:1/-1;padding:13px">Сохранить</button>
+    </form>
+    <div class="msg" id="weMsg"></div>`);
+  wishSizeHint(w).then(h => { const el = $('weHint'); if (el && h.length) el.style.display = 'block', el.innerHTML = `<div class="msg" style="margin-top:8px">Подсказка — нажми, чтобы подставить:</div><div class="sysrow" style="margin:6px 0 10px">${h.map(x => `<button type="button" class="num" onclick="$('weSize').value='${esc(x.v)}'"><i>${esc(x.t)}</i>${esc(x.v)}</button>`).join('')}</div>`; });
+}
+// Подсказка размера: размер из паспорта по категории вещи и размеры этого бренда из гардероба
+async function wishSizeHint(w) {
+  const out = [], brand = (wishBrand(w) || '').toLowerCase();
+  let zone = null; try { zone = (await api('/items/guess-zone', { method: 'POST', body: { title: w.title } })).zone; } catch (_) {}
+  const c = zone && catOfZone(zone);
+  if (c && val(c)) out.push({ t: 'Паспорт · ' + c.title.toLowerCase(), v: val(c) });
+  ITEMS.filter(i => brand && (brandOf(i) || '').toLowerCase() === brand && i.size && (!zone || i.zone === zone)).slice(0, 3)
+    .forEach(i => out.push({ t: (brandOf(i) || '') + (i.fit ? ' · ' + fitName(i.fit).toLowerCase() : ''), v: i.size }));
+  return out;
+}
+async function saveWishEdit(e) {
+  e.preventDefault();
+  const body = { size: $('weSize').value, color: $('weColor').value, price: $('wePrice').value, title: $('weTitle').value, brand: $('weBrand').value, note: $('weNote').value, priority: WE.priority, hidden: WE.hidden };
+  if (!body.title.trim()) { $('weMsg').textContent = 'Название не может быть пустым'; $('weMsg').className = 'msg err'; return; }
+  try { const saved = await api('/wishlist/' + WE.id, { method: 'PATCH', body }); WISH = WISH.map(x => x.id === WE.id ? saved : x); renderAll(); openWish(WE.id); toast('Сохранено'); }
+  catch (er) { if (er.message !== 'auth') { $('weMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('weMsg').className = 'msg err'; } }
+}
+
 function openWishForm() {
   F = { image: null };
   openSheet('Добавить в вишлист', `
@@ -789,7 +837,8 @@ let SEC = null;
 function renderFriends() {
   const url = shareUrl();
   if (!SEC) SEC = { sizes: true, wishlist: true, items: true, ...(SHARE && SHARE.sections ? SHARE.sections : {}) };
-  const chk = (k, t, s) => `<button class="chk span3" role="checkbox" aria-checked="${SEC[k] !== false}" onclick="SEC.${k}=!(SEC.${k}!==false);renderFriends()"><i></i><span>${t}<small>${s}</small></span></button>`;
+  const on = (k, def) => def ? SEC[k] !== false : SEC[k] === true;
+  const chk = (k, t, s, def = true) => `<button class="chk span3" role="checkbox" aria-checked="${on(k, def)}" onclick="SEC.${k}=${on(k, def) ? 'false' : 'true'};renderFriends();saveSec()"><i></i><span>${t}<small>${s}</small></span></button>`;
   $('v-friends').innerHTML = `
   <div class="top">
     <div class="lt"><h1>Друзья</h1>${url ? `<a class="tbtn" href="${esc(url)}" target="_blank" rel="noopener">Как видят</a>` : ''}</div>
@@ -804,19 +853,31 @@ function renderFriends() {
     <div class="label" style="grid-template-columns:1fr;box-shadow:none">
       ${chk('sizes', 'Размеры', 'Паспорт со всеми размерами')}
       ${chk('items', 'Размеры по брендам', 'Бренд и размер из твоих вещей, без фото и заметок')}
-      ${chk('wishlist', 'Вишлист', 'Что ты хочешь получить, без полученного')}
+      ${chk('wishlist', 'Вишлист', 'Что ты хочешь получить, без полученного и скрытого')}
+      ${chk('height', 'Рост', 'Помогает с длиной брюк, платьев и пальто')}
+      ${chk('weight', 'Вес', 'По умолчанию скрыт', false)}
+      ${chk('body', 'Параметры фигуры', 'Грудь, талия, бёдра. По умолчанию скрыты', false)}
     </div></div>
     <div class="acts">
       ${url ? `<button class="btn" id="fSend" onclick="sendLink()">Отправить</button><button class="btn ghost" onclick="copy(shareUrl())">Скопировать</button>` : `<button class="btn wide" id="fSend" onclick="makeLink()">Создать ссылку</button>`}
     </div>
-    ${url ? `<div class="acts"><button class="btn ghost" onclick="makeLink()">Применить настройки</button></div>
-      <div class="msg">При изменении настроек ссылка обновится, старая перестанет работать</div>
-      <div class="acts"><button class="btn ghost" onclick="confirmDel(this,revokeLink)">Отключить ссылку</button></div>` : ''}
+    ${url ? `<div class="msg" id="secMsg">Галочки сохраняются сразу. Ссылка, которую ты уже отправил, продолжает работать</div>
+      <div class="acts"><button class="btn ghost" onclick="confirmDel(this,makeLink,'Нажми ещё раз: старая ссылка перестанет работать')">Сделать новую ссылку</button><button class="btn ghost" onclick="confirmDel(this,revokeLink)">Отключить ссылку</button></div>` : ''}
   </div>`;
 }
+const secBody = () => ({ sizes: SEC.sizes !== false, wishlist: SEC.wishlist !== false, items: SEC.items !== false, height: SEC.height !== false, weight: SEC.weight === true, body: SEC.body === true, excluded_size_keys: [], excluded_wishlist_ids: [] });
 async function makeLink() {
-  try { SHARE = await api('/share', { method: 'POST', body: { sections: { sizes: SEC.sizes !== false, wishlist: SEC.wishlist !== false, items: SEC.items !== false, excluded_size_keys: [], excluded_wishlist_ids: [] } } }); renderAll(); toast('Ссылка готова'); }
+  try { SHARE = await api('/share', { method: 'POST', body: { sections: secBody() } }); renderAll(); toast('Ссылка готова'); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
+let _secT = null;
+function saveSec() {
+  if (!SHARE) return;
+  clearTimeout(_secT);
+  _secT = setTimeout(async () => {
+    try { SHARE = await api('/share', { method: 'PATCH', body: { sections: secBody() } }); toast('Сохранено'); }
+    catch (e) { if (e.message !== 'auth') toast('Не сохранилось. Попробуй ещё раз'); }
+  }, 400);
 }
 async function revokeLink() {
   try { await api('/share/revoke', { method: 'POST' }); SHARE = null; renderAll(); toast('Ссылка отключена'); }
@@ -839,6 +900,14 @@ function activityHtml() {
     out += `<div class="ev"><time class="num">${new Date(e.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</time><em>${ACT_TAG[e.kind] || 'Событие'}</em><span>${esc(e.text)}</span></div>`;
   }
   return `<div class="act">${out}</div>`;
+}
+// ── Путь тестировщиков (только для admin) ──
+let TESTERS = null;
+async function loadTesters() { try { TESTERS = await api('/admin/activity?limit=150'); } catch (_) { TESTERS = []; } if (CUR === 'profile') renderProfile(); }
+function testersHtml() {
+  if (!TESTERS) return '';
+  if (!TESTERS.length) return '<div class="note">Пока пусто.</div>';
+  return `<div class="act">${TESTERS.map(e => `<div class="ev"><time class="num">${new Date(e.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time><em>${esc(e.username)}</em><span>${esc(e.text)}</span></div>`).join('')}</div>`;
 }
 let GEN = null;
 function renderProfile() {
@@ -879,6 +948,8 @@ function renderProfile() {
     <div class="sec"><h2>Последние действия</h2><button onclick="loadActivity(ACT_N + 30)">${ACT && ACT.length >= ACT_N ? 'Ещё' : ''}</button></div>
     <div class="msg" style="margin-top:0">Что происходило в аккаунте: размеры, вещи, вишлист, ссылка для друзей</div>
     ${activityHtml()}
+    ${user && user.username === 'admin' ? `<div class="sec"><h2>Тестировщики</h2><button onclick="loadTesters()">${TESTERS ? 'Обновить' : 'Показать'}</button></div>
+    <div class="msg" style="margin-top:0">Что делали другие пользователи, видно только админу</div>${testersHtml()}` : ''}
 
     <div class="sec"><h2>Ещё</h2></div>
     <div class="acts"><button class="btn ghost" onclick="startTour()">Пройти обучение ещё раз</button></div>

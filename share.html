@@ -69,6 +69,25 @@ a{color:inherit}
 .row .pr b{font:900 15px/1.15 var(--disp);white-space:nowrap}
 .row .pr span{font:500 10px var(--mono);color:var(--ink3);white-space:nowrap;margin-top:2px}
 .row .pr .none{color:var(--ink3)}
+.wi{display:grid;gap:2px;background:var(--ink)}
+.gb{background:var(--lab);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;min-height:48px}
+.gb .nt{font:500 11px/1.45 var(--mono);color:var(--ink);min-width:0}
+.gb .nt i{font-style:normal;font-weight:700}
+.gb button{flex:none;background:var(--ink);color:#fff;border:0;font:700 11px var(--mono);text-transform:uppercase;padding:0 14px;min-height:40px;cursor:pointer}
+.gb button.ghost{background:var(--lab);color:var(--ink);border:2px solid var(--ink)}
+.gb .taken{flex:none;font:700 10.5px var(--mono);text-transform:uppercase;border:2px dashed var(--ink3);color:var(--ink2);padding:8px 10px}
+.wi.claimed .row .tt,.wi.claimed .row .bd,.wi.claimed .row .pr b,.wi.claimed .row .mt{color:var(--ink3)}
+.wi.claimed .row .th img{opacity:.45}
+.badge{display:inline-block;background:#ffd400;color:var(--ink);font:700 9px var(--mono);padding:2px 5px;margin-right:6px;vertical-align:1px}
+.own{margin-top:16px;background:#fff6c2;border:2px solid var(--ink);padding:10px 12px;font:500 11px/1.5 var(--mono)}
+.dlg{position:fixed;inset:0;background:rgba(13,13,13,.45);display:flex;align-items:flex-end;justify-content:center;z-index:9}
+.dlg>div{background:var(--bg);border-top:2px solid var(--ink);width:100%;max-width:520px;padding:16px 16px calc(24px + var(--safe-b));display:grid;gap:12px}
+.dlg h3{margin:0;font:900 22px var(--disp);text-transform:uppercase}
+.dlg p{margin:0;font:500 11px/1.5 var(--mono);color:var(--ink2)}
+.dlg label{display:grid;gap:6px;font:700 10px var(--mono)}
+.dlg input{font:600 16px var(--disp);padding:12px;border:2px solid var(--ink);background:var(--lab);border-radius:0}
+.dlg .go{background:var(--ink);color:#fff;border:0;font:800 14px var(--disp);text-transform:uppercase;min-height:52px}
+.dlg .no{background:none;border:0;font:700 12px var(--mono);min-height:44px;text-decoration:underline}
 .foot{margin-top:30px;border:2px dashed var(--line);background:var(--lab);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2)}
 .foot a{display:inline-block;margin-top:10px;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:9px 12px;text-decoration:none}
 .state{padding:60px 20px;text-align:center;font:500 13px/1.6 var(--mono);color:var(--ink2)}
@@ -102,6 +121,7 @@ function state(title, sub) {
 }
 
 function render(d) {
+  window._owner = !!d.is_owner;
   const S = d.sizes || {};
   const first = (keys) => { for (const k of keys) { const v = sval(S[k]); if (v) return v; } return ''; };
   const name = [S.profile_name, S.profile_lastname].filter(Boolean).join(' ') || d.owner || 'Владелец';
@@ -132,7 +152,8 @@ function render(d) {
 
   if (d.wishlist && d.wishlist.length) {
     html += `<div class="sec"><h2>Вишлист</h2><span>${d.wishlist.length}</span></div>
-      <div class="hint">Нажми на вещь, чтобы открыть её в магазине</div>
+      <div class="hint">${d.is_owner ? 'Нажми на вещь, чтобы открыть её в магазине' : 'Нажми на вещь, чтобы открыть её в магазине. Выбрал подарок — отметь «Я подарю»: другие гости увидят, что вещь занята, а именинник не узнает'}</div>
+      ${d.is_owner ? '<div class="own">Это твоя страница — так её видят друзья. Кто и что дарит, тебе не показываем, чтобы сохранить сюрприз.</div>' : ''}
       <div class="rows" id="wl">${wishRows(d.wishlist)}</div>`;
   }
   html += `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/">Создать свой паспорт</a></div></div>`;
@@ -144,13 +165,22 @@ function wishRows(list) {
     const n = normTitle(w.title, w.shop), brand = w.brand || n.brand || '';
     const href = safeUrl(w.url), src = safeUrl(w.image);
     const isT = isTg(w.url);
-    const meta = [isT ? 'Telegram' : (w.shop || '').replace(/^www\./, ''), w.size && 'размер ' + w.size].filter(Boolean).join(' · ');
+    const meta = [w.size && 'размер ' + w.size, w.color, isT ? 'Telegram' : (w.shop || '').replace(/^www\./, '')].filter(Boolean).join(' · ');
     const im = src ? `<img referrerpolicy="no-referrer" loading="lazy" alt="" src="${API}/img?w=400&u=${encodeURIComponent(src)}" data-o="${esc(src)}" onerror="if(!this.dataset.d){this.dataset.d=1;this.src=this.dataset.o;return}this.replaceWith(Object.assign(document.createElement('span'),{className:'ini',textContent:'${esc((brand || n.name || '?')[0])}'}))">` : `<span class="ini">${esc((brand || n.name || '?')[0])}</span>`;
     const tag = href ? 'a' : 'div';
-    return `<${tag} class="row" ${href ? `href="${esc(href)}" target="_blank" rel="noopener noreferrer"` : ''}>
+    const row = `<${tag} class="row" ${href ? `href="${esc(href)}" target="_blank" rel="noopener noreferrer"` : ''}>
       <div class="th">${im}</div>
-      <div class="tx">${brand ? `<span class="bd">${esc(brand)}</span>` : ''}<span class="tt">${esc(n.name)}</span><span class="mt">${esc(meta)}</span></div>
+      <div class="tx">${brand ? `<span class="bd">${w.priority === 2 ? '<span class="badge">ОЧЕНЬ ХОЧЕТ</span>' : ''}${esc(brand)}</span>` : (w.priority === 2 ? '<span class="bd"><span class="badge">ОЧЕНЬ ХОЧЕТ</span></span>' : '')}<span class="tt">${esc(n.name)}</span><span class="mt">${esc(meta)}</span></div>
       <div class="pr">${priceHtml(w)}</div></${tag}>`;
+    const note = w.note ? `<span class="nt"><i>Заметка:</i> ${esc(w.note)}</span>` : '<span class="nt"></span>';
+    let act = '';
+    if (!window._owner) {
+      if (w.claimed && w.claim_mine) act = `<button class="ghost" onclick="unclaim(${w.id})">Вы дарите · отменить</button>`;
+      else if (w.claimed) act = `<span class="taken">Уже дарит${w.claim_name ? ' ' + esc(w.claim_name) : ' кто-то'}</span>`;
+      else act = `<button onclick="askClaim(${w.id})">Я подарю</button>`;
+    }
+    const bar = (w.note || act) ? `<div class="gb">${note}${act}</div>` : '';
+    return `<div class="wi ${w.claimed && !w.claim_mine ? 'claimed' : ''}">${row}${bar}</div>`;
   }).join('');
 }
 
@@ -158,13 +188,61 @@ async function init() {
   const token = location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
   if (!token) return state('Ссылка неполная', 'В адресе нет кода. Попроси прислать ссылку ещё раз.');
   try {
-    const r = await fetch(API + '/share/' + encodeURIComponent(token));
+    window._token = token;
+    const r = await fetch(API + '/share/' + encodeURIComponent(token), { headers: shareHeaders() });
     if (r.status === 404) return state('Ссылка не работает', 'Её отключили или пересоздали. Попроси прислать новую.');
     if (r.status === 410) return state('Срок ссылки истёк', 'Попроси прислать новую.');
     if (!r.ok) return state('Не удалось открыть', 'Попробуй обновить страницу через минуту.');
     render(await r.json());
     fetch(API + '/rates').then(x => x.ok ? x.json() : null).then(x => { if (x) { RATES = x; const wl = $('wl'); if (wl) wl.innerHTML = wishRows(window._wl); } }).catch(() => {});
   } catch (_) { state('Нет связи', 'Проверь интернет и обнови страницу.'); }
+}
+// Ключ гостя хранится на телефоне: по нему можно снять свою отметку «Я подарю»
+function guestKey() {
+  let k = null; try { k = localStorage.getItem('sb_guest_key'); } catch (_) {}
+  if (!k) { const a = new Uint8Array(18); crypto.getRandomValues(a); k = Array.from(a, b => b.toString(16).padStart(2, '0')).join(''); try { localStorage.setItem('sb_guest_key', k); } catch (_) {} }
+  return k;
+}
+function shareHeaders() {
+  const h = { 'X-Guest-Key': guestKey() };
+  try { const t = localStorage.getItem('sb_token'); if (t) h['Authorization'] = 'Bearer ' + t; } catch (_) {}
+  return h;
+}
+async function reload() {
+  const r = await fetch(API + '/share/' + encodeURIComponent(window._token), { headers: shareHeaders() });
+  if (r.ok) { const d = await r.json(); window._wl = d.wishlist || []; const wl = $('wl'); if (wl) wl.innerHTML = wishRows(window._wl); }
+}
+function askClaim(id) {
+  const w = (window._wl || []).find(x => x.id === id); if (!w) return;
+  let name = ''; try { name = localStorage.getItem('sb_guest_name') || ''; } catch (_) {}
+  const n = normTitle(w.title, w.shop);
+  const box = document.createElement('div'); box.className = 'dlg';
+  box.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="dlgT"><h3 id="dlgT">Я подарю: ${esc(n.name)}</h3>
+    ${w.size ? `<p>Размер: <b>${esc(w.size)}</b>${w.color ? ' · цвет: ' + esc(w.color) : ''}</p>` : ''}
+    <label>КАК ВАС ЗОВУТ · НЕОБЯЗАТЕЛЬНО<input id="dlgName" maxlength="40" value="${esc(name)}" placeholder="Например, Мария" autocomplete="given-name"></label>
+    <p>Другие гости увидят, что вещь уже дарят, и ваше имя. Владелец списка не узнает. Отменить можно с этого телефона.</p>
+    <p id="dlgErr" style="color:#b42318"></p>
+    <button class="go" id="dlgGo">Да, я подарю</button><button class="no" id="dlgNo">Отмена</button></div>`;
+  document.body.appendChild(box);
+  const close = () => box.remove();
+  box.addEventListener('click', e => { if (e.target === box) close(); });
+  $('dlgNo').onclick = close;
+  $('dlgGo').onclick = async () => {
+    const nm = $('dlgName').value.trim(); try { localStorage.setItem('sb_guest_name', nm); } catch (_) {}
+    $('dlgGo').disabled = true;
+    try {
+      const r = await fetch(API + '/share/' + encodeURIComponent(window._token) + '/claim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, name: nm, key: guestKey() }) });
+      if (r.ok) { close(); await reload(); return; }
+      const j = await r.json().catch(() => ({}));
+      $('dlgErr').textContent = j.error || 'Не получилось. Попробуйте ещё раз'; $('dlgGo').disabled = false;
+      if (r.status === 409) { await reload(); }
+    } catch (_) { $('dlgErr').textContent = 'Нет связи. Попробуйте ещё раз'; $('dlgGo').disabled = false; }
+  };
+  setTimeout(() => $('dlgName').focus(), 50);
+}
+async function unclaim(id) {
+  try { await fetch(API + '/share/' + encodeURIComponent(window._token) + '/unclaim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, key: guestKey() }) }); } catch (_) {}
+  await reload();
 }
 init();
 </script>
