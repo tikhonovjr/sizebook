@@ -1946,6 +1946,9 @@ function refineBySite(r, finalUrl) {
       const dates = m[5] ? (m[3] === m[6] ? `${+m[2]}–${+m[5]} ${MONTHS_RU[+m[3] - 1]}` : `${d(m[2], m[3])} – ${d(m[5], m[6])}`) : d(m[2], m[3]);
       r.title = `Авиабилет ${city(m[1])} → ${city(m[4])}${m[5] ? ' и обратно' : ''}, ${dates}`;
       r.brand = null;
+      // В ссылке «Поделиться» из приложения Авиасейлс есть цена найденного билета
+      const ep = u.searchParams.get('expected_price');
+      if (ep && /^\d+$/.test(ep)) r.price = `${ep} ${(u.searchParams.get('expected_price_currency') || 'rub').toUpperCase()}`;
     }
   }
   // Авто.ру: /cars/new/group/audi/q7/... или /cars/used/sale/audi/q7/... → «Audi Q7»
@@ -2288,7 +2291,7 @@ async function reparseOnce(key, sinceDays) {
     console.log(`[maint] ${key}: обновлено записей ${n} из ${r.rows.length}`);
   } catch (e) { console.log('[maint] reparse', e.message); }
 }
-setTimeout(() => reparseOnce('reparse_20261014', 3), 20 * 1000);
+setTimeout(() => reparseOnce('reparse_20261014b', 2), 20 * 1000);
 
 
 
