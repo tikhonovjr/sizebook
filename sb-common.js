@@ -2,7 +2,7 @@
    Цены в валюте оригинала с пересчётом в рубли, бренд и короткое русское название товара. */
 // ── Цены: валюта оригинала + рубли по курсу ЦБ ──
 let RATES = null;
-const CUR_RE = [[/byn|бел\.?\s?руб/i, 'BYN'], [/₽|руб|\brub\b|(?:^|\s|\d)р\.?(?=\s|$)/i, 'RUB'], [/us\$|\$|\busd\b/i, 'USD'], [/€|\beur\b|евро/i, 'EUR'], [/£|\bgbp\b/i, 'GBP'], [/₸|\bkzt\b|тенге|тг\.?$/i, 'KZT'], [/\bcny\b|юан|\brmb\b/i, 'CNY'], [/¥|\bjpy\b|иен/i, 'JPY'], [/₺|\btry\b|лир/i, 'TRY'], [/\baed\b|дирх/i, 'AED'], [/\bchf\b/i, 'CHF'], [/₩|\bkrw\b/i, 'KRW'], [/₴|\buah\b|грн/i, 'UAH'], [/\bamd\b|драм|֏/i, 'AMD'], [/\bgel\b|лари|₾/i, 'GEL']];
+const CUR_RE = [[/byn|бел\.?\s?руб/i, 'BYN'], [/₽|руб|\bru[br]\b|(?:^|\s|\d)р\.?(?=\s|$)/i, 'RUB'], [/us\$|\$|\busd\b/i, 'USD'], [/€|\beur\b|евро/i, 'EUR'], [/£|\bgbp\b/i, 'GBP'], [/₸|\bkzt\b|тенге|тг\.?$/i, 'KZT'], [/\bcny\b|юан|\brmb\b/i, 'CNY'], [/¥|\bjpy\b|иен/i, 'JPY'], [/₺|\btry\b|лир/i, 'TRY'], [/\baed\b|дирх/i, 'AED'], [/\bchf\b/i, 'CHF'], [/₩|\bkrw\b/i, 'KRW'], [/₴|\buah\b|грн/i, 'UAH'], [/\bamd\b|драм|֏/i, 'AMD'], [/\bgel\b|лари|₾/i, 'GEL']];
 const CUR_SYM = { RUB: ['', ' ₽'], USD: ['$', ''], EUR: ['€', ''], GBP: ['£', ''], JPY: ['¥', ''], CNY: ['', ' ¥'], KZT: ['', ' ₸'], TRY: ['', ' ₺'], BYN: ['', ' BYN'], UAH: ['', ' ₴'], KRW: ['₩', ''], AED: ['', ' AED'], CHF: ['', ' CHF'], AMD: ['', ' ֏'], GEL: ['', ' ₾'] };
 function parseAmount(t) {
   const m = String(t).replace(/ | /g, ' ').match(/\d[\d\s.,']*/); if (!m) return NaN;
@@ -21,13 +21,21 @@ function parsePrice(p, shop) {
 }
 const group = (n, dec) => { const [i, f] = n.toFixed(dec).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (f ? ',' + f : ''); };
 function money(n, cur) { const [a, z] = CUR_SYM[cur] || ['', ' ' + cur]; const dec = cur === 'RUB' || cur === 'JPY' || cur === 'KRW' || cur === 'KZT' || cur === 'AMD' ? 0 : (Math.round(n) === n ? 0 : 2); return a + group(n, dec) + z; }
+// Короткая запись больших сумм для узкой колонки: 17 373 048 ₽ → 17,4 млн ₽
+function moneyShort(n, cur) {
+  if (n < 1e6) return money(n, cur);
+  const [a, z] = CUR_SYM[cur] || ['', ' ' + cur];
+  const v = n >= 1e9 ? [n / 1e9, ' млрд'] : [n / 1e6, ' млн'];
+  const x = v[0] >= 100 ? Math.round(v[0]) : Math.round(v[0] * 10) / 10;
+  return a + String(x).replace('.', ',') + v[1] + (z || '');
+}
 function priceHtml(w) {
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const p = parsePrice(w.price, w.shop);
-  if (!p) return w.price ? `<b>${esc(String(w.price).slice(0, 14))}</b>` : '<b class="none">—</b>';
+  if (!p) return w.price ? `<b>${esc(String(w.price).slice(0, 14))}</b>` : (w.url && w.parse_status !== 'pending' ? '<span>цена<br>на сайте</span>' : '<b class="none">—</b>');
   let rub = '';
-  if (p.cur !== 'RUB' && RATES && RATES.rub[p.cur]) rub = `<span class="num">≈ ${money(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}</span>`;
-  return `<b class="num">${money(p.n, p.cur)}</b>${rub}`;
+  if (p.cur !== 'RUB' && RATES && RATES.rub[p.cur]) rub = `<span class="num">≈ ${moneyShort(Math.round(p.n * RATES.rub[p.cur] / 10) * 10, 'RUB')}</span>`;
+  return `<b class="num">${moneyShort(p.n, p.cur)}</b>${rub}`;
 }
 
 // ── Названия: бренд латиницей отдельно, остальное по-русски и коротко ──

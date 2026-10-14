@@ -1488,7 +1488,7 @@ function sdAllowed() {
   if (sdUsage.n >= SD_DAILY_LIMIT) return false;
   sdUsage.n++; return true;
 }
-const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|not found|404|403|доступ ограничен|подтвердите|проверка|страница не найдена|сайт |amazon\.com$|uniqlo$|farfetch|net-a-porter|puma - официальный|yandex$)/i;
+const BLOCK_TITLE_RE = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|not found|404|403|доступ ограничен|подтвердите|проверка|пожалуйста, пройдите|вы не робот|captcha|капча|страница не найдена|сайт |amazon\.com$|uniqlo$|farfetch|net-a-porter|puma - официальный|yandex$)/i;
 
 async function parseViaScrapedo(url, { geo = null } = {}) {
   if (!process.env.SCRAPEDO_TOKEN) return null;
@@ -1559,8 +1559,10 @@ async function fetchParse(url, ua) {
       cur = new URL(loc, cur).toString();
     }
     if (!r || (r.status >= 300 && r.status < 400)) return null;
-    if (!r.ok && r.status >= 500) return null;
-    const p = parseProductFromHtml(await r.text(), url);
+    // 401/403/429/439 и т.п. — это страницы антибота, а не товар: не даём им перебить нормальный ответ
+    if (!r.ok) return null;
+    const p = parseProductFromHtml(await r.text(), cur);
+    p.final = cur;
     if (p.title && BLOCK_TITLE_RE.test(p.title.trim())) p.title = null;
     return p;
   } catch (_) { return null; }
@@ -1789,15 +1791,46 @@ function parseProductFromHtml(html, url) {
   if (!title) title = $('title').text().trim().split('|')[0].split('-')[0].trim() || null;
   if (title?.length > 120) title = title.slice(0, 120).trim();
 
+  // 5b. Фото, если нет og:image и JSON-LD: галерея Tilda и обычные галереи товара (data-src у слайдов)
+  if (!image) {
+    try {
+      const raw = $('[data-field-imgs-value]').first().attr('data-field-imgs-value');
+      const arr = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(arr) && arr[0] && arr[0].li_img) image = arr[0].li_img;
+    } catch (_) {}
+  }
+  if (!image) {
+    const BAD = /logo|icon|sprite|favicon|banner|promo|placeholder|blank|pixel|avatar|\.svg|\.gif/i;
+    const GAL = /gallery|product|swiper|slider|carousel|media|photo|picture|image/i;
+    $('[data-src], [data-original], [data-zoom-image], [data-large], img[src], source[srcset]').each((_, el) => {
+      if (image) return;
+      const $el = $(el);
+      if ($el.closest('header, footer, nav').length) return;
+      const own = $el.attr('class') || '';
+      if (!GAL.test(own) && !$el.parents().toArray().slice(0, 6).some(x => GAL.test($(x).attr('class') || ''))) return;
+      const u = $el.attr('data-zoom-image') || $el.attr('data-large') || $el.attr('data-original') || $el.attr('data-src') || $el.attr('src') || String($el.attr('srcset') || '').split(/[\s,]/)[0];
+      if (!u || u.startsWith('data:') || BAD.test(u) || !/\.(jpe?g|png|webp|avif)(\?|$)/i.test(u)) return;
+      try { image = new URL(u, url).toString(); } catch (_) {}
+    });
+  }
+
   // 6. Фолбэк цены по видимому тексту DOM — на случай если HTML пришёл
   // без <head> (JSON-LD/OG недоступны), но тело страницы уже отрендерено
   // JS (актуально для Firecrawl с waitFor)
   if (!price) {
+    // Старая (зачёркнутая) цена не берётся; если на странице есть цена со скидкой — берём её
+    const OLD = /old|cross|strike|through|was|before|regular|compare|prev|initial|full-?price|base-?price/i;
+    const SALE = /sale|new|current|actual|discount|special|final|promo|offer/i;
+    const cands = [];
     $('[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]').each((_, el) => {
-      if (price) return;
-      const t = $(el).text().trim();
-      if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) price = t;
+      const $el = $(el);
+      const cls = `${$el.attr('class') || ''} ${$el.attr('data-testid') || ''} ${$el.parent().attr('class') || ''}`;
+      if (OLD.test(cls) || $el.closest('del, s, strike').length || /line-through/.test($el.attr('style') || '')) return;
+      const t = $el.text().replace(/\s+/g, ' ').trim();
+      if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) cands.push({ t, sale: SALE.test(cls) });
     });
+    const pick = cands.find(c => c.sale) || cands[0];
+    if (pick) price = pick.t;
   }
   // Отрезаем текст после цены (например "£338Import duties included" → "£338")
   if (price) {
@@ -1890,6 +1923,44 @@ async function zaraPrice(url) {
   } catch (e) { console.log('[zara]', e.message); return null; }
 }
 
+// ── Уточнение по сайту: когда страница отдаёт общий заголовок, название собираем из адреса ──
+const IATA_RU = { MOW: 'Москва', SVO: 'Москва', DME: 'Москва', VKO: 'Москва', ZIA: 'Москва', LED: 'Санкт-Петербург', HEL: 'Хельсинки', MMK: 'Мурманск',
+  AER: 'Сочи', KZN: 'Казань', SVX: 'Екатеринбург', OVB: 'Новосибирск', KGD: 'Калининград', MRV: 'Минеральные Воды', KRR: 'Краснодар', ROV: 'Ростов-на-Дону',
+  UFA: 'Уфа', KUF: 'Самара', GOJ: 'Нижний Новгород', PEE: 'Пермь', IKT: 'Иркутск', VVO: 'Владивосток', KJA: 'Красноярск', AAQ: 'Анапа', SIP: 'Симферополь',
+  GDZ: 'Геленджик', MCX: 'Махачкала', ARH: 'Архангельск', IST: 'Стамбул', AYT: 'Анталья', DXB: 'Дубай', AUH: 'Абу-Даби', TBS: 'Тбилиси', EVN: 'Ереван',
+  BUS: 'Батуми', GYD: 'Баку', ALA: 'Алматы', NQZ: 'Астана', TAS: 'Ташкент', SKD: 'Самарканд', MSQ: 'Минск', BKK: 'Бангкок', HKT: 'Пхукет', MLE: 'Мале',
+  GOI: 'Гоа', DPS: 'Бали', PEK: 'Пекин', SHA: 'Шанхай', HKG: 'Гонконг', TYO: 'Токио', SEL: 'Сеул', PAR: 'Париж', CDG: 'Париж', ROM: 'Рим', FCO: 'Рим',
+  MIL: 'Милан', BCN: 'Барселона', MAD: 'Мадрид', LON: 'Лондон', BER: 'Берлин', PRG: 'Прага', VIE: 'Вена', BUD: 'Будапешт', AMS: 'Амстердам', BEG: 'Белград',
+  RIX: 'Рига', TLL: 'Таллин', VNO: 'Вильнюс', TLV: 'Тель-Авив', NYC: 'Нью-Йорк', CAI: 'Каир', HRG: 'Хургада', SSH: 'Шарм-эш-Шейх', ATH: 'Афины', LIS: 'Лиссабон' };
+const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const GENERIC_TITLE_RE = /купить,? продать|дешёвые авиабилеты|дешевые авиабилеты|поиск билетов|^авто\.ру|^avito|^авито|^яндекс$|^ozon$|^wildberries$/i;
+function refineBySite(r, finalUrl) {
+  let u; try { u = new URL(finalUrl); } catch (_) { return r; }
+  const host = u.hostname.replace(/^(www|m)\./, '');
+  // Авиасейлс: /search/HEL2110MMK25101 → «Авиабилет Хельсинки → Мурманск, 21–25 октября»
+  if (/(^|\.)aviasales\.(ru|com)$/.test(host)) {
+    const m = u.pathname.match(/\/search\/([A-Z]{3})(\d{2})(\d{2})([A-Z]{3})(?:(\d{2})(\d{2}))?(\d)?/i);
+    if (m) {
+      const city = c => IATA_RU[c.toUpperCase()] || c.toUpperCase();
+      const d = (dd, mm) => `${+dd} ${MONTHS_RU[+mm - 1] || ''}`.trim();
+      const dates = m[5] ? (m[3] === m[6] ? `${+m[2]}–${+m[5]} ${MONTHS_RU[+m[3] - 1]}` : `${d(m[2], m[3])} – ${d(m[5], m[6])}`) : d(m[2], m[3]);
+      r.title = `Авиабилет ${city(m[1])} → ${city(m[4])}${m[5] ? ' и обратно' : ''}, ${dates}`;
+      r.brand = null;
+    }
+  }
+  // Авто.ру: /cars/new/group/audi/q7/... или /cars/used/sale/audi/q7/... → «Audi Q7»
+  if (host === 'auto.ru' && (!r.title || GENERIC_TITLE_RE.test(r.title))) {
+    const m = u.pathname.match(/\/cars\/(?:new|used|all)\/(?:group|sale)\/([a-z0-9_]+)\/([a-z0-9_]+)/i);
+    if (m) {
+      const mk = m[1].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const md = m[2].length <= 4 ? m[2].toUpperCase() : m[2].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      r.title = `${mk} ${md}`; r.brand = mk;
+    }
+  }
+  if (r.title && GENERIC_TITLE_RE.test(r.title) && !/aviasales/.test(host)) r.title = null;
+  return r;
+}
+
 function mergeParseResults(a, b) {
   if (!a && !b) return { title: null, price: null, image: null };
   if (!a) return b;
@@ -1899,6 +1970,7 @@ function mergeParseResults(a, b) {
     price: a.price || b.price || null,
     image: a.image || b.image || null,
     brand: a.brand || b.brand || null,
+    final: a.final || b.final || null,
   };
 }
 
@@ -1981,6 +2053,7 @@ function runParse(url) {
   }).then(async r => {
     if (r && r._status === 200 && !r.price && /zara\.com/i.test(url)) { const zp = await zaraPrice(url); if (zp) r.price = zp; }
     if (r && r.image && typeof r.image !== 'string') r.image = imageUrlOf(r.image);
+    if (r && r._status === 200) refineBySite(r, r.final || url);
     if (r._status === 200 && (r.title || r.price || r.image)) r.brand = cleanBrand(r.brand, url) || guessBrand(r.title, url);
     if (r._status === 200 && (r.title || r.price || r.image)) {
       // неполный результат (нет цены) держим недолго — повторная попытка может дать больше
@@ -2189,6 +2262,33 @@ async function retryWishlistEnrichment() {
   } catch (e) { console.error('[retry]', e.message); }
 }
 setTimeout(() => { retryWishlistEnrichment(); setInterval(retryWishlistEnrichment, 5 * 60 * 1000); }, 60 * 1000);
+
+// Разовый повторный разбор после исправлений парсера 14.10.2026: цена со скидкой (Peak), фото (Peak, Tilda),
+// заглушка антибота вместо названия (Спортмастер), названия Авто.ру и Авиасейлс. Делается один раз.
+async function reparseOnce(key, sinceDays) {
+  try {
+    await pool.query('CREATE TABLE IF NOT EXISTS maint_done (key TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT NOW())');
+    const done = await pool.query('SELECT 1 FROM maint_done WHERE key=$1', [key]);
+    if (done.rowCount) return;
+    const r = await pool.query(`SELECT id, user_id, url, title, price, image, shop FROM wishlist
+      WHERE url ~* '^https?://' AND url !~* '//(t\.me|telegram\.me)/' AND received_at IS NULL AND COALESCE(added_at, NOW()) > NOW() - ($1 || ' days')::interval
+      ORDER BY id DESC LIMIT 40`, [String(sinceDays)]);
+    let n = 0;
+    for (const w of r.rows) {
+      const m = await runParse(w.url);
+      if (!m || m._status !== 200) continue;
+      const badTitle = !w.title || BLOCK_TITLE_RE.test(w.title.trim()) || GENERIC_TITLE_RE.test(w.title) || /пройдите проверку/i.test(w.title) || w.title === w.shop;
+      const title = badTitle && m.title ? m.title : w.title;
+      const price = m.price || w.price, image = w.image || m.image || null;
+      if (title === w.title && price === w.price && image === w.image) continue;
+      await pool.query('UPDATE wishlist SET title=$1, price=$2, image=$3, brand=COALESCE(NULLIF(brand,\'\'),$4) WHERE id=$5', [title, price, image, m.brand || null, w.id]);
+      warmImage(image); n++;
+    }
+    await pool.query('INSERT INTO maint_done (key) VALUES ($1) ON CONFLICT DO NOTHING', [key]);
+    console.log(`[maint] ${key}: обновлено записей ${n} из ${r.rows.length}`);
+  } catch (e) { console.log('[maint] reparse', e.message); }
+}
+setTimeout(() => reparseOnce('reparse_20261014', 3), 20 * 1000);
 
 
 
