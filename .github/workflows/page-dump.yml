@@ -1,0 +1,47 @@
+name: Page dump (diagnostics)
+
+# Ручной запуск: скачивает страницы магазинов (обычный браузерный UA и UA превью мессенджера)
+# и кладёт HTML в ветку page-dumps — чтобы разбирать, где на странице цена, скидка и фото.
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Ссылки через пробел"
+        required: true
+      tag:
+        description: "Метка"
+        required: false
+        default: "run"
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          mkdir -p out/$TAG; i=0
+          for u in $URLS; do
+            i=$((i+1))
+            curl -sL -m 40 -o out/$TAG/$i.browser.html -w "$i browser %{http_code} %{size_download} %{url_effective}\n" \
+              -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+              -H "Accept-Language: ru-RU,ru;q=0.9" "$u" >> out/$TAG/index.txt || echo "$i browser fail" >> out/$TAG/index.txt
+            curl -sL -m 40 -o out/$TAG/$i.wa.html -w "$i wa %{http_code} %{size_download} %{url_effective}\n" \
+              -A "WhatsApp/2.23.20.0 A" "$u" >> out/$TAG/index.txt || echo "$i wa fail" >> out/$TAG/index.txt
+            echo "$i $u" >> out/$TAG/urls.txt
+          done
+          cat out/$TAG/index.txt
+      - name: Push
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          cd out
+          git init -q -b page-dumps && git config user.name ci && git config user.email ci@example.com
+          git remote add origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          git fetch -q origin page-dumps && git reset -q --soft origin/page-dumps || true
+          git add -A && git commit -qm "dump $TAG" && git push -q origin page-dumps
