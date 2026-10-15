@@ -9,6 +9,14 @@ on:
         description: "collect | search | models"
         required: true
         default: "collect"
+      engines:
+        description: "Для search: lens,yandex,bing"
+        required: false
+        default: "lens,yandex,bing"
+      models:
+        description: "Для models: embed,qwen или id моделей"
+        required: false
+        default: "embed,qwen"
       tag:
         description: "Метка прогона"
         required: false
@@ -40,6 +48,9 @@ jobs:
           python -m playwright install --with-deps chromium >/dev/null
           if [ "${{ github.event.inputs.step }}" = "models" ]; then pip -q install -r lab/requirements-models.txt; fi
       - name: Run
+        env:
+          ENGINES: ${{ github.event.inputs.engines }}
+          WHAT: ${{ github.event.inputs.models }}
         run: python lab/${{ github.event.inputs.step }}.py 2>&1 | tee lab/out/log_${{ github.event.inputs.step }}_${{ github.event.inputs.tag }}.txt
       - name: Push results
         if: always()

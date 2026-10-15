@@ -49,7 +49,6 @@ def main():
         summary = []
         for eng in ONLY:
             os.makedirs(os.path.join(OUT, eng), exist_ok=True)
-            page = ctx.new_page()
             for c in CASES:
                 for kind in KINDS:
                     if c.get(kind) is None:
@@ -57,6 +56,9 @@ def main():
                     qid = f"{c['id']}_{kind}"
                     url = ENGINES[eng](RAW + qid + ".jpg")
                     t = time.time()
+                    ctx = b.new_context(user_agent=UA, locale="en-US", viewport={"width": 1366, "height": 1000})
+                    ctx.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+                    page = ctx.new_page()
                     row = {"engine": eng, "case": c["id"], "kind": kind}
                     try:
                         page.goto(url, timeout=60000, wait_until="domcontentloaded")
@@ -77,9 +79,9 @@ def main():
                     json.dump(row, open(os.path.join(OUT, eng, qid + ".json"), "w"), ensure_ascii=False, indent=1)
                     print(eng, qid, row.get("captcha"), len(row.get("links", [])), row.get("error", ""), flush=True)
                     summary.append({k: row.get(k) for k in ("engine", "case", "kind", "captcha", "ms", "error")})
-                    time.sleep(3)
-            page.close()
-        json.dump(summary, open(os.path.join(OUT, "summary.json"), "w"), ensure_ascii=False, indent=1)
+                    ctx.close()
+                    time.sleep(4)
+        json.dump(summary, open(os.path.join(OUT, "summary_" + "_".join(ONLY) + ".json"), "w"), ensure_ascii=False, indent=1)
         b.close()
 
 
