@@ -404,7 +404,7 @@ function logAct(userId, kind, text, ref) {
     .catch(e => console.log('[activity]', e.message));
 }
 const SIZE_LABELS = { daily_top: 'Верх', daily_bottom: 'Низ', outer: 'Верхняя одежда', outer_jacket: 'Верхняя одежда', shoes_eu: 'Обувь', shoes_sneaker: 'Обувь',
-  hat: 'Шапка', hat_cap: 'Шапка', ring_mm: 'Кольцо', chest: 'Грудь', waist: 'Талия', hips: 'Бёдра',
+  hat: 'Шапка', hat_cap: 'Шапка', ring_mm: 'Кольцо', dress: 'Платье', sleep_size: 'Пижама', chest: 'Грудь', waist: 'Талия', hips: 'Бёдра',
   profile_name: 'Имя', profile_lastname: 'Фамилия', profile_height: 'Рост', profile_weight: 'Вес', profile_age: 'Возраст', profile_gender: 'Пол' };
 const shortTitle = t => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.slice(0, 57) + '…' : t; };
 app.get('/me/activity', authenticateToken, async (req, res) => {
@@ -800,9 +800,11 @@ const TG_ZONE_SIZES = {
   bottoms: ['XS', 'S', 'M', 'L', 'XL', 'W28', 'W30', 'W32', 'W34', 'W36'],
   shoes: ['EU 36', 'EU 37', 'EU 38', 'EU 39', 'EU 40', 'EU 41', 'EU 42', 'EU 43', 'EU 44', 'EU 45', 'EU 46'],
   hats: ['S/M', 'L/XL', '56', '57', '58', '59', 'One Size'], acc: ['One Size', 'S', 'M', 'L'],
+  dresses: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], sleep: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+  jewelry: ['One Size', '16', '16,5', '17', '17,5', '18'], bags: ['One Size'], other: ['One Size', 'S', 'M', 'L'],
 };
 function tgSizeKeyboard(wid, zone) {
-  const sizes = TG_ZONE_SIZES[zone] || TG_ZONE_SIZES.tops;
+  const sizes = TG_ZONE_SIZES[zone] || TG_ZONE_SIZES.other;
   const rows = [];
   for (let i = 0; i < sizes.length; i += 4) rows.push(sizes.slice(i, i + 4).map(v => ({ text: v, callback_data: `sz:${wid}:${v}` })));
   rows.push([{ text: 'Другой — укажу в приложении', callback_data: `sz:${wid}:` }]);
@@ -818,9 +820,14 @@ async function tgHandleCallback(cq) {
   const data = String(cq.data || '');
   let m = data.match(/^own:(\d+)$/);
   if (m) {
-    const w = (await pool.query('SELECT id, title FROM wishlist WHERE id=$1 AND user_id=$2', [m[1], userId])).rows[0];
+    const w = (await pool.query('SELECT id, title, url FROM wishlist WHERE id=$1 AND user_id=$2', [m[1], userId])).rows[0];
     if (!w) return answer('Вещь не найдена');
     await answer();
+    if (isNonItem(w.title, w.url)) {
+      await pool.query('UPDATE wishlist SET received_at=COALESCE(received_at, NOW()) WHERE id=$1 AND user_id=$2', [w.id, userId]);
+      logAct(userId, 'wish_got', 'Отмечено полученным: ' + shortTitle(w.title));
+      return tgSend(chatId, `✓ Отметил полученным: ${w.title}.\nЭто не одежда, поэтому в гардероб не кладу.`);
+    }
     return tgSend(chatId, `Какой у вас размер?\n${w.title}`, tgSizeKeyboard(w.id, guessZone(w.title)));
   }
   m = data.match(/^sz:(\d+):(.{0,20})$/);
@@ -1166,6 +1173,7 @@ function cleanItemFields(b) {
     if (out[k] && !/^https?:\/\//i.test(out[k])) out[k] = null;
   }
   if (out.fit && !ITEM_FITS.includes(out.fit)) out.fit = null;
+  if (out.zone && !ITEM_ZONES.includes(out.zone)) out.zone = 'other';
   return out;
 }
 
@@ -1248,17 +1256,35 @@ app.delete('/items/:id', authenticateToken, async (req, res) => {
 
 // Категория вещи по названию товара (для ссылки, вишлиста и бота). null — не угадали.
 const ZONE_GUESS = [
+  ['dresses', /плать|сарафан|\bdress/i],
+  ['sleep', /пижам|ночн(ая|ую|ой) сорочк|сорочка ночн|ночнушк|халат|домашний костюм|pajama|pyjama|sleepwear|nightgown|bathrobe/i],
   ['shoes', /кроссовк|кед[ыа ]|ботин|сапог|туфл|лофер|мокасин|сандал|босонож|шлепан|слипон|сникер|дерби|оксфорд|челси|угги|sneaker|trainer|\bshoes?\b|\bboots?\b|loafer|sandal|\bmules?\b/i],
-  ['hats', /шапк|кепк|бейсболк|панам|берет|шляп|\bhat\b|\bcap\b|beanie|bucket/i],
+  ['hats', /шапк|кепк|бейсболк|панам|берет|шляп|\bhat\b|\bcap\b|beanie|bucket hat/i],
   ['outer', /куртк|пуховик|пальто|плащ|парк[аи]|тренч|ветровк|бомбер|жилет|анорак|дублен|шуб|jacket|coat|parka|puffer|trench|bomber|gilet|vest\b/i],
   ['bottoms', /джинс|брюк|штан|шорт|юбк|леггин|лосин|чинос|карго|jeans|trouser|pants|shorts|skirt|legging|chino/i],
   ['tops', /футболк|рубашк|поло|лонгслив|свитшот|худи|толстовк|свитер|джемпер|кардиган|водолазк|топ\b|майк|блуз|t-shirt|tee\b|shirt|polo|hoodie|sweatshirt|sweater|jumper|cardigan|blouse|\btop\b/i],
-  ['acc', /ремень|ремн|кольц|сумк|рюкзак|шарф|перчатк|носк|очки|часы|\bbelt|\bring\b|\bbag\b|backpack|scarf|glove|\bsocks?\b|sunglass|\bwatch\b/i],
+  ['bags', /сумк|рюкзак|клатч|шоппер|портфел|косметичк|\bbag|backpack|clutch|\btote\b|crossbody/i],
+  ['jewelry', /кольц|серьг|сережк|серёжк|цепоч|подвеск|кулон|браслет|колье|ожерель|брошь|брошк|часы|ювелир|\brings?\b|earring|necklace|bracelet|pendant|\bwatch|jewel/i],
+  ['acc', /ремень|ремн|шарф|платок|палантин|снуд|перчатк|варежк|носк|очки|кошел[её]к|кошельк|портмоне|картхолдер|визитниц|галстук|бабочк|зонт|\bbelt|scarf|glove|\bsocks?\b|sunglass|glasses|wallet|cardholder|\btie\b|umbrella/i],
 ];
+// Допустимые категории вещей в гардеробе (formal_* — из старой версии)
+const ITEM_ZONES = ['tops', 'dresses', 'bottoms', 'outer', 'shoes', 'bags', 'hats', 'acc', 'jewelry', 'sleep', 'other', 'formal_shirt', 'formal_pants', 'formal_jacket'];
 function guessZone(title) {
   const t = String(title || '');
   for (const [zone, re] of ZONE_GUESS) if (re.test(t)) return zone;
   return null;
+}
+// Подарок, который не одежда (букет, билет, техника, машина): в гардероб не кладём.
+// Смотрим только если категорию одежды не угадали.
+const NON_ITEM_RE = /букет|цвет(ы|ов)\b|розы|пион|тюльпан|билет|перел[её]т|поездк|путешеств|сертификат|подписк|абонемент|автомобил|ноутбук|макбук|macbook|iphone|айфон|смартфон|телефон|планшет|ipad|наушник|airpods|колонк|playstation|xbox|nintendo|книг|lego|конструктор|игрушк|духи|парфюм|туалетная вода|eau de|свеч|посуд|чайник|кофемашин|пылесос|велосипед|самокат|телевизор|фотоаппарат|dyson|авиабилет|отель|концерт|спектакл|мастер-класс/i;
+const NON_ITEM_HOST_RE = /(^|\.)(aviasales\.ru|auto\.ru|tutu\.ru|ostrovok\.ru|afisha\.ru|kassir\.ru|ticketland\.ru|booking\.com|airbnb\.[a-z]+|sobranvsadu\.ru|flowwow\.com)$/i;
+function isNonItem(title, url) {
+  if (guessZone(title)) return false;
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^(www|m)\./, ''); } catch (_) {}
+  if (host && NON_ITEM_HOST_RE.test(host)) return true;
+  if (/avito\.ru$/.test(host) && /\/avtomobili\/|\/nedvizhimost\//.test(url)) return true;
+  return NON_ITEM_RE.test(String(title || ''));
 }
 
 // Вишлист → «Мои вещи»: создаёт вещь из записи вишлиста (и отмечает её полученной)
@@ -1268,7 +1294,7 @@ async function wishlistToItem(userId, wishlistId, extra) {
   const ex = (await pool.query('SELECT * FROM items WHERE user_id=$1 AND wishlist_id=$2 LIMIT 1', [userId, wishlistId])).rows[0];
   if (ex) return { item: ex, existed: true };
   const f = cleanItemFields(extra || {});
-  const zone = f.zone || guessZone(w.title) || 'tops';
+  const zone = f.zone || guessZone(w.title) || 'other';
   const r = await pool.query(
     `INSERT INTO items (user_id, zone, name, brand, size, note, url, image, shop, fit, source, wishlist_id, my_photo, label_photo)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
@@ -1290,7 +1316,8 @@ app.post('/wishlist/:id/to-items', authenticateToken, async (req, res) => {
 });
 
 app.post('/items/guess-zone', authenticateToken, (req, res) => {
-  res.json({ zone: guessZone(req.body && req.body.title) });
+  const b = req.body || {};
+  res.json({ zone: guessZone(b.title), non_item: isNonItem(b.title, b.url) });
 });
 
 // ── ПАРСЕР ────────────────────────────────────────────────────────────────────
@@ -2292,6 +2319,32 @@ async function reparseOnce(key, sinceDays) {
   } catch (e) { console.log('[maint] reparse', e.message); }
 }
 setTimeout(() => reparseOnce('reparse_20261014b', 2), 20 * 1000);
+// Разовая раскладка гардероба по новым категориям (платья, сумки, украшения, пижамы, аксессуары)
+// и уборка «не вещей» (букет, билет), попавших в гардероб из вишлиста. Запись вишлиста остаётся полученной.
+async function rezoneOnce(key) {
+  try {
+    await pool.query('CREATE TABLE IF NOT EXISTS maint_done (key TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT NOW())');
+    if ((await pool.query('SELECT 1 FROM maint_done WHERE key=$1', [key])).rows[0]) return;
+    const NEW = ['dresses', 'bags', 'jewelry', 'sleep', 'acc'];
+    const rows = (await pool.query("SELECT i.id, i.user_id, i.zone, i.name, i.source, COALESCE(i.url, w.url) AS url FROM items i LEFT JOIN wishlist w ON w.id=i.wishlist_id WHERE i.zone IN ('tops','acc','other')")).rows;
+    let moved = 0, removed = 0;
+    for (const it of rows) {
+      const g = guessZone(it.name);
+      if (g && g !== it.zone && NEW.includes(g)) {
+        await pool.query('UPDATE items SET zone=$1, updated_at=NOW() WHERE id=$2', [g, it.id]);
+        console.log(`[rezone] item ${it.id} user ${it.user_id}: ${it.zone} → ${g} «${String(it.name).slice(0, 60)}»`);
+        moved++;
+      } else if (!g && ['wishlist', 'tg'].includes(it.source) && isNonItem(it.name, it.url)) {
+        await pool.query('DELETE FROM items WHERE id=$1', [it.id]);
+        console.log(`[rezone] item ${it.id} user ${it.user_id}: не вещь, убрано из гардероба «${String(it.name).slice(0, 60)}»`);
+        removed++;
+      }
+    }
+    await pool.query('INSERT INTO maint_done (key) VALUES ($1) ON CONFLICT DO NOTHING', [key]);
+    console.log(`[rezone] готово: перенесено ${moved}, убрано не-вещей ${removed}`);
+  } catch (e) { console.error('[rezone]', e.message); }
+}
+setTimeout(() => rezoneOnce('rezone_20261015'), 15 * 1000);
 
 
 

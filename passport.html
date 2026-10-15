@@ -283,14 +283,22 @@ async function api(path, opt = {}) {
 
 // ── Данные ──
 const CATS = [
-  { id: 'tops',    title: 'Верх',    full: 'Футболки и рубашки', keys: ['daily_top'],                 zones: ['tops', 'formal_shirt'], kind: 'letter' },
-  { id: 'bottoms', title: 'Низ',     full: 'Джинсы и брюки',     keys: ['daily_bottom'],              zones: ['bottoms', 'formal_pants'], kind: 'letter' },
-  { id: 'outer',   title: 'Верхняя', full: 'Верхняя одежда',     keys: ['outer', 'outer_jacket'],     zones: ['outer', 'formal_jacket'], kind: 'letter' },
-  { id: 'shoes',   title: 'Обувь',   full: 'Обувь',              keys: ['shoes_eu', 'shoes_sneaker'], zones: ['shoes'], kind: 'shoe' },
-  { id: 'hats',    title: 'Шапка',   full: 'Головные уборы',     keys: ['hat', 'hat_cap'],            zones: ['hats'], kind: 'hat' },
-  { id: 'ring',    title: 'Кольцо',  full: 'Аксессуары',         keys: ['ring_mm'],                   zones: ['acc'], kind: 'ring' },
+  { id: 'tops',    title: 'Верх',    full: 'Футболки и рубашки', keys: ['daily_top'],                 zones: ['tops', 'formal_shirt'], kind: 'letter', cell: 1 },
+  { id: 'dresses', title: 'Платье',  full: 'Платья и сарафаны',  keys: ['dress'],                     zones: ['dresses'], kind: 'letter' },
+  { id: 'bottoms', title: 'Низ',     full: 'Джинсы и брюки',     keys: ['daily_bottom'],              zones: ['bottoms', 'formal_pants'], kind: 'letter', cell: 1 },
+  { id: 'outer',   title: 'Верхняя', full: 'Верхняя одежда',     keys: ['outer', 'outer_jacket'],     zones: ['outer', 'formal_jacket'], kind: 'letter', cell: 1 },
+  { id: 'shoes',   title: 'Обувь',   full: 'Обувь',              keys: ['shoes_eu', 'shoes_sneaker'], zones: ['shoes'], kind: 'shoe', cell: 1 },
+  { id: 'bags',    title: 'Сумки',   full: 'Сумки и рюкзаки',    keys: [],                            zones: ['bags'], kind: 'none' },
+  { id: 'hats',    title: 'Шапка',   full: 'Головные уборы',     keys: ['hat', 'hat_cap'],            zones: ['hats'], kind: 'hat', cell: 1 },
+  { id: 'acc',     title: 'Аксесс.', full: 'Аксессуары',         keys: [],                            zones: ['acc'], kind: 'none', hint: 'Шарфы, очки, кошельки, ремни, перчатки' },
+  { id: 'ring',    title: 'Кольцо',  full: 'Украшения и часы',   keys: ['ring_mm'],                   zones: ['jewelry'], kind: 'ring', cell: 1 },
+  { id: 'sleep',   title: 'Пижама',  full: 'Пижамы и домашнее',  keys: ['sleep_size'],                zones: ['sleep'], kind: 'letter' },
+  { id: 'other',   title: 'Другое',  full: 'Другое',             keys: [],                            zones: ['other'], kind: 'none' },
 ];
-const ZONES = [['tops', 'Верх'], ['bottoms', 'Низ'], ['outer', 'Верхняя'], ['shoes', 'Обувь'], ['hats', 'Головные'], ['acc', 'Аксессуары']];
+const CELLS = CATS.filter(c => c.cell);
+const ZONES = [['tops', 'Верх'], ['dresses', 'Платья'], ['bottoms', 'Низ'], ['outer', 'Верхняя'], ['shoes', 'Обувь'], ['bags', 'Сумки'], ['hats', 'Головные'], ['acc', 'Аксессуары'], ['jewelry', 'Украшения'], ['sleep', 'Пижамы'], ['other', 'Другое']];
+// Категории, где размер не обязателен
+const NO_SIZE = ['bags', 'acc', 'jewelry', 'hats', 'other'];
 const FITS = [['small', 'Маломерит'], ['true', 'В размер'], ['large', 'Большемерит']];
 const fitName = f => (FITS.find(x => x[0] === f) || [, ''])[1];
 let SIZES = {}, ITEMS = [], WISH = [], SHARE = null, TG = null;
@@ -385,8 +393,8 @@ function renderWardrobe() {
     ${startBanner()}
     <div class="label">
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta)}</span></div>
-      <button class="route num" onclick="openCat('shoes')"><small>ОБУВЬ EU</small>${esc(val(CATS[3]) || '—')}</button>
-      ${CATS.map(c => { const v = val(c); return `<button class="cell" onclick="openCat('${c.id}')"><span class="cap">${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
+      <button class="route num" onclick="openCat('shoes')"><small>ОБУВЬ EU</small>${esc(val(CATS.find(c => c.id === 'shoes')) || '—')}</button>
+      ${CELLS.map(c => { const v = val(c); return `<button class="cell" onclick="openCat('${c.id}')"><span class="cap">${c.title}</span><b class="num ${v ? '' : 'empty'}">${esc(v || '—')}</b></button>`; }).join('')}
       ${bodyRow()}
       <div class="qrbox">${url ? qrSvg(url) : '<div class="qrph">QR после создания ссылки</div>'}</div>
       <div class="gift span2"><b>Подарок в размер</b>${url ? 'Отсканируй, чтобы увидеть все размеры и вишлист' : 'Создай ссылку, и друзья увидят твои размеры и вишлист'}<button class="btn" onclick="sendLink()">${url ? 'Отправить ссылку' : 'Создать ссылку'}</button></div>
@@ -433,6 +441,7 @@ const EXTRA_GROUPS = [
   { id: 'shoes2', title: 'Обувь по видам', rows: [['shoes_sneaker', 'Кроссовки', '43'], ['shoes_dress', 'Туфли, ботинки', '43'], ['shoes_boot', 'Сапоги', '43'], ['shoes_sandal', 'Сандалии', '43']] },
   { id: 'outer2', title: 'Верхняя и головные', rows: [['outer_down', 'Пуховик', 'L'], ['hat_cap', 'Кепка', '58'], ['hat_winter', 'Зимняя шапка', '58']] },
   { id: 'acc2', title: 'Перчатки и аксессуары', rows: [['gloves_size', 'Перчатки', '8'], ['bracelet_cm', 'Браслет, см', '17'], ['belt_cm', 'Ремень, см', '90']] },
+  { id: 'dress2', title: 'Платья и пижамы', rows: [['dress', 'Платье', 'S', 'f'], ['sleep_size', 'Пижама', 'M']] },
   { id: 'sport', title: 'Спорт', rows: [['sport_top', 'Верх', 'L'], ['sport_bottom', 'Низ', 'L'], ['sport_shoes', 'Обувь', '43']] },
   { id: 'beach', title: 'Пляж', rows: [['beach_swim', 'Плавки, шорты', 'L'], ['beach_one', 'Купальник слитный', 'S', 'f'], ['beach_two', 'Купальник раздельный', 'S', 'f']] },
   { id: 'formal', title: 'Официальное', rows: [['formal_shirt', 'Рубашка', '39'], ['formal_pants', 'Брюки', '50'], ['formal_jacket', 'Пиджак', '50']] },
@@ -470,12 +479,12 @@ const RING_HINT = '<div class="msg">Не знаешь размер? Оберни
 function openCat(id) {
   const c = CATS.find(x => x.id === id), v = val(c), conv = convert(c, v), its = itemsOf(c);
   openSheet(c.full, `
-    <div class="sub">${v ? 'Твой размер ' + esc(v) : 'Размер ещё не указан'} · ${its.length ? its.length + ' в гардеробе' : 'вещей пока нет'}</div>
-    <form class="form" onsubmit="saveSize(event,'${c.id}')" style="grid-template-columns:1fr auto">
+    <div class="sub">${c.keys.length ? (v ? 'Твой размер ' + esc(v) : 'Размер ещё не указан') + ' · ' : (c.hint ? esc(c.hint) + ' · ' : '')}${its.length ? its.length + ' в гардеробе' : 'вещей пока нет'}</div>
+    ${c.keys.length ? `<form class="form" onsubmit="saveSize(event,'${c.id}')" style="grid-template-columns:1fr auto">
       <label class="fld"><span class="cap">Мой размер</span><input id="szIn" value="${esc(v)}" placeholder="${{ shoe: '43', ring: '17,5', hat: '58' }[c.kind] || 'M'}" autocomplete="off" enterkeyhint="done"></label>
       <button class="btn" type="submit" style="border-radius:0">Сохранить</button>
     </form>
-    <div class="msg" id="szMsg"></div>
+    <div class="msg" id="szMsg"></div>` : ''}
     ${c.kind === 'ring' && !v ? RING_HINT : ''}
     ${conv.length ? `<div class="sysrow">${conv.map(s => `<span class="num"><i>${s[0]}</i>${esc(s[1])}</span>`).join('')}</div><div class="msg">Перевод примерный, у брендов бывают отличия</div>` : ''}
     ${its.length ? `<div class="sgrid">${its.map(i => `<button onclick="openItem(${i.id})">${tile(i, true)}<div class="nm">${esc(normTitle(i.name, '', brandOf(i)).name)}</div><div class="br">${esc([brandOf(i), fitName(i.fit)].filter(Boolean).join(' · '))}</div></button>`).join('')}</div>` : ''}
@@ -571,7 +580,7 @@ function openItemForm(id = null, zone = null) {
 const formPics = () => `<div class="pics three">${picBox(F.image, 'Вещь', false, `formPhoto('image',this)`)}${picBox(F.my_photo, 'Я в ней', true, `formPhoto('my_photo',this)`)}${picBox(F.label_photo, 'Бирка', true, `formPhoto('label_photo',this)`)}</div><div class="msg">Фото бирки с размером поможет запомнить, как маломерит или большемерит этот бренд</div>`;
 async function formPhoto(field, el) { const url = await choosePhoto(el.closest('.pic')); if (url) { F[field] = url; $('fImg').innerHTML = formPics(); } }
 // подсказка и размер по умолчанию зависят от категории
-const SIZE_HINT = { tops: 'M', bottoms: '32/32', outer: 'L', shoes: '43', hats: '58', acc: '17,5', formal_shirt: '41', formal_pants: '50', formal_jacket: '50' };
+const SIZE_HINT = { tops: 'M', dresses: 'S', sleep: 'M', bottoms: '32/32', outer: 'L', shoes: '43', hats: '58', acc: 'One Size', jewelry: '17,5', bags: 'не нужен', other: 'One Size', formal_shirt: '41', formal_pants: '50', formal_jacket: '50' };
 const sizeHint = z => SIZE_HINT[z] || 'M';
 const baseFor = z => { const c = catOfZone(z); return c ? val(c) : ''; };
 const zoneChips = () => ZONES.map(z => `<button type="button" aria-pressed="${z[0] === F.zone}" onclick="pickZone('${z[0]}',this)">${z[1]}</button>`).join('');
@@ -592,7 +601,7 @@ async function parseItem() {
     if (m.image) { F.image = m.image; $('fImg').innerHTML = formPics(); }
     try { F.shop = new URL(url).hostname.replace('www.', ''); } catch (_) {}
     F.url = url;
-    if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) pickZone(g.zone, $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } catch (_) {} }
+    if (m.title) { try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: m.title, url } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) pickZone(g.zone, $('fZones').children[ZONES.findIndex(z => z[0] === g.zone)]); } catch (_) {} }
     $('fParse').className = 'msg'; $('fParse').textContent = m.title || m.image ? 'Нашёл. Проверь название и укажи размер' : 'Магазин не отдал данные, заполни вручную';
   } catch (e) { $('fParse').className = 'msg err'; $('fParse').textContent = 'Не получилось открыть ссылку, заполни вручную'; }
 }
@@ -701,19 +710,30 @@ function openWish(id) {
     ${w.title && w.title !== n.name ? `<div class="orig">Как в магазине: ${esc(w.title)}</div>` : ''}
     <div class="acts"><button class="btn ghost" onclick="openWishEdit(${w.id})">Изменить: размер, заметка, «очень хочу»</button></div>
     <div class="acts">${w.url ? `<a class="btn ghost" href="${esc(w.url)}" target="_blank" rel="noopener">${isTg(w.url) ? 'Открыть пост в Telegram' : 'Открыть в магазине'}</a>` : ''}</div>
-    <div class="acts"><button class="btn" onclick="openGotForm(${w.id})">Получил — в гардероб</button></div>
+    <div class="acts">${w.received_at ? `<button class="btn" onclick="openGotForm(${w.id}, true)">Положить в гардероб</button>` : `<button class="btn" onclick="openGotForm(${w.id})">Получил</button>`}</div>
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,()=>delWish(${w.id}))">Удалить из вишлиста</button></div>`);
 }
 // Полученная вещь: ведёт в гардероб на её профиль; если вещи ещё нет — предлагает оформить
 function openGot(id) {
   const it = ITEMS.find(x => x.wishlist_id === id);
-  if (it) { go('wardrobe'); openItem(it.id); } else openGotForm(id);
+  if (it) { go('wardrobe'); openItem(it.id); } else openWish(id);
 }
-async function openGotForm(id) {
+async function openGotForm(id, force) {
   const w = WISH.find(x => x.id === id); if (!w) return;
   const n = normTitle(w.title, w.shop);
-  F = { wid: id, zone: 'tops', fit: null, image: w.image || null, my_photo: null, label_photo: null };
-  try { const g = await api('/items/guess-zone', { method: 'POST', body: { title: w.title } }); if (g && g.zone && ZONES.some(z => z[0] === g.zone)) F.zone = g.zone; } catch (_) {}
+  F = { wid: id, zone: null, fit: null, image: w.image || null, my_photo: null, label_photo: null };
+  let g = null;
+  try { g = await api('/items/guess-zone', { method: 'POST', body: { title: w.title, url: w.url } }); } catch (_) {}
+  if (g && g.zone && ZONES.some(z => z[0] === g.zone)) F.zone = g.zone;
+  // Не одежда (букет, билет, техника): сначала спрашиваем, нужно ли вообще в гардероб
+  if (g && g.non_item && !force) {
+    openSheet('Получил подарок', `
+      <div class="sub">${esc(n.name || w.title)}</div>
+      <div class="msg">Похоже, это не одежда. Отметим полученным, а в гардероб класть не будем</div>
+      <button class="btn wide" style="margin-top:10px" onclick="gotNoItem(${id})">Отметить полученным</button>
+      <button class="btn ghost wide" style="margin-top:8px" onclick="openGotForm(${id}, true)">Это вещь, положить в гардероб</button>`);
+    return;
+  }
   openSheet('Получил вещь', `
     <div class="sub">Отметь размер и посадку, и вещь появится в гардеробе</div>
     <div id="fImg">${formPics()}</div>
@@ -727,11 +747,20 @@ async function openGotForm(id) {
     <div class="cap" style="margin-top:14px">Как сидит</div>
     <div class="seg" id="fFit" style="border:2px solid var(--ink);margin-top:6px">${FITS.map(f => `<button type="button" aria-pressed="false" onclick="F.fit=F.fit==='${f[0]}'?null:'${f[0]}';markPressed('fFit',this,F.fit)">${f[1]}</button>`).join('')}</div>
     <div class="msg" id="fMsg">Посадка поможет друзьям не ошибиться с размером этого бренда</div>
-    <button class="btn wide" style="margin-top:6px" onclick="saveGot()">Добавить в гардероб</button>`);
+    <button class="btn wide" style="margin-top:6px" onclick="saveGot()">Добавить в гардероб</button>
+    <button class="btn ghost wide" style="margin-top:8px" onclick="gotNoItem(${id})">Это не одежда, просто отметить полученным</button>`);
+}
+async function gotNoItem(id) {
+  try {
+    const r = await api('/wishlist/' + id, { method: 'PATCH', body: { received: true } });
+    WISH = WISH.map(w => w.id === id ? { ...w, received_at: (r && r.received_at) || new Date().toISOString() } : w);
+    renderAll(); closeSheet(); toast('Отмечено полученным');
+  } catch (e) { if (e.message !== 'auth') toast('Не сохранилось. Попробуй ещё раз'); }
 }
 async function saveGot() {
   const body = { zone: F.zone, name: $('fName').value.trim(), brand: $('fBrand').value.trim(), size: $('fSize').value.trim(), fit: F.fit, image: F.image, my_photo: F.my_photo, label_photo: F.label_photo };
-  if (!body.size) { $('fMsg').textContent = 'Укажи, какой размер взял'; $('fMsg').className = 'msg err'; $('fSize').focus(); return; }
+  if (!body.zone) { $('fMsg').textContent = 'Выбери категорию'; $('fMsg').className = 'msg err'; return; }
+  if (!body.size && !NO_SIZE.includes(body.zone)) { $('fMsg').textContent = 'Укажи, какой размер взял'; $('fMsg').className = 'msg err'; $('fSize').focus(); return; }
   try {
     const r = await api('/wishlist/' + F.wid + '/to-items', { method: 'POST', body });
     let item = r.item;
@@ -1062,7 +1091,7 @@ function startTour() { runGuide(TOUR, 'tour'); }
 
 // ══════════ С чего начать ══════════
 function checklist() {
-  const filled = CATS.filter(c => val(c)).length, empty = CATS.find(c => !val(c)) || CATS[0];
+  const filled = CELLS.filter(c => val(c)).length, empty = CELLS.find(c => !val(c)) || CELLS[0];
   return [
     { k: 'profile', ok: !!(SIZES.profile_gender && SIZES.profile_height), v: 'profile', sel: '#pAbout', t: 'Пол и рост', p: 'Впиши <b>рост</b> и выбери <b>пол</b>, потом нажми «Сохранить». От этого зависит перевод размеров. Если выберешь женский, появятся <b>параметры: грудь, талия, бёдра</b>.', cta: 'Понятно', act: () => $('p_profile_height') && $('p_profile_height').focus() },
     { k: 'sizes', ok: filled >= 3, v: 'wardrobe', sel: '#v-wardrobe .label', t: 'Три размера', p: `Нажми на ячейку и впиши размер. Заполнено <b>${filled} из 6</b>. Начни с обуви и верха.`, cta: 'Вписать размер', act: () => openCat(empty.id) },
