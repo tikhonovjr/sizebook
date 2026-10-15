@@ -24,13 +24,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
+        with:
+          python-version: '3.11'
       - name: Restore previous results
         run: |
           git fetch -q origin photo-test-results && git worktree add -q /tmp/prev origin/photo-test-results && cp -r /tmp/prev/. lab/out/ && rm -rf lab/out/.git || mkdir -p lab/out
       - name: Cache models
         uses: actions/cache@v4
-        with: { path: ~/.cache/huggingface, key: hf-${{ hashFiles('lab/requirements-models.txt') }} }
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ hashFiles('lab/requirements-models.txt') }}
       - name: Install
         run: |
           pip -q install requests pillow playwright beautifulsoup4
