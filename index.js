@@ -1548,6 +1548,25 @@ async function parseViaScrapedo(url, { geo = null } = {}) {
   });
 }
 
+// Scrape.do — запрос через провайдера (параметры: render, super, geo, wait).
+// Была случайно удалена при чистке 10.10 — без неё запасной путь через Scrape.do молча не работал.
+async function fetchViaScrapedo(url, o = {}) {
+  const token = process.env.SCRAPEDO_TOKEN;
+  if (!token) return { error: 'no SCRAPEDO_TOKEN' };
+  const p = new URLSearchParams({ token, url });
+  if (o.render) p.set('render', 'true');
+  if (o.super) p.set('super', 'true');
+  if (o.geo) p.set('geoCode', o.geo);
+  if (o.wait) p.set('waitUntil', 'networkidle2');
+  if (o.customWait) p.set('customWait', String(o.customWait));
+  const t0 = Date.now();
+  try {
+    const r = await fetch('https://api.scrape.do/?' + p.toString(), { signal: AbortSignal.timeout(o.timeout || 60000) });
+    const html = await r.text();
+    return { http: r.status, ms: Date.now() - t0, html, cost: r.headers.get('scrape.do-request-cost'), remaining: r.headers.get('scrape.do-remaining-credits') };
+  } catch (e) { return { error: e.message.slice(0, 120), ms: Date.now() - t0 }; }
+}
+
 // ── Стратегии по магазинам ───────────────────────────────────────────────────
 // tiers: порядок источников. direct = обычный fetch, wa = fetch под превью-ботом мессенджера, sd = Scrape.do.
 // Результаты замеров 08.10.2026 (/debug coverage probe). Неизвестный хост: direct+wa параллельно -> sd.
