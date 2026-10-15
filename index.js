@@ -2116,6 +2116,38 @@ function runParse(url) {
   return p;
 }
 
+// ── Claude API (распознавание по фото) ───────────────────────────────────────
+async function askClaude({ model, images = [], prompt, maxTokens = 600 }) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { error: 'no ANTHROPIC_API_KEY' };
+  const content = images.map(src => (/^https?:/.test(src)
+    ? { type: 'image', source: { type: 'url', url: src } }
+    : { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: src } }));
+  content.push({ type: 'text', text: prompt });
+  const t0 = Date.now();
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] }),
+      signal: AbortSignal.timeout(90000),
+    });
+    const j = await r.json();
+    if (!r.ok) return { error: (j.error && j.error.message) || ('http ' + r.status), http: r.status, ms: Date.now() - t0 };
+    return { text: (j.content || []).map(c => c.text || '').join(''), usage: j.usage, ms: Date.now() - t0 };
+  } catch (e) { return { error: e.message.slice(0, 160), ms: Date.now() - t0 }; }
+}
+
+// Лаборатория: замер распознавания из GitHub Actions (только по CI-ключу, картинки только из своего репозитория)
+app.post('/lab/vision', parseAuth, async (req, res) => {
+  if (!req.user || !req.user.ci) return res.status(403).json({ error: 'forbidden' });
+  const b = req.body || {};
+  const images = (Array.isArray(b.images) ? b.images : []).slice(0, 4).map(String);
+  if (!images.every(u => u.startsWith('https://raw.githubusercontent.com/tikhonovjr/sizebook/'))) return res.status(400).json({ error: 'images' });
+  if (!/^claude-(haiku|sonnet)-/.test(String(b.model || ''))) return res.status(400).json({ error: 'model' });
+  res.json(await askClaude({ model: b.model, images, prompt: String(b.prompt || '').slice(0, 4000) }));
+});
+
 app.post('/parse', parseAuth, async (req, res) => {
   const { url } = req.body || {};
   if (!url) return res.status(400).json({ error: 'URL обязателен' });
