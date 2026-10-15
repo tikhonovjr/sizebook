@@ -1,0 +1,154 @@
+[
+ {
+  "engine": "bing",
+  "case": "arcbeta_287648410466",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10718,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "arcbeta_820240676025",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10700,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "barbour_920030624081",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10891,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "barbour_860045125141",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10788,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "carhartt_137844869599",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10511,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "carhartt_257657941814",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10389,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "cdg_257794279069",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10875,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "cdg_336844186430",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10474,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "champion_188946671362",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10623,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "champion_266469074989",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10519,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "dm1460_158077479203",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10592,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "dm1460_307225543535",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10396,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "levis501_800790341418",
+  "kind": "main",
+  "captcha": false,
+  "ms": 11137,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "ma1_128127362250",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10705,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "ma1_287584162030",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10964,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "samba_168793244022",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10806,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "samba_307215994658",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10697,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "trucker_407281962172",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10721,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "trucker_860045790582",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10864,
+  "error": null
+ }
+]

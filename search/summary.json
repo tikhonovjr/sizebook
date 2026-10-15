@@ -1,0 +1,458 @@
+[
+ {
+  "engine": "lens",
+  "case": "arcbeta_287648410466",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9940,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "arcbeta_820240676025",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9759,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "barbour_920030624081",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9565,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "barbour_860045125141",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9499,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "carhartt_137844869599",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9316,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "carhartt_257657941814",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9332,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "cdg_257794279069",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9332,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "cdg_336844186430",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9382,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "champion_188946671362",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9332,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "champion_266469074989",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9417,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "dm1460_158077479203",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9598,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "dm1460_307225543535",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9882,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "levis501_800790341418",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9699,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "ma1_128127362250",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9249,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "ma1_287584162030",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9282,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "samba_168793244022",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9513,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "samba_307215994658",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9639,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "trucker_407281962172",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9345,
+  "error": null
+ },
+ {
+  "engine": "lens",
+  "case": "trucker_860045790582",
+  "kind": "main",
+  "captcha": true,
+  "ms": 9283,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "arcbeta_287648410466",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10779,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "arcbeta_820240676025",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10362,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "barbour_920030624081",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10184,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "barbour_860045125141",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10119,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "carhartt_137844869599",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10247,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "carhartt_257657941814",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10288,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "cdg_257794279069",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10027,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "cdg_336844186430",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10545,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "champion_188946671362",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10231,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "champion_266469074989",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10503,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "dm1460_158077479203",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10109,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "dm1460_307225543535",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10233,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "levis501_800790341418",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10283,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "ma1_128127362250",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10383,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "ma1_287584162030",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10420,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "samba_168793244022",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10052,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "samba_307215994658",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10242,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "trucker_407281962172",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10552,
+  "error": null
+ },
+ {
+  "engine": "yandex",
+  "case": "trucker_860045790582",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10540,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "arcbeta_287648410466",
+  "kind": "main",
+  "captcha": false,
+  "ms": 10464,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "arcbeta_820240676025",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9902,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "barbour_920030624081",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9372,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "barbour_860045125141",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9088,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "carhartt_137844869599",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9227,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "carhartt_257657941814",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9188,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "cdg_257794279069",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9311,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "cdg_336844186430",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9164,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "champion_188946671362",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9117,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "champion_266469074989",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9064,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "dm1460_158077479203",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9132,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "dm1460_307225543535",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9198,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "levis501_800790341418",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9216,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "ma1_128127362250",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9460,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "ma1_287584162030",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9133,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "samba_168793244022",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9185,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "samba_307215994658",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9166,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "trucker_407281962172",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9128,
+  "error": null
+ },
+ {
+  "engine": "bing",
+  "case": "trucker_860045790582",
+  "kind": "main",
+  "captcha": false,
+  "ms": 9302,
+  "error": null
+ }
+]

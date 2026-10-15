@@ -1,0 +1,101 @@
+{
+ "model": "Qwen/Qwen3-VL-4B-Instruct",
+ "load_sec": 47.6,
+ "rows": [
+  {
+   "case": "arcbeta_287648410466",
+   "sec": 65.4,
+   "answer": "{\n  \"brand\": \"Arc'teryx\",\n  \"model\": \"Beta LT\",\n  \"category\": \"jacket\",\n  \"color\": \"purple\",\n  \"tag_text\": \"ARC'TERYX\\nMEN'S/HOMMES\\nXL/TG\\nMADE IN CHINA/FABRIQUÉ EN CHINE\",\n  \"codes\": [\n    \"XL\",\n    \"TG\"\n  ],\n  \"era\": \"2020s\",\n  \"search_query\": \"Arc'teryx Beta LT jacket purple\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "arcbeta_820240676025",
+   "sec": 61.0,
+   "answer": "{\n  \"brand\": \"Arc'teryx\",\n  \"model\": null,\n  \"category\": \"jacket\",\n  \"color\": \"beige\",\n  \"tag_text\": \"ARC'TERYX\\nMEN'S/HOMMES\\nM/M\\nMADE IN VIETNAM\\nFABRIQUE AU VIETNAM\",\n  \"codes\": [],\n  \"era\": null,\n  \"search_query\": \"Arc'teryx jacket beige M/M\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "barbour_920030624081",
+   "sec": 62.3,
+   "answer": "{\n  \"brand\": \"Barbour\",\n  \"model\": \"Bedale\",\n  \"category\": \"jacket\",\n  \"color\": \"black\",\n  \"tag_text\": \"Barbour. Made in England. Barbour 3000 LTD, SHINWOOD, SOUTH SHIELDS. BEDALE. Original Authentic. www.barbour.com\",\n  \"codes\": [],\n  \"era\": \"modern\",\n  \"search_query\": \"Barbour Bedale jacket black\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "barbour_860045125141",
+   "sec": 35.6,
+   "answer": "{\n  \"brand\": \"Barbour\",\n  \"model\": \"Original\",\n  \"category\": \"jacket\",\n  \"color\": \"olive\",\n  \"tag_text\": \"Barbour\",\n  \"codes\": [],\n  \"era\": \"modern\",\n  \"search_query\": \"Barbour Original jacket olive\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "carhartt_137844869599",
+   "sec": 54.4,
+   "answer": "{\n  \"brand\": \"Carhartt\",\n  \"model\": \"Work in Progress\",\n  \"category\": \"Jacket\",\n  \"color\": \"Dark Green\",\n  \"tag_text\": \"carhartt\\nWORK IN PROGRESS\\nL\",\n  \"codes\": [],\n  \"era\": \"2020s\",\n  \"search_query\": \"Carhartt Work in Progress jacket dark green\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "carhartt_257657941814",
+   "sec": 51.6,
+   "answer": "{\n  \"brand\": \"Carhartt\",\n  \"model\": \"Workwear Jacket\",\n  \"category\": \"Jackets\",\n  \"color\": \"Beige\",\n  \"tag_text\": \"Carhartt WORK IN PROGRESS L\",\n  \"codes\": [],\n  \"era\": null,\n  \"search_query\": \"Carhartt Work In Progress jacket beige\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "cdg_257794279069",
+   "sec": 55.4,
+   "answer": "{\n  \"brand\": \"Comme des Garçons\",\n  \"model\": \"PLAY\",\n  \"category\": \"T-shirt\",\n  \"color\": \"white\",\n  \"tag_text\": \"PLAY\\nCOMME des GARÇONS\\nM\",\n  \"codes\": [],\n  \"era\": \"2010s\",\n  \"search_query\": \"Comme des Garçons PLAY T-shirt heart camo black\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "cdg_336844186430",
+   "sec": 55.3,
+   "answer": "{\n  \"brand\": \"Comme des Garçons\",\n  \"model\": \"PLAY T-shirt\",\n  \"category\": \"Apparel\",\n  \"color\": \"black\",\n  \"tag_text\": \"PLAY COMME DES GARÇONS\",\n  \"codes\": [],\n  \"era\": \"2010s\",\n  \"search_query\": \"Comme des Garçons PLAY black heart eye t-shirt\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "champion_188946671362",
+   "sec": 83.0,
+   "answer": "{\n  \"brand\": \"Champion\",\n  \"model\": \"Reverse Weave\",\n  \"category\": \"Sweatshirt\",\n  \"color\": \"Blue\",\n  \"tag_text\": \"Champion®\\nREVERSE WEAVE\\nLARGE\\n90% COTTON/COTON/BRUMWOLLE\\nCOTONE/KATGEN/BOMULDO\\n10% ACRYLIC\\nMADE IN U.S.A. RN26095\\nFOR CARE SEE REVERSE\",\n  \"codes\": [\n    \"RN26095\"\n  ],\n  \"era\": \"1990s\",\n  \"search_query\": \"Champion Reverse Weave sweatshirt large blue 1990s\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "champion_266469074989",
+   "sec": 72.0,
+   "answer": "{\n  \"brand\": \"Champion\",\n  \"model\": \"Reverse Weave\",\n  \"category\": \"sweatshirt\",\n  \"color\": \"white\",\n  \"tag_text\": \"Champion REVERSE WEAVE® X-SMALL CA MEX JPN XS/TP XOH M MADE IN HONDURAS\",\n  \"codes\": [\n    \"X-SMALL\",\n    \"XS/TP\",\n    \"XOH\",\n    \"M\"\n  ],\n  \"era\": \"2000s\",\n  \"search_query\": \"Champion Reverse Weave sweatshirt white X-Small\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "dm1460_158077479203",
+   "sec": 39.9,
+   "answer": "{\n  \"brand\": \"Dr. Martens\",\n  \"model\": \"1460\",\n  \"category\": \"shoes\",\n  \"color\": \"brown\",\n  \"tag_text\": \"SOLAR\",\n  \"codes\": [],\n  \"era\": \"modern\",\n  \"search_query\": \"Dr. Martens 1460 boots brown worn\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "dm1460_307225543535",
+   "sec": 37.1,
+   "answer": "{\n  \"brand\": null,\n  \"model\": null,\n  \"category\": \"shoes\",\n  \"color\": \"teal\",\n  \"tag_text\": \"stephen KING NIGHTMARES & DREAMSCAPES\",\n  \"codes\": [],\n  \"era\": null,\n  \"search_query\": \"custom teal tie-dye boots\",\n  \"confidence\": 0.7\n}"
+  },
+  {
+   "case": "levis501_800790341418",
+   "sec": 105.6,
+   "answer": "{\n  \"brand\": \"Levi's\",\n  \"model\": \"501\",\n  \"category\": \"jeans\",\n  \"color\": \"black\",\n  \"tag_text\": \"LEVI STRAUSS & CO.\\nSAN FRANCISCO\\nCAL.\\nORIGINAL RIVETED\\nQUALITY CLOTHING\\nPATENTED\\n501®\\nW 33 L 30\\nMAY 20, 1972\\n\\nTEMPERATURA MEDIA A 100°C\\nSE RECOMIENDA LAVAR EN SECO.\\nPOSIBLE LAVAR EN AGUA FRÍA.\\nRECOMENDA SECAR EN AIRE.\\n\",\n  \"codes\": [\n    \"501\",\n    \"W 33\",\n    \"L 30\"\n  ],\n  \"era\": \"1970s\",\n  \"search_query\": \"Levi's 501 jeans black 1972\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "ma1_128127362250",
+   "sec": 121.0,
+   "answer": "{\n  \"brand\": \"Alpha Industries\",\n  \"model\": \"MIL-J-3279D\",\n  \"category\": \"jacket\",\n  \"color\": \"olive drab\",\n  \"tag_text\": \"JACKET, FLYING MAN'S INTERMEDIATE, MA-1 MIL-J-3279D (USAF) SIZE LARGE 8415-818-7353 DSA 100-68-C-1746 1 MARCH 1968 ALPHA INDUSTRIES, INC. INTERLINING: 2-1/2% WOOL PILE, 100% COTTON PACKING DRY CLEAN ONLY\",\n  \"codes\": [\n    \"MIL-J-3279D\",\n    \"8415-818-7353\",\n    \"DSA 100-68-C-1746\"\n  ],\n  \"era\": \"1960s\",\n  \"search_query\": \"Alpha Industries MIL-J-3279D MA-1 flying man's jacket 1968\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "ma1_287584162030",
+   "sec": 123.6,
+   "answer": "{\n  \"brand\": \"Alpha Industries\",\n  \"model\": \"M-1960\",\n  \"category\": \"Jacket\",\n  \"color\": \"Olive Green\",\n  \"tag_text\": \"JACKET FLYER'S MAN INTERMEDIATE SHA\\nM1960\\nSIZE LARGE\\nSTOCK NUMBER 0615-01-57-3836\\nCONTRACT NO. INF/615-7901\\nALPHA INDUSTRIES, INC. N-3301111 TN 0 SA\\nSHELL & LINING: 100% NYLON\\nINTERLINING: 100% POLYESTER FIBER FILL\\nDRY CLEAN ONLY MADE IN U.S.A.\\nFOR GROUND CREW ONLY\\nALPHA\\nMADE IN U.S.A.\",\n  \"codes\": [\n    \"M1960\",\n    \"0615-01-57-3836\",\n    \"INF/615-7901\",\n    \"N-3301111\"\n  ],\n  \"era\": \"1960s\",\n  \"search_query\": \"Alpha"
+  },
+  {
+   "case": "samba_168793244022",
+   "sec": 36.2,
+   "answer": "{\n  \"brand\": \"adidas\",\n  \"model\": \"Samba\",\n  \"category\": \"shoes\",\n  \"color\": \"white\",\n  \"tag_text\": \"adidas\",\n  \"codes\": [],\n  \"era\": \"2000s\",\n  \"search_query\": \"adidas samba shoes white\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "samba_307215994658",
+   "sec": 37.2,
+   "answer": "{\n  \"brand\": \"Adidas\",\n  \"model\": \"Samba\",\n  \"category\": \"shoes\",\n  \"color\": \"black\",\n  \"tag_text\": \"SAMBA\",\n  \"codes\": [],\n  \"era\": \"2020s\",\n  \"search_query\": \"Adidas Samba black white sneakers\",\n  \"confidence\": 0.95\n}"
+  },
+  {
+   "case": "trucker_407281962172",
+   "sec": 85.4,
+   "answer": "{\n  \"brand\": \"Levi's\",\n  \"model\": \"501\",\n  \"category\": \"Denim Jacket\",\n  \"color\": \"Blue\",\n  \"tag_text\": \"LEVI'S STRAUSS & CO.\\nTRADE MARK\\nMADE IN U.S.A.\\nSIZE\\n096\\n009\\nWarm wash. Tumble dry. Color may transfer when wet. Wash alone before wearing. Shrinks approx. 4%\\nMADE IN U.S.A.\",\n  \"codes\": [\n    \"096\",\n    \"009\"\n  ],\n  \"era\": \"1990s\",\n  \"search_query\": \"Levi's 501 denim jacket 1990s\",\n  \"confidence\": 0.98\n}"
+  },
+  {
+   "case": "trucker_860045790582",
+   "sec": 79.2,
+   "answer": "{\n  \"brand\": \"Levi's\",\n  \"model\": \"501\",\n  \"category\": \"Denim Jacket\",\n  \"color\": \"Blue\",\n  \"tag_text\": \"LEVI STRAUSS & CO. SAN FRANCISCO CAL. TRADE MARK ALL COTTON MADE IN U.S.A. 70506 0217 SIZE 40\",\n  \"codes\": [\n    \"70506\",\n    \"0217\",\n    \"40\"\n  ],\n  \"era\": \"1970s\",\n  \"search_query\": \"Levi's 501 denim jacket 70506 size 40\",\n  \"confidence\": 0.98\n}"
+  }
+ ]
+}

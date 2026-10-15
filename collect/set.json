@@ -1,0 +1,849 @@
+[
+ {
+  "id": "af1",
+  "group": "новое",
+  "cat": "обувь",
+  "query": "Nike Air Force 1 07 white men used",
+  "must": [
+   "air force 1"
+  ],
+  "truth": "Nike Air Force 1 '07 White",
+  "listings": []
+ },
+ {
+  "id": "samba",
+  "group": "новое",
+  "cat": "обувь",
+  "query": "Adidas Samba OG black white used",
+  "must": [
+   "samba"
+  ],
+  "truth": "Adidas Samba OG",
+  "listings": [
+   {
+    "item_id": "168793244022",
+    "title": "Size 8.5 - adidas Samba OG Low White Black Gum | eBay",
+    "url": "https://www.ebay.com/itm/168793244022",
+    "photos": [
+     {
+      "file": "samba_168793244022/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/hU4AAeSwROFpmNt~/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/Bv8AAeSwC4Fq0Osq/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/pY4AAeSwT0dq0PMh/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/Ee0AAeSwQiFqz-lS/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/tpkAAeSw6IBq0BIj/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/zGwAAeSwWUJq0BHt/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/rkIAAeSw2Thq0BH8/s-l1600.jpg"
+     },
+     {
+      "file": "samba_168793244022/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/rmIAAeSwQtlq0BH9/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "307215994658",
+    "title": "Adidas Samba OG Mens Size 8 Black White Gum Athletic Leather Shoes Sneakers | eBay",
+    "url": "https://www.ebay.com/itm/307215994658",
+    "photos": [
+     {
+      "file": "samba_307215994658/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/hU4AAeSwROFpmNt~/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/Bv8AAeSwC4Fq0Osq/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/pY4AAeSwT0dq0PMh/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/Ee0AAeSwQiFqz-lS/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZGEAAeSwVIxqw36U/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/67kAAeSw~kFqw36R/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/nYUAAeSwclBqw36T/s-l1600.jpg"
+     },
+     {
+      "file": "samba_307215994658/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/fd4AAeSwJfJqw36V/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "uniqlo",
+  "group": "новое",
+  "cat": "верх",
+  "query": "Uniqlo ultra light down jacket men used",
+  "must": [
+   "uniqlo",
+   "down"
+  ],
+  "truth": "Uniqlo Ultra Light Down Jacket",
+  "listings": []
+ },
+ {
+  "id": "levis501",
+  "group": "новое",
+  "cat": "низ",
+  "query": "Levis 501 original fit jeans used",
+  "must": [
+   "501"
+  ],
+  "truth": "Levi's 501 Original",
+  "listings": [
+   {
+    "item_id": "366675141439",
+    "title": "LEVI'S 501 90'S Western Jeans Bottoms Size 26 Ironic Iconic Color Vintage Style | eBay",
+    "url": "https://www.ebay.com/itm/366675141439",
+    "photos": [
+     {
+      "file": "levis501_366675141439/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/2D0AAeSww8Zqvs56/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_366675141439/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZOEAAeSwJS9qvs56/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_366675141439/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/bXcAAeSwmL1qvs56/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_366675141439/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/4TQAAeSwMtRqvs56/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_366675141439/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/vvYAAeSwdMton9f9/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "800790341418",
+    "title": "Levis 501 Mens Straight Leg Black Jeans W33 L30 Original Fit Button Fly | eBay",
+    "url": "https://www.ebay.com/itm/800790341418",
+    "photos": [
+     {
+      "file": "levis501_800790341418/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/W6wAAeSwCkNqzghB/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_800790341418/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/WugAAeSw9jtqzghB/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_800790341418/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/m0QAAeSwbo9qzghB/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_800790341418/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/m30AAeSw8tVqzghB/s-l1600.jpg"
+     },
+     {
+      "file": "levis501_800790341418/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/B2YAAeSwQ2RqzghB/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "arcbeta",
+  "group": "новое",
+  "cat": "верх",
+  "query": "Arcteryx Beta LT jacket men used",
+  "must": [
+   "beta"
+  ],
+  "truth": "Arc'teryx Beta LT",
+  "listings": [
+   {
+    "item_id": "287648410466",
+    "title": "Arc'teryx Beta LT Gore-Tex Jacket Men's XL Purple Plum 2019 Hooded Shell | eBay",
+    "url": "https://www.ebay.com/itm/287648410466",
+    "photos": [
+     {
+      "file": "arcbeta_287648410466/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/HnIAAeSwKuFqz9PH/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_287648410466/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/Hs8AAeSwTj5qz9PH/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_287648410466/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/FtsAAeSwJHVqz9PI/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_287648410466/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/4A4AAeSwsXlqz9PI/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_287648410466/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/GwgAAeSwl6Jqz9PH/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_287648410466/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/HooAAeSwL2Bqz9PH/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "820240676025",
+    "title": "Arcteryx Beta LT Jacket Men M Beige Lightweight Hiking Coat Black Stain Used | eBay",
+    "url": "https://www.ebay.com/itm/820240676025",
+    "photos": [
+     {
+      "file": "arcbeta_820240676025/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/hhMAAeSwbJdq0GDe/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_820240676025/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZDsAAeSwg-Vq0GDf/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_820240676025/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/6gwAAeSw8thq0GDf/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_820240676025/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/3csAAeSwN~Bq0GDf/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_820240676025/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/5ccAAeSwutRq0GDf/s-l1600.jpg"
+     },
+     {
+      "file": "arcbeta_820240676025/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/RqUAAOSwtjZn6pon/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "nuptse",
+  "group": "прошлые сезоны",
+  "cat": "верх",
+  "query": "North Face 1996 Retro Nuptse jacket used",
+  "must": [
+   "nuptse"
+  ],
+  "truth": "The North Face 1996 Retro Nuptse",
+  "listings": []
+ },
+ {
+  "id": "stone",
+  "group": "прошлые сезоны",
+  "cat": "верх",
+  "query": "Stone Island crinkle reps jacket",
+  "must": [
+   "stone island"
+  ],
+  "truth": "Stone Island Crinkle Reps",
+  "listings": []
+ },
+ {
+  "id": "polobear",
+  "group": "прошлые сезоны",
+  "cat": "верх",
+  "query": "Polo Ralph Lauren polo bear sweater",
+  "must": [
+   "bear"
+  ],
+  "truth": "Polo Ralph Lauren Polo Bear sweater",
+  "listings": []
+ },
+ {
+  "id": "carhartt",
+  "group": "прошлые сезоны",
+  "cat": "верх",
+  "query": "Carhartt WIP Detroit jacket",
+  "must": [
+   "detroit"
+  ],
+  "truth": "Carhartt Detroit Jacket",
+  "listings": [
+   {
+    "item_id": "137844869599",
+    "title": "Carhartt WIP Detroit Jacket Olive/Black Winter version with blanket lining | eBay",
+    "url": "https://www.ebay.com/itm/137844869599",
+    "photos": [
+     {
+      "file": "carhartt_137844869599/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/cdUAAeSw1rFq0NIj/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_137844869599/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZEQAAeSwIjpq0CT3/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_137844869599/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/aNYAAeSwq9xq0CT3/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_137844869599/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/dv0AAeSwqqlq0CT4/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_137844869599/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/eKYAAeSwiXBq0CT4/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "257657941814",
+    "title": "Carhartt WIP Detroit Jacket (Spring) - Large - Light Tan w/ Corduroy Collar | eBay",
+    "url": "https://www.ebay.com/itm/257657941814",
+    "photos": [
+     {
+      "file": "carhartt_257657941814/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/-UMAAeSwvdxqb~wg/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_257657941814/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/enYAAeSwzM5qb~wg/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_257657941814/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/4rQAAeSw-jdqb~wg/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_257657941814/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/PhcAAeSwfE5qb~wg/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_257657941814/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/rT0AAeSwYJFqb~wg/s-l1600.jpg"
+     },
+     {
+      "file": "carhartt_257657941814/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/tWMAAeSwxUxqb~wg/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "ma1",
+  "group": "винтаж",
+  "cat": "верх",
+  "query": "vintage Alpha Industries MA-1 flight jacket",
+  "must": [
+   "ma-1"
+  ],
+  "truth": "Alpha Industries MA-1",
+  "listings": [
+   {
+    "item_id": "128127362250",
+    "title": "Vintage 1968 Alpha Industries MA-1 USAF Flight Jacket Large MIL-J-8279D Vietnam | eBay",
+    "url": "https://www.ebay.com/itm/128127362250",
+    "photos": [
+     {
+      "file": "ma1_128127362250/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/KAkAAeSwu1dqyqNs/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_128127362250/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/4ZEAAeSww15qyqNe/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_128127362250/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/pmQAAeSwbkRqyqNf/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_128127362250/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/Mz4AAeSwPQVqyqNf/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_128127362250/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/91oAAOSwf7lmsef6/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "287584162030",
+    "title": "Vintage 80s Alpha Industries MA-1 Jacket Mens Large Green Nylon Flight Bomber | eBay",
+    "url": "https://www.ebay.com/itm/287584162030",
+    "photos": [
+     {
+      "file": "ma1_287584162030/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/Ke4AAeSw8SBqpr0E/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/--4AAeSwlspqpr0k/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/GwQAAeSwPKNqpr0Y/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/YOkAAeSw03Zqpr0R/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/PcoAAeSwMXRqpr0J/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/CSEAAeSwMYBqpr0H/s-l1600.jpg"
+     },
+     {
+      "file": "ma1_287584162030/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/wG4AAOSwpcFny6I6/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "trucker",
+  "group": "винтаж",
+  "cat": "верх",
+  "query": "vintage Levis type III trucker jacket 70505",
+  "must": [
+   "levi"
+  ],
+  "truth": "Levi's Type III Trucker 70505",
+  "listings": [
+   {
+    "item_id": "407281962172",
+    "title": "Vintage 1970s Levi’s 70505 Type III Denim Trucker Jacket USA Blank Red Tab M | eBay",
+    "url": "https://www.ebay.com/itm/407281962172",
+    "photos": [
+     {
+      "file": "trucker_407281962172/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/21UAAeSweUZqyv6t/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_407281962172/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/708AAeSwEPJqyv6d/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_407281962172/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/npsAAeSwxXlqyv6d/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_407281962172/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/~y0AAeSwq6Zqyv6d/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_407281962172/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/~AkAAeSwNxRqyv6d/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_407281962172/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/HcoAAeSwC5lqywTC/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "860045790582",
+    "title": "Vintage Levis 70505-0217 Type III Denim Trucker Jacket USA 1970’s Size 40 | eBay",
+    "url": "https://www.ebay.com/itm/860045790582",
+    "photos": [
+     {
+      "file": "trucker_860045790582/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/5eMAAeSwuVVq0EYL/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_860045790582/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/g8cAAeSwgx5q0EYL/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_860045790582/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/7N8AAeSw1K1q0EYK/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_860045790582/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/8ZEAAeSwIZ5q0EYL/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_860045790582/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/3KwAAeSwFUNq0EYL/s-l1600.jpg"
+     },
+     {
+      "file": "trucker_860045790582/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZQgAAeSwt~xpKfvt/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "barbour",
+  "group": "винтаж",
+  "cat": "верх",
+  "query": "vintage Barbour Bedale wax jacket",
+  "must": [
+   "bedale"
+  ],
+  "truth": "Barbour Bedale",
+  "listings": [
+   {
+    "item_id": "860045125141",
+    "title": "BARBOUR Wax Jacket VINTAGE Bedale Green, 38, early Three Crest | eBay",
+    "url": "https://www.ebay.com/itm/860045125141",
+    "photos": [
+     {
+      "file": "barbour_860045125141/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/GMoAAeSw7aJqz-tD/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_860045125141/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/EmYAAeSwHkhqz-tD/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_860045125141/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/E6AAAeSwxbZqz-tD/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_860045125141/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/DRIAAeSwh~Vqz-tE/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_860045125141/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/DiQAAeSwFUNqz-tE/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_860045125141/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/J-AAAeSweRhqz-tE/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "920030624081",
+    "title": "Vintage Barbour Bedale A101 Wax Jacket Navy C44/112cm Made in England | eBay",
+    "url": "https://www.ebay.com/itm/920030624081",
+    "photos": [
+     {
+      "file": "barbour_920030624081/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/PZAAAeSwngpqy~tr/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/fRgAAeSwwshqy~tF/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/778AAeSwFWdqy~sm/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/eykAAeSwId9qy~lm/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/H-AAAeSwbNpqy~kp/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/HSkAAeSwyetqy~jE/s-l1600.jpg"
+     },
+     {
+      "file": "barbour_920030624081/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/2sEAAOSwsydj8d4t/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "champion",
+  "group": "винтаж",
+  "cat": "верх",
+  "query": "vintage Champion reverse weave sweatshirt 90s",
+  "must": [
+   "reverse weave"
+  ],
+  "truth": "Champion Reverse Weave",
+  "listings": [
+   {
+    "item_id": "266469074989",
+    "title": "Champion Reverse Weave Blank Crewneck Sweatshirt - XS - White - CLEAN! | eBay",
+    "url": "https://www.ebay.com/itm/266469074989",
+    "photos": [
+     {
+      "file": "champion_266469074989/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/oCwAAOSwl9VlNn1U/s-l1600.jpg"
+     },
+     {
+      "file": "champion_266469074989/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZSIAAOSwK9hlNn1V/s-l1600.jpg"
+     },
+     {
+      "file": "champion_266469074989/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/2cUAAOSwzFllNn1Y/s-l1600.jpg"
+     },
+     {
+      "file": "champion_266469074989/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/NnYAAOSw7B9lNn1a/s-l1600.jpg"
+     },
+     {
+      "file": "champion_266469074989/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/AqMAAOSwMdxlqfz~/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "188946671362",
+    "title": "Vintage Champion Reverse Weave Sweatshirt Mens Large Navy 90s USA Logo Basic | eBay",
+    "url": "https://www.ebay.com/itm/188946671362",
+    "photos": [
+     {
+      "file": "champion_188946671362/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/MHkAAeSwAaFp4gxu/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/ZCgAAeSwrLVp4gxu/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/69AAAeSwVNVp4gxu/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/eRgAAeSw0lZp4gxu/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/Hx8AAeSwGgVp4gxv/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/BDkAAeSwVJVp4gxv/s-l1600.jpg"
+     },
+     {
+      "file": "champion_188946671362/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/ekkAAOSwq5pj5CBv/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "cdg",
+  "group": "прошлые сезоны",
+  "cat": "верх",
+  "query": "Comme des Garcons Play heart t-shirt",
+  "must": [
+   "play"
+  ],
+  "truth": "Comme des Garcons PLAY Heart T-shirt",
+  "listings": [
+   {
+    "item_id": "257794279069",
+    "title": "Commes des Garcons PLAY t-shirt Blue Camo Heart Size M | eBay",
+    "url": "https://www.ebay.com/itm/257794279069",
+    "photos": [
+     {
+      "file": "cdg_257794279069/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/nbQAAOSwWDtgY9c3/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/z8QAAOSwO8JgXGzg/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/JgsAAOSwdElkRhRX/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/b0AAAOSwXINkRh7p/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/fwQAAOSwfgZif2tr/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/A2gAAOSwFNZif2tz/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/ib0AAeSw9n9qy~05/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_257794279069/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/oBoAAeSw~dNqy~0m/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "336844186430",
+    "title": "COMME des GARCONS PLAY T Shirt Men size Large Black Heart Logo Crew Neck SS Tee | eBay",
+    "url": "https://www.ebay.com/itm/336844186430",
+    "photos": [
+     {
+      "file": "cdg_336844186430/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/nbQAAOSwWDtgY9c3/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/z8QAAOSwO8JgXGzg/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/xikAAOSwLUplVX-k/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/b0AAAOSwXINkRh7p/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/JgsAAOSwdElkRhRX/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/fwQAAOSwfgZif2tr/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/suYAAeSw3i1qubII/s-l1600.jpg"
+     },
+     {
+      "file": "cdg_336844186430/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/eGYAAeSwdOhquEEt/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "dm1460",
+  "group": "винтаж",
+  "cat": "обувь",
+  "query": "vintage Dr Martens 1460 made in England",
+  "must": [
+   "1460"
+  ],
+  "truth": "Dr. Martens 1460 (Made in England)",
+  "listings": [
+   {
+    "item_id": "307225543535",
+    "title": "RARE Vintage 90s Dr. Martens 1460 Teal Tie Dye Rub Off Boots, Made in England | eBay",
+    "url": "https://www.ebay.com/itm/307225543535",
+    "photos": [
+     {
+      "file": "dm1460_307225543535/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/DWkAAeSw5Jpp6YAb/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/omgAAeSwVNVp6Npx/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/nlkAAeSwUbhp6X-~/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/89oAAeSwSoFp5-3i/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/lKUAAeSwwc5qyzf2/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/VjMAAeSwXIZqyzf3/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/hCMAAeSw-v1qyzf3/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_307225543535/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/9rQAAeSwvx5qyzf3/s-l1600.jpg"
+     }
+    ]
+   },
+   {
+    "item_id": "158077479203",
+    "title": "Vintage Dr. Martens 1460 Made in England Brown Pebbled Leather Boots Mens | eBay",
+    "url": "https://www.ebay.com/itm/158077479203",
+    "photos": [
+     {
+      "file": "dm1460_158077479203/0.jpg",
+      "src": "https://i.ebayimg.com/images/g/DWkAAeSw5Jpp6YAb/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/1.jpg",
+      "src": "https://i.ebayimg.com/images/g/omgAAeSwVNVp6Npx/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/2.jpg",
+      "src": "https://i.ebayimg.com/images/g/nlkAAeSwUbhp6X-~/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/3.jpg",
+      "src": "https://i.ebayimg.com/images/g/89oAAeSwSoFp5-3i/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/4.jpg",
+      "src": "https://i.ebayimg.com/images/g/MgIAAeSwfRBqUqqy/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/5.jpg",
+      "src": "https://i.ebayimg.com/images/g/Q-4AAeSw9HxqUqqE/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/6.jpg",
+      "src": "https://i.ebayimg.com/images/g/XakAAeSwcXdqUqqA/s-l1600.jpg"
+     },
+     {
+      "file": "dm1460_158077479203/7.jpg",
+      "src": "https://i.ebayimg.com/images/g/V~gAAeSwUXxqUqqp/s-l1600.jpg"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "burb",
+  "group": "винтаж",
+  "cat": "верх",
+  "query": "vintage Burberry trench coat nova check",
+  "must": [
+   "trench"
+  ],
+  "truth": "Burberry trench coat",
+  "listings": []
+ }
+]
