@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       step:
-        description: "collect | search | models"
+        description: "collect | search | models | claude"
         required: true
         default: "collect"
       engines:
@@ -51,6 +51,7 @@ jobs:
         env:
           ENGINES: ${{ github.event.inputs.engines }}
           WHAT: ${{ github.event.inputs.models }}
+          CI_KEY: ${{ secrets.CI_PARSE_KEY }}
         run: python lab/${{ github.event.inputs.step }}.py 2>&1 | tee lab/out/log_${{ github.event.inputs.step }}_${{ github.event.inputs.tag }}.txt
       - name: Push results
         if: always()
