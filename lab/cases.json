@@ -1,0 +1,258 @@
+[
+ {
+  "id": "arcbeta_287648410466",
+  "main": 0,
+  "tag": 3,
+  "brand": "Arc'teryx",
+  "model": "Beta LT",
+  "kw": [
+   "beta lt"
+  ],
+  "cat": "верх",
+  "group": "новое",
+  "item_id": "287648410466"
+ },
+ {
+  "id": "arcbeta_820240676025",
+  "main": 2,
+  "tag": 4,
+  "brand": "Arc'teryx",
+  "model": "Beta LT",
+  "kw": [
+   "beta lt"
+  ],
+  "cat": "верх",
+  "group": "новое",
+  "item_id": "820240676025"
+ },
+ {
+  "id": "barbour_920030624081",
+  "main": 1,
+  "tag": 4,
+  "brand": "Barbour",
+  "model": "Bedale",
+  "kw": [
+   "bedale"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "920030624081"
+ },
+ {
+  "id": "barbour_860045125141",
+  "main": 0,
+  "tag": null,
+  "brand": "Barbour",
+  "model": "Bedale",
+  "kw": [
+   "bedale"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "860045125141"
+ },
+ {
+  "id": "carhartt_137844869599",
+  "main": 0,
+  "tag": 1,
+  "brand": "Carhartt WIP",
+  "model": "Detroit Jacket",
+  "kw": [
+   "detroit"
+  ],
+  "cat": "верх",
+  "group": "прошлые сезоны",
+  "item_id": "137844869599"
+ },
+ {
+  "id": "carhartt_257657941814",
+  "main": 0,
+  "tag": 1,
+  "brand": "Carhartt WIP",
+  "model": "Detroit Jacket",
+  "kw": [
+   "detroit"
+  ],
+  "cat": "верх",
+  "group": "прошлые сезоны",
+  "item_id": "257657941814"
+ },
+ {
+  "id": "cdg_257794279069",
+  "main": 6,
+  "tag": 7,
+  "brand": "Comme des Garcons PLAY",
+  "model": "Heart T-shirt (camo)",
+  "kw": [
+   "play",
+   "camo"
+  ],
+  "cat": "верх",
+  "group": "прошлые сезоны",
+  "item_id": "257794279069"
+ },
+ {
+  "id": "cdg_336844186430",
+  "main": 6,
+  "tag": 7,
+  "brand": "Comme des Garcons PLAY",
+  "model": "Heart T-shirt black",
+  "kw": [
+   "play"
+  ],
+  "cat": "верх",
+  "group": "новое",
+  "item_id": "336844186430"
+ },
+ {
+  "id": "champion_188946671362",
+  "main": 0,
+  "tag": 2,
+  "brand": "Champion",
+  "model": "Reverse Weave crewneck",
+  "kw": [
+   "reverse weave"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "188946671362"
+ },
+ {
+  "id": "champion_266469074989",
+  "main": 0,
+  "tag": 2,
+  "brand": "Champion",
+  "model": "Reverse Weave script crewneck",
+  "kw": [
+   "reverse weave"
+  ],
+  "cat": "верх",
+  "group": "новое",
+  "item_id": "266469074989"
+ },
+ {
+  "id": "dm1460_158077479203",
+  "main": 4,
+  "tag": null,
+  "brand": "Dr. Martens",
+  "model": "1460 brown",
+  "kw": [
+   "1460"
+  ],
+  "cat": "обувь",
+  "group": "винтаж",
+  "item_id": "158077479203"
+ },
+ {
+  "id": "dm1460_307225543535",
+  "main": 4,
+  "tag": null,
+  "brand": "Dr. Martens",
+  "model": "1460 rub-off",
+  "kw": [
+   "1460"
+  ],
+  "cat": "обувь",
+  "group": "винтаж",
+  "item_id": "307225543535"
+ },
+ {
+  "id": "levis501_800790341418",
+  "main": 0,
+  "tag": 3,
+  "brand": "Levi's",
+  "model": "501 Original black",
+  "kw": [
+   "501"
+  ],
+  "cat": "низ",
+  "group": "новое",
+  "item_id": "800790341418"
+ },
+ {
+  "id": "ma1_128127362250",
+  "main": 0,
+  "tag": 2,
+  "brand": "Alpha Industries",
+  "model": "MA-1 1968 USAF",
+  "kw": [
+   "ma-1",
+   "ma1"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "128127362250"
+ },
+ {
+  "id": "ma1_287584162030",
+  "main": 0,
+  "tag": 2,
+  "brand": "Alpha Industries",
+  "model": "MA-1",
+  "kw": [
+   "ma-1",
+   "ma1"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "287584162030"
+ },
+ {
+  "id": "samba_168793244022",
+  "main": 4,
+  "tag": null,
+  "brand": "Adidas",
+  "model": "Samba OG white",
+  "kw": [
+   "samba"
+  ],
+  "cat": "обувь",
+  "group": "новое",
+  "item_id": "168793244022"
+ },
+ {
+  "id": "samba_307215994658",
+  "main": 4,
+  "tag": null,
+  "brand": "Adidas",
+  "model": "Samba OG black",
+  "kw": [
+   "samba"
+  ],
+  "cat": "обувь",
+  "group": "новое",
+  "item_id": "307215994658"
+ },
+ {
+  "id": "trucker_407281962172",
+  "main": 0,
+  "tag": 1,
+  "brand": "Levi's",
+  "model": "Type III Trucker 70505",
+  "kw": [
+   "trucker",
+   "70505",
+   "type iii",
+   "type 3"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "407281962172"
+ },
+ {
+  "id": "trucker_860045790582",
+  "main": 0,
+  "tag": 3,
+  "brand": "Levi's",
+  "model": "Type III Trucker 70506",
+  "kw": [
+   "trucker",
+   "7050",
+   "type iii",
+   "type 3"
+  ],
+  "cat": "верх",
+  "group": "винтаж",
+  "item_id": "860045790582"
+ }
+]
