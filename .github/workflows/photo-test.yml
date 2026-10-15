@@ -1,0 +1,47 @@
+name: Photo recognition test
+
+# Ручной запуск: эксперименты с добавлением вещи по фото (сбор тестового набора,
+# поиск по картинке, открытые нейросети). Результаты — в ветку photo-test-results.
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: "collect | search | models"
+        required: true
+        default: "collect"
+      tag:
+        description: "Метка прогона"
+        required: false
+        default: "run"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Restore previous results
+        run: |
+          git fetch -q origin photo-test-results && git worktree add -q /tmp/prev origin/photo-test-results && cp -r /tmp/prev/. lab/out/ && rm -rf lab/out/.git || mkdir -p lab/out
+      - name: Cache models
+        uses: actions/cache@v4
+        with: { path: ~/.cache/huggingface, key: hf-${{ hashFiles('lab/requirements-models.txt') }} }
+      - name: Install
+        run: |
+          pip -q install requests pillow playwright beautifulsoup4
+          python -m playwright install --with-deps chromium >/dev/null
+          if [ "${{ github.event.inputs.step }}" = "models" ]; then pip -q install -r lab/requirements-models.txt; fi
+      - name: Run
+        run: python lab/${{ github.event.inputs.step }}.py 2>&1 | tee lab/out/log_${{ github.event.inputs.step }}_${{ github.event.inputs.tag }}.txt
+      - name: Push results
+        if: always()
+        run: |
+          cd lab/out
+          git init -q -b photo-test-results && git config user.name ci && git config user.email ci@example.com
+          git remote add origin https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          git add -A && git commit -qm "${{ github.event.inputs.step }} ${{ github.event.inputs.tag }}" && git push -qf origin photo-test-results

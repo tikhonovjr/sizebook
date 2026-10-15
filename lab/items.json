@@ -1,0 +1,18 @@
+[
+ {"id": "af1", "group": "новое", "cat": "обувь", "query": "Nike Air Force 1 07 white men used", "must": ["air force 1"], "truth": "Nike Air Force 1 '07 White"},
+ {"id": "samba", "group": "новое", "cat": "обувь", "query": "Adidas Samba OG black white used", "must": ["samba"], "truth": "Adidas Samba OG"},
+ {"id": "uniqlo", "group": "новое", "cat": "верх", "query": "Uniqlo ultra light down jacket men used", "must": ["uniqlo", "down"], "truth": "Uniqlo Ultra Light Down Jacket"},
+ {"id": "levis501", "group": "новое", "cat": "низ", "query": "Levis 501 original fit jeans used", "must": ["501"], "truth": "Levi's 501 Original"},
+ {"id": "arcbeta", "group": "новое", "cat": "верх", "query": "Arcteryx Beta LT jacket men used", "must": ["beta"], "truth": "Arc'teryx Beta LT"},
+ {"id": "nuptse", "group": "прошлые сезоны", "cat": "верх", "query": "North Face 1996 Retro Nuptse jacket used", "must": ["nuptse"], "truth": "The North Face 1996 Retro Nuptse"},
+ {"id": "stone", "group": "прошлые сезоны", "cat": "верх", "query": "Stone Island crinkle reps jacket", "must": ["stone island"], "truth": "Stone Island Crinkle Reps"},
+ {"id": "polobear", "group": "прошлые сезоны", "cat": "верх", "query": "Polo Ralph Lauren polo bear sweater", "must": ["bear"], "truth": "Polo Ralph Lauren Polo Bear sweater"},
+ {"id": "carhartt", "group": "прошлые сезоны", "cat": "верх", "query": "Carhartt WIP Detroit jacket", "must": ["detroit"], "truth": "Carhartt Detroit Jacket"},
+ {"id": "ma1", "group": "винтаж", "cat": "верх", "query": "vintage Alpha Industries MA-1 flight jacket", "must": ["ma-1"], "truth": "Alpha Industries MA-1"},
+ {"id": "trucker", "group": "винтаж", "cat": "верх", "query": "vintage Levis type III trucker jacket 70505", "must": ["levi"], "truth": "Levi's Type III Trucker 70505"},
+ {"id": "barbour", "group": "винтаж", "cat": "верх", "query": "vintage Barbour Bedale wax jacket", "must": ["bedale"], "truth": "Barbour Bedale"},
+ {"id": "champion", "group": "винтаж", "cat": "верх", "query": "vintage Champion reverse weave sweatshirt 90s", "must": ["reverse weave"], "truth": "Champion Reverse Weave"},
+ {"id": "cdg", "group": "прошлые сезоны", "cat": "верх", "query": "Comme des Garcons Play heart t-shirt", "must": ["play"], "truth": "Comme des Garcons PLAY Heart T-shirt"},
+ {"id": "dm1460", "group": "винтаж", "cat": "обувь", "query": "vintage Dr Martens 1460 made in England", "must": ["1460"], "truth": "Dr. Martens 1460 (Made in England)"},
+ {"id": "burb", "group": "винтаж", "cat": "верх", "query": "vintage Burberry trench coat nova check", "must": ["trench"], "truth": "Burberry trench coat"}
+]
