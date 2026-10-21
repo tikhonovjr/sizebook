@@ -75,7 +75,7 @@ a{color:inherit}
 .gb .nt i{font-style:normal;font-weight:700}
 .gb button{flex:none;background:var(--ink);color:#fff;border:0;font:700 11px var(--mono);text-transform:uppercase;padding:0 14px;min-height:40px;cursor:pointer}
 .gb button.ghost{background:var(--lab);color:var(--ink);border:2px solid var(--ink)}
-.gb .taken{flex:none;font:700 10.5px var(--mono);text-transform:uppercase;border:2px dashed var(--ink3);color:var(--ink2);padding:8px 10px}
+.gb .taken{flex:0 1 auto;max-width:60%;overflow-wrap:anywhere;text-align:right;font:700 10.5px var(--mono);text-transform:uppercase;border:2px dashed var(--ink3);color:var(--ink2);padding:8px 10px}
 .wi.claimed .row .tt,.wi.claimed .row .bd,.wi.claimed .row .pr b,.wi.claimed .row .mt{color:var(--ink3)}
 .wi.claimed .row .th img{opacity:.45}
 .badge{display:inline-block;background:#ffd400;color:var(--ink);font:700 9px var(--mono);padding:2px 5px;margin-right:6px;vertical-align:1px}
@@ -88,6 +88,8 @@ a{color:inherit}
 .dlg input{font:600 16px var(--disp);padding:12px;border:2px solid var(--ink);background:var(--lab);border-radius:0}
 .dlg .go{background:var(--ink);color:#fff;border:0;font:800 14px var(--disp);text-transform:uppercase;min-height:52px}
 .dlg .no{background:none;border:0;font:700 12px var(--mono);min-height:44px;text-decoration:underline}
+.tgbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;background:#2aabee;color:#fff;border:2px solid var(--ink);font:800 13px var(--disp);text-transform:uppercase;min-height:48px;text-decoration:none}
+.me{margin-top:12px;font:500 11px/1.5 var(--mono);color:var(--ink2)}
 .foot{margin-top:30px;border:2px dashed var(--line);background:var(--lab);padding:16px;font:500 12px/1.55 var(--mono);color:var(--ink2)}
 .foot a{display:inline-block;margin-top:10px;background:var(--ink);color:#fff;font:700 11px var(--mono);text-transform:uppercase;padding:9px 12px;text-decoration:none}
 .state{padding:60px 20px;text-align:center;font:500 13px/1.6 var(--mono);color:var(--ink2)}
@@ -103,6 +105,9 @@ a{color:inherit}
 </div>
 <script>
 const API = location.origin;
+// В Telegram Mini App гость узнаётся по подписанным данным Telegram, без регистрации
+const TGA = () => (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) ? Telegram.WebApp : null;
+const IN_TG = location.pathname.replace(/\/$/, '') === '/tgapp';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const safeUrl = u => { try { const x = new URL(String(u)); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch (_) { return ''; } };
@@ -121,7 +126,7 @@ function state(title, sub) {
 }
 
 function render(d) {
-  window._owner = !!d.is_owner;
+  window._owner = !!d.is_owner; window._me = d.tg_me || '';
   const S = d.sizes || {};
   const first = (keys) => { for (const k of keys) { const v = sval(S[k]); if (v) return v; } return ''; };
   const name = [S.profile_name, S.profile_lastname].filter(Boolean).join(' ') || d.owner || 'Владелец';
@@ -156,7 +161,9 @@ function render(d) {
       ${d.is_owner ? '<div class="own">Это твоя страница — так её видят друзья. Кто и что дарит, тебе не показываем, чтобы сохранить сюрприз.</div>' : ''}
       <div class="rows" id="wl">${wishRows(d.wishlist)}</div>`;
   }
-  html += `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/">Создать свой паспорт</a></div></div>`;
+  if (TGA()) html += d.tg_me && !d.is_owner ? `<div class="me">Вы вошли как <b>${esc(d.tg_me)}</b>. Это имя увидят другие гости рядом с выбранным подарком.</div>` : '';
+  else if (d.tg_app && d.wishlist && d.wishlist.length && !d.is_owner) html += `<a class="tgbtn" href="${esc(d.tg_app)}">Открыть в Telegram</a><div class="me">В Telegram ваша отметка «Я подарю» подпишется вашим аккаунтом — имя вводить не нужно.</div>`;
+  html += TGA() ? '</div>' : `<div class="foot">Это паспорт размеров из SizeBook. Хочешь так же: хранить свои размеры, вещи и вишлист и делиться ими по одной ссылке?<br><a href="/">Создать свой паспорт</a></div></div>`;
   $('app').innerHTML = html;
   window._wl = d.wishlist || [];
 }
@@ -176,7 +183,7 @@ function wishRows(list) {
     let act = '';
     if (!window._owner) {
       if (w.claimed && w.claim_mine) act = `<button class="ghost" onclick="unclaim(${w.id})">Вы дарите · отменить</button>`;
-      else if (w.claimed) act = `<span class="taken">Уже дарит${w.claim_name ? ' ' + esc(w.claim_name) : ' кто-то'}</span>`;
+      else if (w.claimed) act = `<span class="taken">${w.claim_name ? 'Бронь: ' + esc(w.claim_name) : 'Забронировано'}</span>`;
       else act = `<button onclick="askClaim(${w.id})">Я подарю</button>`;
     }
     const bar = (w.note || act) ? `<div class="gb">${note}${act}</div>` : '';
@@ -185,7 +192,11 @@ function wishRows(list) {
 }
 
 async function init() {
-  const token = location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
+  if (IN_TG) await loadTg();
+  const tga = TGA();
+  if (IN_TG && !tga) return state('Откройте в Telegram', 'Эта страница работает внутри Telegram. Нажмите на ссылку в чате ещё раз.');
+  if (tga) { try { tga.ready(); tga.expand(); tga.setHeaderColor('#9aa0a8'); tga.setBackgroundColor('#e7e8ea'); } catch (_) {} }
+  const token = tga ? String(tga.initDataUnsafe.start_param || '') : location.pathname.replace(/^\/s\//, '').replace(/\/$/, '');
   if (!token) return state('Ссылка неполная', 'В адресе нет кода. Попроси прислать ссылку ещё раз.');
   try {
     window._token = token;
@@ -203,7 +214,18 @@ function guestKey() {
   if (!k) { const a = new Uint8Array(18); crypto.getRandomValues(a); k = Array.from(a, b => b.toString(16).padStart(2, '0')).join(''); try { localStorage.setItem('sb_guest_key', k); } catch (_) {} }
   return k;
 }
+function loadTg() {
+  return new Promise(res => { const sc = document.createElement('script'); sc.src = 'https://telegram.org/js/telegram-web-app.js'; sc.onload = sc.onerror = () => res(); document.head.appendChild(sc); setTimeout(res, 5000); });
+}
+// Ссылки на магазины из Telegram открываем во внешнем браузере, посты t.me — внутри Telegram
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href]'); const tga = TGA();
+  if (!a || !tga || !/^https?:/.test(a.href)) return;
+  e.preventDefault();
+  try { /^https:\/\/t\.me\//.test(a.href) ? tga.openTelegramLink(a.href) : tga.openLink(a.href); } catch (_) { location.href = a.href; }
+});
 function shareHeaders() {
+  if (TGA()) return { 'X-Tg-Init': TGA().initData };
   const h = { 'X-Guest-Key': guestKey() };
   try { const t = localStorage.getItem('sb_token'); if (t) h['Authorization'] = 'Bearer ' + t; } catch (_) {}
   return h;
@@ -219,8 +241,9 @@ function askClaim(id) {
   const box = document.createElement('div'); box.className = 'dlg';
   box.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="dlgT"><h3 id="dlgT">Я подарю: ${esc(n.name)}</h3>
     ${w.size ? `<p>Размер: <b>${esc(w.size)}</b>${w.color ? ' · цвет: ' + esc(w.color) : ''}</p>` : ''}
-    <label>КАК ВАС ЗОВУТ · НЕОБЯЗАТЕЛЬНО<input id="dlgName" maxlength="40" value="${esc(name)}" placeholder="Например, Мария" autocomplete="given-name"></label>
-    <p>Другие гости увидят, что вещь уже дарят, и ваше имя. Владелец списка не узнает. Отменить можно с этого телефона.</p>
+    ${TGA() ? `<p>Другие гости увидят, что вещь забронировали вы — <b>${esc(window._me || 'ваш аккаунт Telegram')}</b>. Именинник не узнает. Отменить бронь можно здесь же.</p>`
+    : `<label>КАК ВАС ЗОВУТ · НЕОБЯЗАТЕЛЬНО<input id="dlgName" maxlength="40" value="${esc(name)}" placeholder="Например, Мария" autocomplete="given-name"></label>
+    <p>Другие гости увидят, что вещь уже дарят, и ваше имя. Владелец списка не узнает. Отменить можно с этого телефона.</p>`}
     <p id="dlgErr" style="color:#b42318"></p>
     <button class="go" id="dlgGo">Да, я подарю</button><button class="no" id="dlgNo">Отмена</button></div>`;
   document.body.appendChild(box);
@@ -228,20 +251,21 @@ function askClaim(id) {
   box.addEventListener('click', e => { if (e.target === box) close(); });
   $('dlgNo').onclick = close;
   $('dlgGo').onclick = async () => {
-    const nm = $('dlgName').value.trim(); try { localStorage.setItem('sb_guest_name', nm); } catch (_) {}
+    const nm = $('dlgName') ? $('dlgName').value.trim() : ''; if ($('dlgName')) try { localStorage.setItem('sb_guest_name', nm); } catch (_) {}
     $('dlgGo').disabled = true;
     try {
-      const r = await fetch(API + '/share/' + encodeURIComponent(window._token) + '/claim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, name: nm, key: guestKey() }) });
+      const r = await fetch(API + '/share/' + encodeURIComponent(window._token) + '/claim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, name: nm, key: TGA() ? undefined : guestKey(), init_data: TGA() ? TGA().initData : undefined }) });
+      if (r.ok) { try { TGA() && TGA().HapticFeedback.notificationOccurred('success'); } catch (_) {} }
       if (r.ok) { close(); await reload(); return; }
       const j = await r.json().catch(() => ({}));
       $('dlgErr').textContent = j.error || 'Не получилось. Попробуйте ещё раз'; $('dlgGo').disabled = false;
       if (r.status === 409) { await reload(); }
     } catch (_) { $('dlgErr').textContent = 'Нет связи. Попробуйте ещё раз'; $('dlgGo').disabled = false; }
   };
-  setTimeout(() => $('dlgName').focus(), 50);
+  if ($('dlgName')) setTimeout(() => $('dlgName').focus(), 50);
 }
 async function unclaim(id) {
-  try { await fetch(API + '/share/' + encodeURIComponent(window._token) + '/unclaim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, key: guestKey() }) }); } catch (_) {}
+  try { await fetch(API + '/share/' + encodeURIComponent(window._token) + '/unclaim', { method: 'POST', headers: { ...shareHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ wishlist_id: id, key: TGA() ? undefined : guestKey(), init_data: TGA() ? TGA().initData : undefined }) }); } catch (_) {}
   await reload();
 }
 init();

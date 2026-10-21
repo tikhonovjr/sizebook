@@ -1009,6 +1009,7 @@ app.patch('/share', authenticateToken, async (req, res) => {
       `UPDATE share_links SET sections=$2 WHERE id=(SELECT id FROM share_links WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1) RETURNING *`,
       [req.user.id, JSON.stringify(sec)]);
     if (!r.rows[0]) return res.status(404).json({ error: 'Ссылки нет' });
+    r.rows[0].tg_app = tgAppLink(r.rows[0].token);
     logAct(req.user.id, 'share', 'Настройки ссылки: ' + [sec.sizes && 'размеры', sec.items && 'по брендам', sec.wishlist && 'вишлист', sec.weight && 'вес', sec.body && 'фигура'].filter(Boolean).join(', '));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -1028,6 +1029,7 @@ app.post('/share', authenticateToken, async (req, res) => {
       [req.user.id, token, JSON.stringify(sections || {}), expires_at || null]
     );
     const sec = sections || {};
+    r.rows[0].tg_app = tgAppLink(r.rows[0].token);
     logAct(req.user.id, 'share', 'Ссылка для друзей создана: ' + [sec.sizes !== false && 'размеры', sec.items !== false && 'по брендам', sec.wishlist && 'вишлист'].filter(Boolean).join(', '));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -1042,7 +1044,7 @@ app.get('/share', authenticateToken, async (req, res) => {
     if (!r.rows.length) return res.json(null);
     const link = r.rows[0];
     if (link.expires_at && new Date(link.expires_at) < new Date()) return res.json(null);
-    res.json(link);
+    res.json({ ...link, tg_app: tgAppLink(link.token) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -1063,12 +1065,47 @@ async function loadShareLink(token) {
   return r.rows[0] || null;
 }
 const SHARE_WISH_FIELDS = ['id', 'title', 'shop', 'url', 'price', 'size', 'image', 'brand', 'note', 'color', 'priority'];
+// ── Вход гостя через Telegram Mini App: подпись initData проверяем токеном бота, регистрация не нужна ──
+function tgWebAppUser(initData) {
+  try {
+    if (!TG_TOKEN || !initData) return null;
+    const p = new URLSearchParams(String(initData));
+    const hash = p.get('hash'); if (!hash) return null;
+    p.delete('hash');
+    const check = [...p.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('\n');
+    const secret = crypto.createHmac('sha256', 'WebAppData').update(TG_TOKEN).digest();
+    const calc = crypto.createHmac('sha256', secret).update(check).digest('hex');
+    if (calc.length !== hash.length || !crypto.timingSafeEqual(Buffer.from(calc), Buffer.from(hash))) return null;
+    const age = Date.now() / 1000 - Number(p.get('auth_date') || 0);
+    if (!(age < 7 * 24 * 3600)) return null;
+    const u = JSON.parse(p.get('user') || 'null');
+    return u && u.id ? u : null;
+  } catch (_) { return null; }
+}
+const tgGuestKey = u => 'tg' + crypto.createHash('sha256').update(TG_SECRET + ':' + u.id).digest('hex').slice(0, 30);
+const tgDisplayName = u => {
+  const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+  return (u.username ? (full ? `${full} (@${u.username})` : '@' + u.username) : (full || 'Гость из Telegram')).slice(0, 80);
+};
+// Кто смотрит страницу: аккаунт SizeBook (JWT), гость из Telegram (initData) или гость из браузера (ключ с телефона)
+async function shareViewer(req, link, bodyInit) {
+  const tg = tgWebAppUser(bodyInit || req.headers['x-tg-init']);
+  let viewerId = viewerFromReq(req);
+  if (tg && !viewerId) {
+    const own = await pool.query('SELECT 1 FROM users WHERE id=$1 AND tg_chat_id=$2', [link.user_id, tg.id]);
+    if (own.rowCount) viewerId = link.user_id;
+  }
+  return { tg, viewerId, key: tg ? tgGuestKey(tg) : String((req.body && req.body.key) || req.headers['x-guest-key'] || '').slice(0, 64) };
+}
+const tgAppLink = token => TG_BOT ? `https://t.me/${TG_BOT}?startapp=${token}` : null;
+
 async function buildShare(link, viewerId, guestKey) {
   const sections = link.sections || {};
   const result = { token: link.token, expires_at: link.expires_at, sections: { sizes: !!sections.sizes, items: sections.items !== false, wishlist: !!sections.wishlist } };
   const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
   result.owner = own.rows[0] ? own.rows[0].username : null;
   result.is_owner = !!viewerId && viewerId === link.user_id;
+  result.tg_app = tgAppLink(link.token);
   const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
   const all = sr.rows[0]?.data || {};
   // Имя показываем всегда (это подпись страницы), рост — если не выключен, вес и фигуру — только по явной галочке
@@ -1116,8 +1153,9 @@ app.get('/share/:token', async (req, res) => {
     const link = await loadShareLink(req.params.token);
     if (!link) return res.status(404).json({ error: 'Ссылка недействительна' });
     if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'Ссылка истекла' });
-    const viewer = viewerFromReq(req);
-    const result = await buildShare(link, viewer, String(req.headers['x-guest-key'] || '').slice(0, 64));
+    const v = await shareViewer(req, link);
+    const result = await buildShare(link, v.viewerId, v.key);
+    if (v.tg) result.tg_me = tgDisplayName(v.tg);
     if (!result.is_owner) {
       const seen = _shareSeen.get(link.token) || 0;
       if (Date.now() - seen > 30 * 60 * 1000) { _shareSeen.set(link.token, Date.now()); logAct(link.user_id, 'share_view', 'Кто-то открыл твою ссылку для друзей'); }
@@ -1132,13 +1170,14 @@ app.post('/share/:token/claim', async (req, res) => {
     if (!rateOk('claim:' + clientIp(req), 30, 60 * 60 * 1000)) return res.status(429).json({ error: 'Слишком часто' });
     const link = await loadShareLink(req.params.token);
     if (!link || !(link.sections || {}).wishlist) return res.status(404).json({ error: 'Ссылка недействительна' });
-    const key = String((req.body && req.body.key) || '');
+    const v = await shareViewer(req, link, req.body && req.body.init_data);
+    const key = v.key;
     if (!/^[A-Za-z0-9_-]{16,64}$/.test(key)) return res.status(400).json({ error: 'Нет ключа' });
     const id = parseInt(req.body.wishlist_id, 10);
     const w = await pool.query('SELECT id FROM wishlist WHERE id=$1 AND user_id=$2 AND received_at IS NULL AND COALESCE(hidden,FALSE)=FALSE', [id, link.user_id]);
     if (!w.rowCount) return res.status(404).json({ error: 'Вещь не найдена' });
-    if (viewerFromReq(req) === link.user_id) return res.status(400).json({ error: 'Это твой вишлист' });
-    const name = String((req.body && req.body.name) || '').trim().slice(0, 40) || null;
+    if (v.viewerId === link.user_id) return res.status(400).json({ error: 'Это твой вишлист' });
+    const name = v.tg ? tgDisplayName(v.tg) : (String((req.body && req.body.name) || '').trim().slice(0, 40) || null);
     const r = await pool.query(
       `INSERT INTO gift_claims (wishlist_id, name, guest_key) VALUES ($1,$2,$3)
        ON CONFLICT (wishlist_id) DO UPDATE SET name=EXCLUDED.name WHERE gift_claims.guest_key=EXCLUDED.guest_key RETURNING id`, [id, name, key]);
@@ -1150,7 +1189,8 @@ app.post('/share/:token/unclaim', async (req, res) => {
   try {
     const link = await loadShareLink(req.params.token);
     if (!link) return res.status(404).json({ error: 'Ссылка недействительна' });
-    const key = String((req.body && req.body.key) || '');
+    const key = (await shareViewer(req, link, req.body && req.body.init_data)).key;
+    if (!key) return res.status(400).json({ error: 'Нет ключа' });
     const id = parseInt(req.body && req.body.wishlist_id, 10);
     const r = await pool.query(
       'DELETE FROM gift_claims c USING wishlist w WHERE c.wishlist_id=w.id AND w.user_id=$1 AND c.wishlist_id=$2 AND c.guest_key=$3', [link.user_id, id, key]);
@@ -2439,6 +2479,8 @@ function shareSummary(d) {
   const n = (d.wishlist || []).length;
   return { name, cells, n };
 }
+// Точка входа Telegram Mini App (адрес указывается в BotFather): код ссылки приходит в start_param
+app.get('/tgapp', (req, res) => res.set('Cache-Control', 'no-cache').type('html').send(fs.readFileSync(__dirname + '/share.html', 'utf8')));
 app.get('/s/:token', async (req, res) => {
   let html = fs.readFileSync(__dirname + '/share.html', 'utf8');
   try {

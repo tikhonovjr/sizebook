@@ -890,6 +890,10 @@ function renderFriends() {
     <div class="acts">
       ${url ? `<button class="btn" id="fSend" onclick="sendLink()">Отправить</button><button class="btn ghost" onclick="copy(shareUrl())">Скопировать</button>` : `<button class="btn wide" id="fSend" onclick="makeLink()">Создать ссылку</button>`}
     </div>
+    ${url && SHARE.tg_app ? `<div class="sec"><h2>Для Telegram-чата</h2></div>
+      <div class="msg">Отправь эту ссылку в чат: страница откроется прямо в Telegram, без регистрации, и у каждой брони будет видно имя аккаунта</div>
+      <div class="url num" style="border:2px solid var(--ink);background:var(--lab);padding:10px 12px;margin-top:8px;overflow-wrap:anywhere">${esc(SHARE.tg_app.replace(/^https?:\/\//, ''))}</div>
+      <div class="acts"><button class="btn" onclick="copy(SHARE.tg_app)">Скопировать для Telegram</button></div>` : ''}
     ${url ? `<div class="msg" id="secMsg">Галочки сохраняются сразу. Ссылка, которую ты уже отправил, продолжает работать</div>
       <div class="acts"><button class="btn ghost" onclick="confirmDel(this,makeLink,'Нажми ещё раз: старая ссылка перестанет работать')">Сделать новую ссылку</button><button class="btn ghost" onclick="confirmDel(this,revokeLink)">Отключить ссылку</button></div>` : ''}
   </div>`;
