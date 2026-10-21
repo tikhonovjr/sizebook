@@ -1097,7 +1097,9 @@ async function shareViewer(req, link, bodyInit) {
   }
   return { tg, viewerId, key: tg ? tgGuestKey(tg) : String((req.body && req.body.key) || req.headers['x-guest-key'] || '').slice(0, 64) };
 }
-const tgAppLink = token => TG_BOT ? `https://t.me/${TG_BOT}?startapp=${token}` : null;
+// Главное Mini App бота: t.me/<бот>?startapp=…; если приложение создано через /newapp — t.me/<бот>/<короткое имя>?startapp=…
+const TG_APP_SHORT = (process.env.TELEGRAM_APP_SHORT || '').replace(/[^A-Za-z0-9_]/g, '');
+const tgAppLink = token => TG_BOT ? `https://t.me/${TG_BOT}${TG_APP_SHORT ? '/' + TG_APP_SHORT : ''}?startapp=${token}` : null;
 
 async function buildShare(link, viewerId, guestKey) {
   const sections = link.sections || {};
