@@ -384,7 +384,8 @@ async function copy(t) { try { await navigator.clipboard.writeText(t); toast('С
 // ══════════ ГАРДЕРОБ ══════════
 function renderWardrobe() {
   const name = [SIZES.profile_name, SIZES.profile_lastname].filter(Boolean).join(' ') || (user && user.username) || 'Без имени';
-  const meta = [SIZES.profile_height && 'рост ' + SIZES.profile_height, SIZES.profile_weight && 'вес ' + SIZES.profile_weight].filter(Boolean).join(' · ') || 'рост и вес не указаны';
+  const _bi = bdayInfo(SIZES.profile_birthday), _age = _bi && _bi.age != null ? _bi.age : SIZES.profile_age;
+  const meta = [_age && ageText(_age), SIZES.profile_height && 'рост ' + SIZES.profile_height, SIZES.profile_weight && 'вес ' + SIZES.profile_weight].filter(Boolean).join(' · ') || 'рост и вес не указаны';
   const url = shareUrl();
   const withItems = CATS.filter(c => itemsOf(c).length);
   $('v-wardrobe').innerHTML = `
@@ -870,7 +871,7 @@ function pollWish() {
 let SEC = null;
 function renderFriends() {
   const url = shareUrl();
-  if (!SEC) SEC = { sizes: true, wishlist: true, items: true, ...(SHARE && SHARE.sections ? SHARE.sections : {}) };
+  if (!SEC) SEC = { wishlist: true, ...(SHARE && SHARE.sections ? SHARE.sections : {}) };
   const on = (k, def) => def ? SEC[k] !== false : SEC[k] === true;
   const chk = (k, t, s, def = true) => `<button class="chk span3" role="checkbox" aria-checked="${on(k, def)}" onclick="SEC.${k}=${on(k, def) ? 'false' : 'true'};renderFriends();saveSec()"><i></i><span>${t}<small>${s}</small></span></button>`;
   $('v-friends').innerHTML = `
@@ -883,12 +884,14 @@ function renderFriends() {
     </div>
   </div>
   <div class="body">
-    <div id="fSec"><div class="sec"><h2>Что видно</h2></div>
+    <div id="fSec"><div class="sec"><h2>Видно всегда</h2></div>
+    <div class="msg" style="margin-top:0">Имя, возраст, рост, размер обуви и размер одежды (S, M, L…)</div>
+    <div class="sec"><h2>Добавить</h2></div>
     <div class="label" style="grid-template-columns:1fr;box-shadow:none">
-      ${chk('sizes', 'Размеры', 'Паспорт со всеми размерами')}
-      ${chk('items', 'Размеры по брендам', 'Бренд и размер из твоих вещей, без фото и заметок')}
-      ${chk('wishlist', 'Вишлист', 'Что ты хочешь получить, без полученного и скрытого')}
-      ${chk('height', 'Рост', 'Помогает с длиной брюк, платьев и пальто')}
+      ${chk('birthday', 'Дата рождения', SIZES.profile_birthday ? 'Число и сколько осталось до дня рождения' : 'Сначала впиши дату в Профиле', false)}
+      ${chk('wishlist', 'Вишлист', 'Друзья смогут забронировать подарок')}
+      ${chk('more_sizes', 'Остальные размеры', 'Низ, верхняя одежда, шапка, кольцо и другие из паспорта', false)}
+      ${chk('items', 'Размеры по брендам', 'Бренд и размер из твоих вещей, без фото и заметок', false)}
       ${chk('weight', 'Вес', 'По умолчанию скрыт', false)}
       ${chk('body', 'Параметры фигуры', 'Грудь, талия, бёдра. По умолчанию скрыты', false)}
     </div></div>
@@ -903,7 +906,7 @@ function renderFriends() {
       <div class="acts"><button class="btn ghost" onclick="confirmDel(this,makeLink,'Нажми ещё раз: старая ссылка перестанет работать')">Сделать новую ссылку</button><button class="btn ghost" onclick="confirmDel(this,revokeLink)">Отключить ссылку</button></div>` : ''}
   </div>`;
 }
-const secBody = () => ({ sizes: SEC.sizes !== false, wishlist: SEC.wishlist !== false, items: SEC.items !== false, height: SEC.height !== false, weight: SEC.weight === true, body: SEC.body === true, excluded_size_keys: [], excluded_wishlist_ids: [] });
+const secBody = () => ({ wishlist: SEC.wishlist !== false, birthday: SEC.birthday === true, more_sizes: SEC.more_sizes === true, items: SEC.items === true, weight: SEC.weight === true, body: SEC.body === true, excluded_size_keys: [], excluded_wishlist_ids: [] });
 async function makeLink() {
   try { SHARE = await api('/share', { method: 'POST', body: { sections: secBody() } }); renderAll(); toast('Ссылка готова'); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
@@ -964,7 +967,8 @@ function renderProfile() {
     <div id="pAbout"><div class="form">
       ${f('profile_name', 'Имя', 'Иван')}${f('profile_lastname', 'Фамилия', 'Тихонов')}
       ${f('profile_height', 'Рост, см', '182', 'numeric')}${f('profile_weight', 'Вес, кг', '78', 'numeric')}
-      ${f('profile_age', 'Возраст', '30', 'numeric', 'span3')}
+      <label class="fld span3"><span class="cap">Дата рождения</span><input id="p_profile_birthday" type="date" value="${esc(SIZES.profile_birthday || '')}" max="${new Date().toISOString().slice(0, 10)}" oninput="bdHint()"></label>
+      <div class="msg span3" id="pBd" style="margin:0;padding:4px 10px 8px">${bdHintText(SIZES.profile_birthday)}</div>
     </div>
     <div class="seg" id="pGen" style="border:2px solid var(--ink);margin-top:-2px">${[['male', 'Мужской'], ['female', 'Женский'], ['other', 'Другой']].map(g => `<button aria-pressed="${GEN === g[0]}" onclick="GEN='${g[0]}';markPressed('pGen',this);$('pBody').hidden=GEN!=='female'">${g[1]}</button>`).join('')}</div>
     <div id="pBody" ${GEN === 'female' ? '' : 'hidden'}>
@@ -996,8 +1000,17 @@ function renderProfile() {
     <div class="acts"><button class="btn ghost" onclick="confirmDel(this,logout)">Выйти из аккаунта</button></div>
   </div>`;
 }
+function bdHintText(bd) {
+  const i = bdayInfo(bd);
+  if (!i) return SIZES.profile_age && !bd ? 'Сейчас указан возраст ' + esc(SIZES.profile_age) + '. Впиши дату рождения, и он будет считаться сам' : 'Возраст посчитаем сами. Друзья увидят возраст, а дату — если включишь её в «Друзьях»';
+  return `<b>${esc(ageText(i.age))}</b> · день рождения ${esc(i.date)}, ${esc(i.left)}`;
+}
+function bdHint() { $('pBd').innerHTML = bdHintText($('p_profile_birthday').value); }
 async function saveProfile() {
-  const body = {}; ['profile_name', 'profile_lastname', 'profile_height', 'profile_weight', 'profile_age', 'chest', 'waist', 'hips'].forEach(k => { const el = $('p_' + k); if (el) body[k] = el.value.trim(); });
+  const bdv = $('p_profile_birthday') ? $('p_profile_birthday').value : '';
+  const bi = bdayInfo(bdv);
+  const body = { profile_birthday: bdv }; if (bi && bi.age != null) body.profile_age = String(bi.age);
+  ['profile_name', 'profile_lastname', 'profile_height', 'profile_weight', 'chest', 'waist', 'hips'].forEach(k => { const el = $('p_' + k); if (el) body[k] = el.value.trim(); });
   if (GEN) body.profile_gender = GEN;
   try { await api('/sizes', { method: 'POST', body }); Object.assign(SIZES, body); renderAll(); toast('Профиль сохранён'); }
   catch (e) { if (e.message !== 'auth') { $('pMsg').textContent = 'Не сохранилось. Попробуй ещё раз'; $('pMsg').className = 'msg err'; } }

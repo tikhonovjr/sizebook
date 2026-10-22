@@ -405,7 +405,7 @@ function logAct(userId, kind, text, ref) {
 }
 const SIZE_LABELS = { daily_top: 'Верх', daily_bottom: 'Низ', outer: 'Верхняя одежда', outer_jacket: 'Верхняя одежда', shoes_eu: 'Обувь', shoes_sneaker: 'Обувь',
   hat: 'Шапка', hat_cap: 'Шапка', ring_mm: 'Кольцо', dress: 'Платье', sleep_size: 'Пижама', chest: 'Грудь', waist: 'Талия', hips: 'Бёдра',
-  profile_name: 'Имя', profile_lastname: 'Фамилия', profile_height: 'Рост', profile_weight: 'Вес', profile_age: 'Возраст', profile_gender: 'Пол' };
+  profile_name: 'Имя', profile_lastname: 'Фамилия', profile_height: 'Рост', profile_weight: 'Вес', profile_age: 'Возраст', profile_birthday: 'Дата рождения', profile_gender: 'Пол' };
 const shortTitle = t => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > 60 ? t.slice(0, 57) + '…' : t; };
 app.get('/me/activity', authenticateToken, async (req, res) => {
   try {
@@ -1004,7 +1004,8 @@ app.get('/profile/:username', (req, res) => res.status(404).json({ error: 'Не 
 // Что показывать по ссылке. Вес и параметры фигуры — только если владелец явно включил.
 function cleanSections(x) {
   x = x || {};
-  return { sizes: x.sizes !== false, items: x.items !== false, wishlist: x.wishlist !== false, height: x.height !== false,
+  // Всегда видно: имя, возраст, рост, обувь и размер одежды. Остальное — по галочкам.
+  return { wishlist: x.wishlist !== false, birthday: x.birthday === true, more_sizes: x.more_sizes === true, items: x.items === true,
     weight: x.weight === true, body: x.body === true,
     excluded_size_keys: Array.isArray(x.excluded_size_keys) ? x.excluded_size_keys.slice(0, 100).map(String) : [],
     excluded_wishlist_ids: Array.isArray(x.excluded_wishlist_ids) ? x.excluded_wishlist_ids.slice(0, 500).map(Number).filter(Number.isFinite) : [] };
@@ -1018,7 +1019,7 @@ app.patch('/share', authenticateToken, async (req, res) => {
       [req.user.id, JSON.stringify(sec)]);
     if (!r.rows[0]) return res.status(404).json({ error: 'Ссылки нет' });
     r.rows[0].tg_app = tgAppLink(r.rows[0].token);
-    logAct(req.user.id, 'share', 'Настройки ссылки: ' + [sec.sizes && 'размеры', sec.items && 'по брендам', sec.wishlist && 'вишлист', sec.weight && 'вес', sec.body && 'фигура'].filter(Boolean).join(', '));
+    logAct(req.user.id, 'share', 'Настройки ссылки: основное' + [sec.birthday && 'дата рождения', sec.wishlist && 'вишлист', sec.more_sizes && 'все размеры', sec.items && 'по брендам', sec.weight && 'вес', sec.body && 'фигура'].filter(Boolean).map(x => ', ' + x).join(''));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -1038,7 +1039,7 @@ app.post('/share', authenticateToken, async (req, res) => {
     );
     const sec = sections || {};
     r.rows[0].tg_app = tgAppLink(r.rows[0].token);
-    logAct(req.user.id, 'share', 'Ссылка для друзей создана: ' + [sec.sizes !== false && 'размеры', sec.items !== false && 'по брендам', sec.wishlist && 'вишлист'].filter(Boolean).join(', '));
+    logAct(req.user.id, 'share', 'Ссылка для друзей создана' + [sec.birthday && 'дата рождения', sec.wishlist && 'вишлист', sec.more_sizes && 'все размеры', sec.items && 'по брендам'].filter(Boolean).map(x => ', ' + x).join(''));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
@@ -1111,31 +1112,38 @@ const tgAppLink = token => TG_BOT ? `https://t.me/${TG_BOT}${TG_APP_SHORT ? '/' 
 
 async function buildShare(link, viewerId, guestKey) {
   const sections = link.sections || {};
-  const result = { token: link.token, expires_at: link.expires_at, sections: { sizes: !!sections.sizes, items: sections.items !== false, wishlist: !!sections.wishlist } };
+  const result = { token: link.token, expires_at: link.expires_at, sections: { more_sizes: sections.more_sizes === true, items: sections.items === true, wishlist: !!sections.wishlist, birthday: sections.birthday === true } };
   const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
   result.owner = own.rows[0] ? own.rows[0].username : null;
   result.is_owner = !!viewerId && viewerId === link.user_id;
   result.tg_app = tgAppLink(link.token);
   const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
   const all = sr.rows[0]?.data || {};
-  // Имя показываем всегда (это подпись страницы), рост — если не выключен, вес и фигуру — только по явной галочке
-  const base = { profile_name: all.profile_name, profile_lastname: all.profile_lastname };
-  if (sections.height !== false) base.profile_height = all.profile_height;
-  if (sections.sizes) {
+  // Всегда: имя, возраст, рост, обувь и размер одежды (верх). Дата рождения, остальные размеры, бренды, вес и фигура — по галочкам.
+  const base = { profile_name: all.profile_name, profile_lastname: all.profile_lastname, profile_height: all.profile_height,
+    daily_top: all.daily_top, shoes_eu: all.shoes_eu, shoes_sneaker: all.shoes_sneaker };
+  const bd = String(all.profile_birthday || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (bd) {
+    const now = new Date(), mo = +bd[2] - 1, d = +bd[3];
+    let age = now.getFullYear() - +bd[1] - ((now.getMonth() < mo || (now.getMonth() === mo && now.getDate() < d)) ? 1 : 0);
+    if (age >= 0 && age <= 120) base.profile_age = String(age);
+    if (sections.birthday === true) result.birthday = `${bd[2]}-${bd[3]}`;
+  } else if (all.profile_age) base.profile_age = all.profile_age;
+  if (sections.more_sizes === true) {
     const excl = Array.isArray(sections.excluded_size_keys) ? sections.excluded_size_keys : [];
     for (const [k, v] of Object.entries(all)) {
-      if (k.startsWith('ui_') || k.startsWith('profile_') || excl.includes(k)) continue;
-      if (['chest', 'waist', 'hips'].includes(k) && sections.body !== true) continue;
+      if (k.startsWith('ui_') || k.startsWith('profile_') || excl.includes(k) || ['chest', 'waist', 'hips'].includes(k)) continue;
       base[k] = v;
     }
-    if (sections.weight === true) base.profile_weight = all.profile_weight;
-    if (sections.items !== false) {
-      const ir = await pool.query(
-        `SELECT brand, zone, name, size, fit FROM items
-         WHERE user_id=$1 AND COALESCE(brand,'')<>'' AND COALESCE(size,'')<>''
-         ORDER BY lower(brand), zone, id`, [link.user_id]);
-      result.brand_sizes = ir.rows;
-    }
+  }
+  if (sections.body === true) for (const k of ['chest', 'waist', 'hips']) base[k] = all[k];
+  if (sections.weight === true) base.profile_weight = all.profile_weight;
+  if (sections.items === true) {
+    const ir = await pool.query(
+      `SELECT brand, zone, name, size, fit FROM items
+       WHERE user_id=$1 AND COALESCE(brand,'')<>'' AND COALESCE(size,'')<>''
+       ORDER BY lower(brand), zone, id`, [link.user_id]);
+    result.brand_sizes = ir.rows;
   }
   result.sizes = Object.fromEntries(Object.entries(base).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   if (sections.wishlist) {

@@ -131,20 +131,26 @@ function render(d) {
   const S = d.sizes || {};
   const first = (keys) => { for (const k of keys) { const v = sval(S[k]); if (v) return v; } return ''; };
   const name = [S.profile_name, S.profile_lastname].filter(Boolean).join(' ') || d.owner || 'Владелец';
-  const meta = [S.profile_height && 'рост ' + S.profile_height, S.profile_weight && 'вес ' + S.profile_weight].filter(Boolean).join(' · ');
+  const meta = [S.profile_age && ageText(S.profile_age), S.profile_height && 'рост ' + S.profile_height, S.profile_weight && 'вес ' + S.profile_weight].filter(Boolean).join(' · ');
+  const bi = d.birthday ? bdayInfo(d.birthday) : null;
+  const shoe = first(['shoes_eu', 'shoes_sneaker']);
+  // Основное: размер одежды (верх); остальные — только если владелец включил «Все размеры»
+  const cells = [['Одежда', first(['daily_top'])]];
+  if (d.sections && d.sections.more_sizes) MAIN.filter(m => m[0] !== 'Верх' && m[0] !== 'Обувь').forEach(([t, keys]) => cells.push([t, first(keys)]));
+  const shown = cells.filter(c => c[1]);
   const used = new Set(MAIN.flatMap(m => m[1]));
   const extra = Object.entries(S).filter(([k, v]) => !used.has(k) && !k.startsWith('profile_') && !k.startsWith('ui_') && sval(v) && EXTRA[k]);
-  const hasSizes = MAIN.some(m => first(m[1])) || extra.length;
   document.title = 'SizeBook · ' + name;
 
-  let html = `<div class="top"><div class="lt"><h1>Подарок в размер</h1><span>SizeBook</span></div>
+  let html = `<div class="top"><div class="lt"><h1>${bi ? 'День рождения' : 'Подарок в размер'}</h1><span>SizeBook</span></div>
     <div class="label">
       <div class="z1 span2">ПОЛУЧАТЕЛЬ / TO:<b>${esc(name)}</b><span class="num">${esc(meta || 'точно в размер')}</span></div>
-      <div class="route num"><small>ОБУВЬ EU</small>${esc(first(['shoes_eu', 'shoes_sneaker']) || '—')}</div>
-      ${hasSizes ? MAIN.map(([t, keys]) => { const v = first(keys); return `<div class="cell"><span class="cap">${t}</span><b class="num ${v ? (v.length > 6 ? 'sm' : '') : 'empty'}">${esc(v || '—')}</b></div>`; }).join('') : '<div class="z1 span3">Размеры скрыты владельцем</div>'}
+      <div class="route num"><small>ОБУВЬ EU</small>${esc(shoe || '—')}</div>
+      ${bi ? `<div class="z1 span3 num">ДЕНЬ РОЖДЕНИЯ: <b style="display:inline;font-size:18px">${esc(bi.date)}</b> · ${esc(bi.left)}</div>` : ''}
+      ${shown.map(([t, v]) => `<div class="cell${shown.length + extra.length === 1 ? ' span3' : ''}"><span class="cap">${t}</span><b class="num ${v.length > 6 ? 'sm' : ''}">${esc(v)}</b></div>`).join('')}
       ${['chest', 'waist', 'hips'].some(k => sval(S[k])) ? `<div class="cell span3"><span class="cap">Параметры · грудь — талия — бёдра, см</span><b class="num">${['chest', 'waist', 'hips'].map(k => esc(sval(S[k]) || '—')).join('-')}</b></div>` : ''}
       ${extra.map(([k, v]) => `<div class="cell"><span class="cap">${esc(EXTRA[k])}</span><b class="num sm">${esc(sval(v))}</b></div>`).join('')}
-      ${extra.length % 3 ? '<div></div>'.repeat(3 - extra.length % 3) : ''}
+      ${shown.length + extra.length > 1 && (shown.length + extra.length) % 3 ? '<div></div>'.repeat(3 - (shown.length + extra.length) % 3) : ''}
     </div></div><div class="body">`;
 
   if (d.brand_sizes && d.brand_sizes.length) {

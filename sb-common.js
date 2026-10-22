@@ -77,3 +77,23 @@ function normTitle(title, shop, knownBrand) {
 }
 const isTg = u => /^https?:\/\/(t\.me|telegram\.me)\//i.test(u || '');
 
+
+// ── Дата рождения: возраст и сколько до дня рождения ──
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; };
+const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+// bd: 'YYYY-MM-DD' (или 'MM-DD' без года)
+function bdayInfo(bd, now = new Date()) {
+  const m = String(bd || '').match(/^(?:(\d{4})-)?(\d{2})-(\d{2})$/); if (!m) return null;
+  const y = m[1] ? +m[1] : null, mo = +m[2] - 1, d = +m[3];
+  if (mo < 0 || mo > 11 || d < 1 || d > 31) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(today.getFullYear(), mo, d);
+  if (next < today) next = new Date(today.getFullYear() + 1, mo, d);
+  const days = Math.round((next - today) / 864e5);
+  let age = null;
+  if (y) { age = today.getFullYear() - y - ((today.getMonth() < mo || (today.getMonth() === mo && today.getDate() < d)) ? 1 : 0); if (age < 0 || age > 120) age = null; }
+  const date = d + ' ' + MONTHS_GEN[mo];
+  const left = days === 0 ? 'сегодня!' : days === 1 ? 'завтра' : 'через ' + days + ' ' + plural(days, 'день', 'дня', 'дней');
+  return { age, date, days, left };
+}
+const ageText = n => n == null || n === '' ? '' : n + ' ' + plural(+n, 'год', 'года', 'лет');
