@@ -1232,35 +1232,49 @@ async function fetchAll() {
   SEC = null; GEN = null;
 }
 let refreshing = false, hiddenAt = 0;
+let refreshP = null;
 async function refresh(silent) {
-  if (refreshing || !token) return; refreshing = true;
+  if (!token) return;
+  if (refreshing) { await refreshP; if (!silent) toast('Обновлено'); return; }
+  refreshing = true; let done; refreshP = new Promise(r => done = r);
   try {
     await fetchAll(); renderAll(); pollWish();
     api('/me/telegram').then(t => { TG = t; renderProfile(); renderWardrobe(); }).catch(() => {});
     if (CUR === 'profile') loadActivity();
     if (!silent) toast('Обновлено');
   } catch (e) { if (e.message !== 'auth' && !silent) toast('Нет связи. Попробуй ещё раз'); }
-  finally { refreshing = false; }
+  finally { refreshing = false; done(); }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 20000) refresh(true); });
 // потянуть вниз, чтобы обновить
 (function ptr() {
   const ind = document.createElement('div'); ind.id = 'ptr'; document.body.appendChild(ind);
-  let y0 = null, dy = 0;
-  const blocked = t => guideOn() || $('sheet').classList.contains('on') || $('viewer').classList.contains('on') || t.closest('.strip,.sw');
-  addEventListener('touchstart', e => { if (window.scrollY > 0 || blocked(e.target) || !token) { y0 = null; return; } y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
-  addEventListener('touchmove', e => {
-    if (y0 === null) return; dy = e.touches[0].clientY - y0;
-    if (dy <= 0 || window.scrollY > 0) { ind.style.transform = ''; ind.classList.remove('on'); return; }
-    const p = Math.min(dy, 110); ind.classList.add('on');
-    ind.style.transform = `translate(-50%, ${p - 60}px)`; ind.textContent = dy > 80 ? 'Отпусти, чтобы обновить' : '↓ Потяни, чтобы обновить';
+  let y0 = null, x0 = 0, dy = 0, dir = null;
+  // Строки вишлиста и ленты листаются вбок — не блокируем их целиком, а смотрим направление жеста
+  const blocked = t => guideOn() || $('sheet').classList.contains('on') || $('viewer').classList.contains('on');
+  const reset = () => { ind.style.transform = ''; ind.classList.remove('on'); };
+  addEventListener('touchstart', e => {
+    if (window.scrollY > 2 || blocked(e.target) || !token || e.touches.length > 1) { y0 = null; return; }
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; dir = null;
   }, { passive: true });
-  addEventListener('touchend', async () => {
-    if (y0 === null) return; const go2 = dy > 80; y0 = null;
-    if (!go2) { ind.style.transform = ''; ind.classList.remove('on'); return; }
+  addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    const ddx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0;
+    if (!dir) { if (Math.abs(ddx) < 8 && Math.abs(dy) < 8) return; dir = Math.abs(dy) > Math.abs(ddx) ? 'v' : 'h'; }
+    if (dir === 'h' || dy <= 0 || window.scrollY > 2) { y0 = dir === 'h' ? null : y0; reset(); return; }
+    const p = Math.min(dy, 110); ind.classList.add('on');
+    ind.style.transform = `translate(-50%, ${p - 60}px)`; ind.textContent = dy > 70 ? 'Отпусти, чтобы обновить' : '↓ Потяни, чтобы обновить';
+  }, { passive: true });
+  const end = async () => {
+    if (y0 === null) return; const go2 = dir === 'v' && dy > 70; y0 = null;
+    if (!go2) return reset();
+    closeSwipes();
     ind.textContent = 'Обновляю…'; ind.style.transform = 'translate(-50%, 20px)';
-    await refresh(); ind.style.transform = ''; ind.classList.remove('on');
-  });
+    await refresh(); reset();
+  };
+  addEventListener('touchend', end);
+  // iOS иногда прерывает жест (touchcancel), когда страница «пружинит» — считаем это отпусканием
+  addEventListener('touchcancel', end);
 })();
 async function load() {
   if (!token) return showLogin('');
