@@ -75,6 +75,7 @@ a{color:inherit}
 .gb .nt i{font-style:normal;font-weight:700}
 .gb button{flex:none;background:var(--ink);color:#fff;border:0;font:700 11px var(--mono);text-transform:uppercase;padding:0 14px;min-height:40px;cursor:pointer}
 .gb button.ghost{background:var(--lab);color:var(--ink);border:2px solid var(--ink)}
+.gb .taken a.who{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
 .gb .taken{flex:0 1 auto;max-width:60%;overflow-wrap:anywhere;text-align:right;font:700 10.5px var(--mono);text-transform:uppercase;border:2px dashed var(--ink3);color:var(--ink2);padding:8px 10px}
 .wi.claimed .row .tt,.wi.claimed .row .bd,.wi.claimed .row .pr b,.wi.claimed .row .mt{color:var(--ink3)}
 .wi.claimed .row .th img{opacity:.45}
@@ -167,6 +168,12 @@ function render(d) {
   $('app').innerHTML = html;
   window._wl = d.wishlist || [];
 }
+// Имя брони: если есть @username из Telegram — ссылка на профиль (в Mini App откроется внутри Telegram)
+function claimWho(name) {
+  const m = String(name).match(/@([A-Za-z0-9_]{4,32})\)?$/);
+  if (!m) return esc(name);
+  return `<a class="who" href="https://t.me/${m[1]}" target="_blank" rel="noopener">${esc(name)}</a>`;
+}
 function wishRows(list) {
   return list.map(w => {
     const n = normTitle(w.title, w.shop), brand = w.brand || n.brand || '';
@@ -183,7 +190,7 @@ function wishRows(list) {
     let act = '';
     if (!window._owner) {
       if (w.claimed && w.claim_mine) act = `<button class="ghost" onclick="unclaim(${w.id})">Вы дарите · отменить</button>`;
-      else if (w.claimed) act = `<span class="taken">${w.claim_name ? 'Бронь: ' + esc(w.claim_name) : 'Забронировано'}</span>`;
+      else if (w.claimed) act = `<span class="taken">${w.claim_name ? 'Бронь: ' + claimWho(w.claim_name) : 'Забронировано'}</span>`;
       else act = `<button onclick="askClaim(${w.id})">Я подарю</button>`;
     }
     const bar = (w.note || act) ? `<div class="gb">${note}${act}</div>` : '';
