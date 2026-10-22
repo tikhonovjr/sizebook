@@ -1842,6 +1842,13 @@ function parseProductFromHtml(html, url) {
     || $('meta[itemprop="brand"]').attr('content') || $('[itemprop="brand"] [itemprop="name"]').first().attr('content')
     || $('[itemprop="brand"] [itemprop="name"]').first().text().trim() || null;
   image = image || $('meta[property="og:image"]').attr('content') || null;
+  // Заглушки вместо фото товара: иконка сайта, логотип, сгенерированная карточка «поделиться»
+  if (image && /touch-icon|favicon|apple-icon|\/icons?\/|\/logos?\/|\/logo\.(png|svg|jpe?g|webp)|\/img\/share\/|placeholder|no[-_]?photo|no[-_]?image/i.test(image)) image = null;
+  // Авито: настоящие фото лежат на *.img.avito.st — берём первое, если og:image не оттуда
+  if (/(^|\.)avito\.ru$/i.test((() => { try { return new URL(url).hostname; } catch (_) { return ''; } })()) && !/img\.avito\.st/i.test(image || '')) {
+    const m = html.replace(/\\u002F/gi, '/').replace(/\\\//g, '/').match(/https?:\/\/\d+\.img\.avito\.st\/[^"'\s\\<>)]+/i);
+    if (m) image = m[0].replace(/&amp;/g, '&');
+  }
   // Если вместо названия товара — только имя магазина (Спортмастер и т.п.), берём h1 или <title> без хвоста магазина
   {
     const brand = (() => { try { return new URL(url).hostname.replace(/^(www|m)\./, '').split('.')[0].toLowerCase(); } catch (_) { return ''; } })();
