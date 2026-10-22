@@ -368,7 +368,7 @@ const brandOf = i => i.brand || normTitle(i.name, i.shop || (i.url && (() => { t
 const wishBrand = w => w.brand || normTitle(w.title, w.shop).brand || '';
 
 // ── Ссылка и QR ──
-const shareUrl = () => SHARE ? API + '/s/' + SHARE.token : '';
+const shareUrl = () => SHARE ? API + '/s/' + (SHARE.code || SHARE.token) : '';
 function qrSvg(text) { if (!window.qrcode || !text) return ''; const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
 async function sendLink() {
   try {

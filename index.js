@@ -195,7 +195,13 @@ async function initDB() {
       created_at TIMESTAMP DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_share_links_token ON share_links(token);
+    ALTER TABLE share_links ADD COLUMN IF NOT EXISTS code VARCHAR(16);
+    CREATE UNIQUE INDEX IF NOT EXISTS share_links_code_idx ON share_links(code);
   `);
+  // Короткие коды для действующих ссылок (старые длинные продолжают работать)
+  for (const r of (await pool.query('SELECT id FROM share_links WHERE code IS NULL AND revoked_at IS NULL')).rows) {
+    await pool.query('UPDATE share_links SET code=$1 WHERE id=$2', [shareCode(), r.id]).catch(() => {});
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS items (
       id         SERIAL PRIMARY KEY,
@@ -1000,6 +1006,10 @@ app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
 // и без учёта настроек шаринга. Фронт его не использует; публичный доступ — только через /share/:token.
 app.get('/profile/:username', (req, res) => res.status(404).json({ error: 'Не найден' }));
 
+// Короткий код ссылки: 8 символов без похожих (0/O, 1/l/I) — ~10^14 вариантов, перебор упирается в лимиты
+const SHARE_ALPHABET = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function shareCode() { const b = crypto.randomBytes(8); return Array.from(b, x => SHARE_ALPHABET[x % SHARE_ALPHABET.length]).join(''); }
+const SHARE_ID_RE = /^(?:[0-9a-f]{64}|[A-Za-z0-9]{8})$/;
 // ── SHARE LINKS ──────────────────────────────────────────────────────────────
 // Что показывать по ссылке. Вес и параметры фигуры — только если владелец явно включил.
 function cleanSections(x) {
@@ -1018,7 +1028,7 @@ app.patch('/share', authenticateToken, async (req, res) => {
       `UPDATE share_links SET sections=$2 WHERE id=(SELECT id FROM share_links WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1) RETURNING *`,
       [req.user.id, JSON.stringify(sec)]);
     if (!r.rows[0]) return res.status(404).json({ error: 'Ссылки нет' });
-    r.rows[0].tg_app = tgAppLink(r.rows[0].token);
+    r.rows[0].tg_app = tgAppLink(r.rows[0].code || r.rows[0].token);
     logAct(req.user.id, 'share', 'Настройки ссылки: основное' + [sec.birthday && 'дата рождения', sec.wishlist && 'вишлист', sec.more_sizes && 'все размеры', sec.items && 'по брендам', sec.weight && 'вес', sec.body && 'фигура'].filter(Boolean).map(x => ', ' + x).join(''));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -1034,11 +1044,11 @@ app.post('/share', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     const r = await pool.query(
-      'INSERT INTO share_links (user_id, token, sections, expires_at) VALUES ($1,$2,$3,$4) RETURNING *',
-      [req.user.id, token, JSON.stringify(sections || {}), expires_at || null]
+      'INSERT INTO share_links (user_id, token, code, sections, expires_at) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [req.user.id, token, shareCode(), JSON.stringify(sections || {}), expires_at || null]
     );
     const sec = sections || {};
-    r.rows[0].tg_app = tgAppLink(r.rows[0].token);
+    r.rows[0].tg_app = tgAppLink(r.rows[0].code || r.rows[0].token);
     logAct(req.user.id, 'share', 'Ссылка для друзей создана' + [sec.birthday && 'дата рождения', sec.wishlist && 'вишлист', sec.more_sizes && 'все размеры', sec.items && 'по брендам'].filter(Boolean).map(x => ', ' + x).join(''));
     res.json(r.rows[0]);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
@@ -1053,7 +1063,7 @@ app.get('/share', authenticateToken, async (req, res) => {
     if (!r.rows.length) return res.json(null);
     const link = r.rows[0];
     if (link.expires_at && new Date(link.expires_at) < new Date()) return res.json(null);
-    res.json({ ...link, tg_app: tgAppLink(link.token) });
+    res.json({ ...link, tg_app: tgAppLink(link.code || link.token) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
@@ -1070,7 +1080,8 @@ app.post('/share/revoke', authenticateToken, async (req, res) => {
 
 // Данные страницы для друзей. viewerId — кто открыл (если вошёл), guestKey — ключ гостя для «Я подарю».
 async function loadShareLink(token) {
-  const r = await pool.query('SELECT * FROM share_links WHERE token=$1 AND revoked_at IS NULL', [token]);
+  if (!SHARE_ID_RE.test(String(token || ''))) return null;
+  const r = await pool.query('SELECT * FROM share_links WHERE (token=$1 OR code=$1) AND revoked_at IS NULL', [token]);
   return r.rows[0] || null;
 }
 const SHARE_WISH_FIELDS = ['id', 'title', 'shop', 'url', 'price', 'size', 'image', 'brand', 'note', 'color', 'priority'];
@@ -1116,7 +1127,7 @@ async function buildShare(link, viewerId, guestKey) {
   const own = await pool.query('SELECT username FROM users WHERE id=$1', [link.user_id]);
   result.owner = own.rows[0] ? own.rows[0].username : null;
   result.is_owner = !!viewerId && viewerId === link.user_id;
-  result.tg_app = tgAppLink(link.token);
+  result.tg_app = tgAppLink(link.code || link.token);
   const sr = await pool.query('SELECT data FROM sizes WHERE user_id=$1', [link.user_id]);
   const all = sr.rows[0]?.data || {};
   // Всегда: имя, возраст, рост, обувь и размер одежды (верх). Дата рождения, остальные размеры, бренды, вес и фигура — по галочкам.
@@ -2502,7 +2513,7 @@ app.get('/tgapp', (req, res) => res.set('Cache-Control', 'no-cache').type('html'
 app.get('/s/:token', async (req, res) => {
   let html = fs.readFileSync(__dirname + '/share.html', 'utf8');
   try {
-    const link = /^[0-9a-f]{64}$/.test(req.params.token) ? await loadShareLink(req.params.token) : null;
+    const link = SHARE_ID_RE.test(req.params.token) ? await loadShareLink(req.params.token) : null;
     if (link && !(link.expires_at && new Date(link.expires_at) < new Date())) {
       const d = await buildShare(link, null, '');
       const { name, cells, n } = shareSummary(d);
@@ -2521,7 +2532,7 @@ app.get('/s/:token', async (req, res) => {
 const _ogCache = new Map();
 app.get('/og/:token.png', async (req, res) => {
   try {
-    if (!sharp || !/^[0-9a-f]{64}$/.test(req.params.token)) return res.status(404).end();
+    if (!sharp || !SHARE_ID_RE.test(req.params.token)) return res.status(404).end();
     const hit = _ogCache.get(req.params.token);
     if (hit && Date.now() - hit.at < 10 * 60 * 1000) return res.type('png').set('Cache-Control', 'public, max-age=600').send(hit.buf);
     const link = await loadShareLink(req.params.token);
