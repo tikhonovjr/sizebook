@@ -637,6 +637,52 @@ function tgBrand(info) {
   if (known) return known;
   return guessBrand(info && info.title, null);
 }
+// Цена из поста. В постах часто несколько сумм: «Цена бутика 1395€ / Наша цена 69900₽», «было 15 000 → стало 9 900».
+// Собираем все суммы, оцениваем по словам рядом (до и после числа) и по зачёркиванию в Telegram, берём лучшую;
+// при равенстве — рубли, затем самую низкую.
+const TG_CUR = '₽|руб\\.?|рублей|р\\.|rub\\b|byn\\b|₸|тг\\b|\\$|€|£|usd\\b|eur\\b|eur\\b|gbp\\b';
+function tgPrice(msgs) {
+  const parts = [], strike = []; let base = 0;
+  for (const m of msgs) {
+    const t = m.text || m.caption || ''; if (!t) continue;
+    if (parts.length) base += 1;
+    for (const e of (m.entities || m.caption_entities || [])) if (e.type === 'strikethrough') strike.push([base + e.offset, base + e.offset + e.length]);
+    parts.push(t); base += t.length;
+  }
+  const text = parts.join('\n');
+  const NUM = '(\\d{1,3}(?:[ \\u00a0\\u202f.,]\\d{3})+|\\d{2,7})';
+  const re = new RegExp(`(?:(${TG_CUR})\\s?${NUM}|${NUM}\\s?(${TG_CUR})|(цена|стоимость|price|прайс)[^\\d\\n$€£₽₸]{0,20}(${TG_CUR})?\\s?${NUM}\\s?(${TG_CUR})?)`, 'gi');
+  const all = [];
+  for (const m of text.matchAll(re)) {
+    const raw = m[2] || m[3] || m[7], cur = (m[1] || m[4] || m[6] || m[8] || '').toLowerCase();
+    all.push({ i: m.index, end: m.index + m[0].length, raw, cur, kw: !!m[5] });
+  }
+  const cands = [];
+  all.forEach((c, k) => {
+    const n = Number(c.raw.replace(/[\s.,\u00a0\u202f]/g, '')); if (!n) return;
+    const lineStart = text.lastIndexOf('\n', c.i - 1) + 1, lineEnd = (text.indexOf('\n', c.end) + 1 || text.length + 1) - 1;
+    const prevEnd = k && all[k - 1].end > lineStart ? all[k - 1].end : lineStart;
+    const nextStart = all[k + 1] && all[k + 1].i < lineEnd ? all[k + 1].i : lineEnd;
+    const before = text.slice(prevEnd, c.i).toLowerCase(), after = text.slice(c.end, Math.min(nextStart, c.end + 25)).toLowerCase();
+    const near = before + ' ' + after;
+    if (/^\s*%/.test(after)) return;
+    const sym = /^(₽|руб|рубл|р\.|rub)/.test(c.cur) ? '₽' : /byn/.test(c.cur) ? 'BYN' : /usd|\$/.test(c.cur) ? '$' : /eur|€/.test(c.cur) ? '€' : /gbp|£/.test(c.cur) ? '£' : /₸|тг/.test(c.cur) ? '₸' : '₽';
+    if (sym === '₽' && n < 100) return;
+    if (!c.cur && /^(19|20)\d\d$/.test(String(n))) return;
+    let score = c.cur ? 2 : 0;
+    if (/наш[аеи]?\s+цен|our\s+price|цена\s+для\s+(вас|подписчик)|сейчас|итог|по\s+акции|со\s+скидк|новая\s+цен|финальн|стала|стало|теперь|всего\s+за|отда(ю|м)|продаж/.test(near)) score += 3;
+    else if (/цена|стоимость|price|прайс/.test(before)) score += 1;
+    if (/бутик|розниц|retail|rrp|msrp|в\s+магазин|официальн|оригинальн\w*\s+цен|старая|был[аио]?\b|вместо|обычн\w*\s+цен|на\s+сайте|в\s+европе|на\s+офиц|рыночн|в\s+рознице/.test(near)) score -= 4;
+    if (/доставк|предоплат|залог|кэшб|cashback|бонус|комисси/.test(near)) score -= 5;
+    if (strike.some(([a, b]) => c.i < b && c.end > a)) score -= 6;
+    cands.push({ n, sym, score });
+  });
+  if (!cands.length) return null;
+  cands.sort((a, b) => b.score - a.score || (a.sym === '₽' ? 0 : 1) - (b.sym === '₽' ? 0 : 1) || a.n - b.n);
+  const best = cands[0];
+  return `${best.n.toLocaleString('ru-RU').replace(/\u00a0|\u202f/g, ' ')} ${best.sym}`;
+}
+
 function tgPostInfo(msgs) {
   const text = msgs.map(m => m.text || m.caption || '').filter(Boolean).join('\n').trim();
   const fwd = msgs.find(m => m.forward_origin || m.forward_from_chat) || msgs[0];
@@ -657,16 +703,7 @@ function tgPostInfo(msgs) {
     break;
   }
 
-  // Цена: «12 990 ₽», «5990 руб», «Цена: 4 500»
-  let price = null;
-  const cur = text.match(/(\d{1,3}(?:[  .,]\d{3})+|\d{3,7})\s?(₽|руб\.?|р\.|rub\b|byn\b|₸|\$|€|usd\b|eur\b)/i)
-    || text.match(/(?:цена|стоимость|price)\D{0,15}(\d{1,3}(?:[  .]\d{3})+|\d{3,7})/i);
-  if (cur) {
-    const num = cur[1].replace(/[  .,]/g, '');
-    const c = (cur[2] || '₽').toLowerCase();
-    const sym = /^(₽|руб|р\.|rub)/.test(c) ? '₽' : /byn/.test(c) ? 'BYN' : /usd|\$/.test(c) ? '$' : /eur|€/.test(c) ? '€' : c;
-    price = `${Number(num).toLocaleString('ru-RU').replace(/ /g, ' ')} ${sym}`;
-  }
+  const price = tgPrice(msgs);
 
   // Картинка: фото → обложка видео → превью видео/гифки/файла
   let media = null;
