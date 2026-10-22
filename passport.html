@@ -663,7 +663,8 @@ function renderWishlist() {
     </div>
   </div>
   <div class="body">
-    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(wishRow).join('')}</div>` :
+    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(wishRow).join('')}</div>
+      <div class="acts"><button class="btn ghost" onclick="confirmDel(this,clearWish,'Нажми ещё раз: удалится всё из «Хочу» (${want.length})')">Очистить вишлист</button></div>` :
       `<div class="note" style="margin-top:20px">Вишлист пуст. Нажми «+ По ссылке» и вставь ссылку на товар: название, цена и фото подтянутся сами. Ещё можно пересылать товары Telegram-боту.</div>`}
     ${got.length ? `<div class="sec"><h2>Получено</h2></div><div class="rows">${got.map(wishRow).join('')}</div>` : ''}
   </div>`;
@@ -691,6 +692,10 @@ document.addEventListener('touchstart', e => {
   };
   row.addEventListener('touchmove', mv, { passive: false }); row.addEventListener('touchend', up); row.addEventListener('touchcancel', up);
 }, { passive: true });
+async function clearWish() {
+  try { const r = await api('/wishlist', { method: 'DELETE' }); WISH = WISH.filter(w => w.received_at); renderAll(); toast('Вишлист очищен' + (r && r.deleted ? ': ' + r.deleted : '')); }
+  catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
+}
 async function unGot(id) {
   try { await api('/wishlist/' + id, { method: 'PATCH', body: { received: false } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: null } : w); ITEMS = ITEMS.filter(x => x.wishlist_id !== id); renderAll(); toast('Вернул в «Хочу», из гардероба убрал'); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }

@@ -979,6 +979,14 @@ app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
 });
 
+// Очистить вишлист: удаляем всё из «Хочу» (вместе с бронями друзей). Полученное остаётся — оно связано с гардеробом.
+app.delete('/wishlist', authenticateToken, async (req, res) => {
+  try {
+    const d = await pool.query('DELETE FROM wishlist WHERE user_id=$1 AND received_at IS NULL', [req.user.id]);
+    logAct(req.user.id, 'wish_del', `Вишлист очищен: удалено ${d.rowCount}`);
+    res.json({ ok: true, deleted: d.rowCount });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
 app.delete('/wishlist/:id', authenticateToken, async (req, res) => {
   try {
     const d = await pool.query('DELETE FROM wishlist WHERE id=$1 AND user_id=$2 RETURNING title', [req.params.id, req.user.id]);
