@@ -132,6 +132,12 @@ button.cell:active,button.route:active{filter:invert(1)}
 .sw{position:relative;overflow:hidden;background:var(--ink)}
 .sw .row{position:relative;z-index:1;transition:transform .22s ease;touch-action:pan-y;will-change:transform}
 .sw.drag .row{transition:none}
+/* перестановка долгим нажатием */
+#wantRows .sw{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#wantRows .sw.shift{transition:transform .18s ease}
+#wantRows .sw.lift{z-index:5;transition:none;box-shadow:0 14px 28px -10px rgba(0,0,0,.55);outline:2px solid var(--ink)}
+#wantRows .sw.lift .row{transform:scale(1.02)}
+body.reordering{overscroll-behavior:none}
 .sw .acts2{position:absolute;top:0;right:0;bottom:0;display:flex;gap:2px;visibility:hidden}
 .sw.open .acts2,.sw.drag .acts2{visibility:visible}
 .acts2 button{width:83px;font:700 10px var(--mono);text-transform:uppercase;color:#fff;background:#2b2b2b}
@@ -650,8 +656,15 @@ function wishRow(w) {
     <div class="tx">${n.brand ? `<span class="bd">${esc(n.brand)}</span>` : ''}<span class="tt">${esc(n.name)}</span><span class="mt">${w.parse_status === 'pending' ? '<em class="pending">ищу данные…</em>' : esc(meta)}</span></div>
     <div class="pr">${w.received_at ? `<b>${it ? 'В ГАРДЕРОБЕ →' : 'ПОЛУЧЕНО'}</b>` : priceHtml(w)}</div></button></div>`;
 }
+// Порядок «Хочу»: новые (без позиции) сверху, дальше — как переставил владелец
+function wishOrder(a, b) {
+  const an = a.pos == null, bn = b.pos == null;
+  if (an !== bn) return an ? -1 : 1;
+  if (an) return (b.priority ?? 1) - (a.priority ?? 1) || b.id - a.id;
+  return a.pos - b.pos || b.id - a.id;
+}
 function renderWishlist() {
-  const want = WISH.filter(w => !w.received_at).sort((a, b) => (b.priority ?? 1) - (a.priority ?? 1) || b.id - a.id), got = WISH.filter(w => w.received_at);
+  const want = WISH.filter(w => !w.received_at).sort(wishOrder), got = WISH.filter(w => w.received_at);
   const sumRub = want.reduce((a, w) => { const p = parsePrice(w.price, w.shop); const r = p && (p.cur === 'RUB' ? 1 : RATES && RATES.rub[p.cur]); return a + (r ? p.n * r : 0); }, 0);
   $('v-wishlist').innerHTML = `
   <div class="top">
@@ -664,7 +677,7 @@ function renderWishlist() {
     </div>
   </div>
   <div class="body">
-    ${want.length ? `<div class="sec"><h2>Хочу</h2></div><div class="rows">${want.map(wishRow).join('')}</div>
+    ${want.length ? `<div class="sec"><h2>Хочу</h2>${want.length > 1 ? '<span class="msg" style="margin:0">удерживай, чтобы переставить</span>' : ''}</div><div class="rows" id="wantRows">${want.map(wishRow).join('')}</div>
       <div class="acts"><button class="btn ghost" onclick="confirmDel(this,clearWish,'Нажми ещё раз: удалится всё из «Хочу» (${want.length})')">Очистить вишлист</button></div>` :
       `<div class="note" style="margin-top:20px">Вишлист пуст. Нажми «+ По ссылке» и вставь ссылку на товар: название, цена и фото подтянутся сами. Ещё можно пересылать товары Telegram-боту.</div>`}
     ${got.length ? `<div class="sec"><h2>Получено</h2></div><div class="rows">${got.map(wishRow).join('')}</div>` : ''}
@@ -679,6 +692,7 @@ document.addEventListener('touchstart', e => {
   const w = row.parentElement; const x0 = e.touches[0].clientX, y0 = e.touches[0].clientY; let dir = null, dx = 0;
   const base = w.classList.contains('open') ? -SW_W : 0;
   const mv = ev => {
+    if (RO) return; // идёт перестановка — не смахиваем
     const x = ev.touches[0].clientX - x0, y = ev.touches[0].clientY - y0;
     if (!dir) { if (Math.abs(x) < 8 && Math.abs(y) < 8) return; dir = Math.abs(x) > Math.abs(y) ? 'h' : 'v'; if (dir === 'h') { closeSwipes(w); w.classList.add('drag'); } }
     if (dir !== 'h') return;
@@ -697,6 +711,66 @@ async function clearWish() {
   try { const r = await api('/wishlist', { method: 'DELETE' }); WISH = WISH.filter(w => w.received_at); renderAll(); toast('Вишлист очищен' + (r && r.deleted ? ': ' + r.deleted : '')); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
 }
+// ── Перестановка вишлиста: долгое нажатие на строку → тащить вверх/вниз ──
+let RO = null;
+(function reorder() {
+  let timer = null, sx = 0, sy = 0;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  document.addEventListener('touchstart', e => {
+    const w = e.target.closest('#wantRows .sw'); if (!w || e.touches.length > 1 || w.classList.contains('open')) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; cancel();
+    timer = setTimeout(() => { timer = null; start(w, sy); }, 420);
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (timer && (Math.abs(e.touches[0].clientX - sx) > 8 || Math.abs(e.touches[0].clientY - sy) > 8)) cancel();
+    if (!RO) return;
+    e.preventDefault(); RO.y = e.touches[0].clientY; move();
+  }, { passive: false });
+  const end = () => { cancel(); if (RO) finish(); };
+  document.addEventListener('touchend', end); document.addEventListener('touchcancel', end);
+
+  function start(w, y) {
+    const box = $('wantRows'); if (!box) return;
+    const items = [...box.children];
+    if (items.length < 2) return;
+    closeSwipes();
+    const rects = items.map(x => x.getBoundingClientRect());
+    const from = items.indexOf(w);
+    RO = { w, items, rects, from, to: from, y0: y, y, sc0: scrollY, h: rects[from].height + 2 };
+    w.classList.add('lift'); items.forEach(x => x !== w && x.classList.add('shift'));
+    document.body.classList.add('reordering');
+    try { navigator.vibrate && navigator.vibrate(15); } catch (_) {}
+    autoscroll();
+  }
+  function move() {
+    const r = RO, dy = r.y - r.y0 + (scrollY - r.sc0);
+    r.w.style.transform = `translateY(${dy}px)`;
+    const mid = r.rects[r.from].top + r.rects[r.from].height / 2 + dy;
+    let to = r.from;
+    r.rects.forEach((rc, i) => { const c = rc.top + rc.height / 2; if (i < r.from && mid < c) to = Math.min(to, i); if (i > r.from && mid > c) to = Math.max(to, i); });
+    if (to !== r.to) { r.to = to; try { navigator.vibrate && navigator.vibrate(5); } catch (_) {} }
+    r.items.forEach((x, i) => { if (x === r.w) return; let s = 0; if (r.from < r.to && i > r.from && i <= r.to) s = -r.h; if (r.from > r.to && i >= r.to && i < r.from) s = r.h; x.style.transform = s ? `translateY(${s}px)` : ''; });
+  }
+  function autoscroll() {
+    if (!RO) return;
+    const edge = 80, H = innerHeight;
+    const v = RO.y < edge ? -(edge - RO.y) / 6 : RO.y > H - edge - 70 ? (RO.y - (H - edge - 70)) / 6 : 0;
+    if (v) { scrollBy(0, v); move(); }
+    requestAnimationFrame(autoscroll);
+  }
+  async function finish() {
+    const r = RO; RO = null;
+    document.body.classList.remove('reordering');
+    r.items.forEach(x => { x.classList.remove('shift', 'lift'); x.style.transform = ''; });
+    r.w._t = Date.now(); // чтобы отпускание не открыло карточку
+    if (r.to === r.from) return;
+    const order = r.items.map(x => +x.dataset.id); const [m] = order.splice(r.from, 1); order.splice(r.to, 0, m);
+    order.forEach((id, i) => { const w = WISH.find(x => x.id === id); if (w) w.pos = i + 1; });
+    renderWishlist();
+    try { await api('/wishlist/order', { method: 'POST', body: { ids: order } }); }
+    catch (e) { if (e.message !== 'auth') toast('Порядок не сохранился. Попробуй ещё раз'); }
+  }
+})();
 async function unGot(id) {
   try { await api('/wishlist/' + id, { method: 'PATCH', body: { received: false } }); WISH = WISH.map(w => w.id === id ? { ...w, received_at: null } : w); ITEMS = ITEMS.filter(x => x.wishlist_id !== id); renderAll(); toast('Вернул в «Хочу», из гардероба убрал'); }
   catch (e) { if (e.message !== 'auth') toast('Не получилось. Попробуй ещё раз'); }
@@ -1259,6 +1333,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) hidde
   }, { passive: true });
   addEventListener('touchmove', e => {
     if (y0 === null) return;
+    if (RO) { y0 = null; reset(); return; }
     const ddx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0;
     if (!dir) { if (Math.abs(ddx) < 8 && Math.abs(dy) < 8) return; dir = Math.abs(dy) > Math.abs(ddx) ? 'v' : 'h'; }
     if (dir === 'h' || dy <= 0 || window.scrollY > 2) { y0 = dir === 'h' ? null : y0; reset(); return; }

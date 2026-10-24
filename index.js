@@ -234,6 +234,7 @@ async function initDB() {
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS color TEXT;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 1;
     ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT FALSE;
+    ALTER TABLE wishlist ADD COLUMN IF NOT EXISTS pos INTEGER;
     CREATE TABLE IF NOT EXISTS gift_claims (id SERIAL PRIMARY KEY, wishlist_id INTEGER UNIQUE REFERENCES wishlist(id) ON DELETE CASCADE, name TEXT, guest_key TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());
   `);
 
@@ -1023,6 +1024,15 @@ app.patch('/wishlist/:id', authenticateToken, async (req, res) => {
 });
 
 // Очистить вишлист: удаляем всё из «Хочу» (вместе с бронями друзей). Полученное остаётся — оно связано с гардеробом.
+// Порядок вишлиста, заданный перетаскиванием: ids сверху вниз. Новые вещи (pos = NULL) показываются сверху.
+app.post('/wishlist/order', authenticateToken, async (req, res) => {
+  try {
+    const ids = (Array.isArray(req.body && req.body.ids) ? req.body.ids : []).map(Number).filter(Number.isFinite).slice(0, 1000);
+    if (!ids.length) return res.status(400).json({ error: 'Нет списка' });
+    await pool.query(`UPDATE wishlist w SET pos = o.i FROM unnest($2::int[]) WITH ORDINALITY AS o(id, i) WHERE w.id = o.id AND w.user_id = $1`, [req.user.id, ids]);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Ошибка' }); }
+});
 app.delete('/wishlist', authenticateToken, async (req, res) => {
   try {
     const d = await pool.query('DELETE FROM wishlist WHERE user_id=$1 AND received_at IS NULL', [req.user.id]);
@@ -1198,7 +1208,7 @@ async function buildShare(link, viewerId, guestKey) {
     const wr = await pool.query(
       `SELECT w.*, c.name AS claim_name, c.guest_key AS claim_key FROM wishlist w LEFT JOIN gift_claims c ON c.wishlist_id = w.id
        WHERE w.user_id=$1 AND w.received_at IS NULL AND COALESCE(w.hidden, FALSE) = FALSE
-       ORDER BY COALESCE(w.priority, 1) DESC, w.id DESC`, [link.user_id]);
+       ORDER BY w.pos ASC NULLS FIRST, COALESCE(w.priority, 1) DESC, w.id DESC`, [link.user_id]);
     const excl = Array.isArray(sections.excluded_wishlist_ids) ? sections.excluded_wishlist_ids : [];
     result.wishlist = wr.rows.filter(w => !excl.includes(w.id)).map(w => {
       const o = Object.fromEntries(SHARE_WISH_FIELDS.map(k => [k, w[k] ?? null]));
