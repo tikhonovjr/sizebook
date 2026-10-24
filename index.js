@@ -1893,6 +1893,13 @@ function parseProductFromHtml(html, url) {
     if (p) price = c ? `${p} ${c}` : p;
   }
   if (!price) {
+    // Микроразметка schema.org прямо в теле страницы (OpenCart и многие русские магазины): itemprop="price"
+    const $p = $('[itemprop="price"]').first();
+    const p = $p.attr('content') || $p.text().replace(/\s+/g, ' ').trim();
+    const c = $('[itemprop="priceCurrency"]').first().attr('content') || '';
+    if (p && /\d/.test(p) && !/^0([.,]0+)?$/.test(p.trim())) price = c ? `${p.replace(/[^\d.,]/g, '')} ${c}` : p;
+  }
+  if (!price) {
     // Farfetch и другие сайты кладут цену в og:price:* вместо product:price:*
     const p = $('meta[property="og:price:amount"]').attr('content');
     const c = $('meta[property="og:price:currency"]').attr('content');
@@ -2016,7 +2023,7 @@ function parseProductFromHtml(html, url) {
       const cls = `${$el.attr('class') || ''} ${$el.attr('data-testid') || ''} ${$el.parent().attr('class') || ''}`;
       if (OLD.test(cls) || $el.closest('del, s, strike').length || /line-through/.test($el.attr('style') || '')) return;
       const t = $el.text().replace(/\s+/g, ' ').trim();
-      if (!(t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t))) return;
+      if (!(t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?([£$€₽]|руб|р\.|р$|rub)/i.test(t))) return;
       const anc = [el, ...$el.parents().toArray().slice(0, 8)].map(x => `${$(x).attr('class') || ''} ${$(x).attr('data-testid') || ''} ${$(x).attr('data-marker') || ''} ${$(x).attr('id') || ''}`).join(' ');
       let score = 0;
       if (OTHER.test(anc)) score -= 5;
@@ -2031,10 +2038,15 @@ function parseProductFromHtml(html, url) {
   }
   // Отрезаем текст после цены (например "£338Import duties included" → "£338")
   if (price) {
-    const m = price.match(/[£$€₽]\s?[\d\s.,]+|\d[\d\s.,]*\s?[£$€₽]/);
-    if (m) price = m[0].trim();
+    const m = price.match(/[£$€₽]\s?[\d\s.,]+|\d[\d\s.,]*\s?([£$€₽]|руб\.?|р\.|rub)/i);
+    if (m) price = m[0].trim().replace(/\s?(руб\.?|р\.|rub)$/i, ' ₽');
   }
 
+  if (!price && html.length > 5000) {
+    const hits = [];
+    for (const m of html.matchAll(/.{0,90}\d[\d\s\u00a0]{2,}\s?(₽|руб|р\.|&#8381;|rub\b).{0,40}/gi)) { hits.push(m[0].replace(/\s+/g, ' ')); if (hits.length >= 4) break; }
+    console.log('[parse] цена не найдена, похожие места:', (() => { try { return new URL(url).hostname; } catch (_) { return url; } })(), hits.length ? hits : '(рублей в HTML нет)');
+  }
   // Детект страниц-блокировок антибота — не отдаём их как валидный результат
   const blockPatterns = /^(access denied|forbidden|attention required|just a moment|are you a robot|error \d{3}|flomni|похоже,? нет соединения|нет соединения с интернетом)/i;
   if (title && blockPatterns.test(title.trim())) {
