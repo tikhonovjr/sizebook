@@ -1995,16 +1995,27 @@ function parseProductFromHtml(html, url) {
     // Старая (зачёркнутая) цена не берётся; если на странице есть цена со скидкой — берём её
     const OLD = /old|cross|strike|through|was|before|regular|compare|prev|initial|full-?price|base-?price/i;
     const SALE = /sale|new|current|actual|discount|special|final|promo|offer/i;
+    // Блоки «Покупают вместе», «Похожие», карусели других товаров — их цены не наши (DNS: взяли 650 ₽ сетевого фильтра вместо 13 499 ₽)
+    const OTHER = /recommend|similar|related|cross-?sell|up-?sell|accessor|together|bundle|viewed|also|carousel|swiper|slider|catalog-product|products?-list|goods-?list|listing|tile|snippet|sku-card|item-card/i;
+    const MAIN = /product-?buy|buy-?box|pdp|product-?(info|main|detail|page|summary|price|header|sidebar|offer)|main-?price|price-?main|product__price|current-?price|order|purchase|checkout|add-?to-?cart/i;
     const cands = [];
-    $('[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]').each((_, el) => {
+    $('[data-testid*="price" i], [data-component*="Price" i], [class*="price" i]').each((i, el) => {
       const $el = $(el);
       const cls = `${$el.attr('class') || ''} ${$el.attr('data-testid') || ''} ${$el.parent().attr('class') || ''}`;
       if (OLD.test(cls) || $el.closest('del, s, strike').length || /line-through/.test($el.attr('style') || '')) return;
       const t = $el.text().replace(/\s+/g, ' ').trim();
-      if (t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t)) cands.push({ t, sale: SALE.test(cls) });
+      if (!(t && t.length < 60 && /[£$€₽]\s?\d|\d[\s.,]?\d{2,3}\s?[£$€₽]/.test(t))) return;
+      const anc = [el, ...$el.parents().toArray().slice(0, 8)].map(x => `${$(x).attr('class') || ''} ${$(x).attr('data-testid') || ''} ${$(x).attr('data-marker') || ''} ${$(x).attr('id') || ''}`).join(' ');
+      let score = 0;
+      if (OTHER.test(anc)) score -= 5;
+      if (MAIN.test(anc)) score += 3;
+      if (SALE.test(cls)) score += 1;
+      if ($el.closest('header, footer, nav, aside').length) score -= 3;
+      cands.push({ t, score, i });
     });
-    const pick = cands.find(c => c.sale) || cands[0];
-    if (pick) price = pick.t;
+    cands.sort((x, y) => y.score - x.score || x.i - y.i);
+    const pick = cands[0];
+    if (pick && pick.score > -5) price = pick.t;
   }
   // Отрезаем текст после цены (например "£338Import duties included" → "£338")
   if (price) {
