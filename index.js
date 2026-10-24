@@ -1737,8 +1737,8 @@ async function parseByStrategy(url, host, t) {
     t.mark('tier:' + tier, { title: !!r?.title, price: !!r?.price, image: !!r?.image });
     acc = mergeParseResults(acc, r);
   }
-  // Запасной вариант на Firecrawl, если Scrape.do недоступен/не сработал и нет названия
-  if (!acc.title && !st.noFallback && process.env.FIRECRAWL_API_KEY) {
+  // Запасной вариант на Firecrawl: нет названия или нет цены (DNS и др. подгружают цену скриптом — без рендера её нет)
+  if ((!acc.title || !acc.price) && !st.noFallback && process.env.FIRECRAWL_API_KEY) {
     const fc = await parseViaFirecrawl(url, { waitFor: 4000, country: st.geo === 'ru' ? 'RU' : null });
     t.mark('tier:firecrawl', { title: !!fc?.title, price: !!fc?.price, image: !!fc?.image });
     acc = mergeParseResults(acc, fc);
@@ -1749,7 +1749,19 @@ async function parseByStrategy(url, host, t) {
     t.mark('tier:jsonlink', { title: !!jl?.title, image: !!jl?.image });
     acc = mergeParseResults(acc, jl);
   }
+  if (acc.title) acc.title = cleanShopTitle(acc.title);
   return acc;
+}
+// «Купить Подсветка Govee … в интернет-магазине DNS. Характеристики, цена …» → «Подсветка Govee …»
+function cleanShopTitle(t) {
+  let x = String(t).replace(/\s+/g, ' ').trim();
+  const was = x;
+  x = x.replace(/^(купить|заказать)\s+/i, '')
+    .replace(/\s+(в|на)\s+(интернет[- ]?магазине|магазине|сайте|маркетплейсе)(?=[\s.,!]|$).*$/i, '')
+    .replace(/\s*[|—–]\s*(купить|цена|отзывы|характеристики|доставка).*$/i, '')
+    .replace(/\s+по\s+(низкой|выгодной|лучшей)\s+цене.*$/i, '').trim();
+  if (x.length < 3) return was;
+  return x.charAt(0).toUpperCase() + x.slice(1);
 }
 
 async function parseViaRu(url) {
